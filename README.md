@@ -13,6 +13,12 @@ Reviews code changes for bugs using a structured priority system (P0-P3). Suppor
 ### `/update-ticket`
 Updates a ticket's status, cascades dependency changes to dependent tickets, refreshes `INDEX.md` counts and dependency graph, and commits.
 
+### `/commit-ticket`
+Creates a git commit from the current staged and unstaged changes.
+
+### `/commit-push-pr`
+Commits changes, pushes the branch, and opens a pull request in one step.
+
 ## Install
 
 ```
@@ -33,6 +39,9 @@ Updates a ticket's status, cascades dependency changes to dependent tickets, ref
 
 /update-ticket TICKET-003 done     # Mark a ticket as done
 /update-ticket 5 in-progress       # Update ticket status
+
+/commit-ticket                     # Commit current changes
+/commit-push-pr                    # Commit, push, and open a PR
 ```
 
 ## Project Structure

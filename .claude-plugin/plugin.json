@@ -6,5 +6,5 @@
     "name": "savourylie"
   },
   "skills": "./skills/",
-  "keywords": ["development", "review-ticket", "tickets", "implement-ticket", "workflow"]
+  "keywords": ["development", "review-ticket", "tickets", "implement-ticket", "commit-ticket", "commit-push-pr", "workflow"]
 }
