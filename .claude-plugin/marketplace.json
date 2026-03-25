@@ -1,0 +1,20 @@
+{
+  "name": "dev-skills",
+  "description": "Software development workflow skills — implement tickets, code review, and ticket status management",
+  "owner": {
+    "name": "savourylie"
+  },
+  "plugins": [
+    {
+      "name": "dev-skills",
+      "description": "Software development workflow skills — implement tickets, code review, and ticket status management",
+      "source": "./",
+      "version": "1.0.0",
+      "author": {
+        "name": "savourylie"
+      },
+      "category": "development",
+      "keywords": ["development", "review-ticket", "tickets", "implement-ticket", "commit-ticket", "commit-push-pr", "workflow"]
+    }
+  ]
+}
