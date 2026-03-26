@@ -150,7 +150,7 @@ Write each feature from the user's perspective:
 
 ## Step 4: Generate Output
 
-Write the catalog to `FEATURES.md` in the project root (or a user-specified path).
+Write the catalog to `docs/FEATURES.md` (or a user-specified path).
 
 ### Output Template
 
@@ -216,7 +216,7 @@ Before delivering the catalog:
 - [ ] Features described from user perspective, not implementation
 - [ ] Categories use application's own terminology where possible
 - [ ] 4-8 categories with no orphaned features
-- [ ] Output written to FEATURES.md
+- [ ] Output written to docs/FEATURES.md
 
 ---
 
