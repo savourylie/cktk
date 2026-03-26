@@ -1,0 +1,8 @@
+interface:
+  display_name: "Commit Ticket"
+  short_description: "Stage the intended changes and create one git commit"
+  default_prompt: "Inspect the current git state, stage the intended changes, and create a single commit."
+
+policy:
+  allow_implicit_invocation: false
+

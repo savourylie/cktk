@@ -1,0 +1,8 @@
+interface:
+  display_name: "Feature Catalog"
+  short_description: "Discover and document the user-facing features in a codebase"
+  default_prompt: "Explore this codebase and produce a structured catalog of the user-facing features."
+
+policy:
+  allow_implicit_invocation: true
+

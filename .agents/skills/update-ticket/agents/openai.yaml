@@ -1,0 +1,8 @@
+interface:
+  display_name: "Update Ticket"
+  short_description: "Change a ticket status and refresh the ticket index"
+  default_prompt: "Update the requested ticket status, refresh docs/tickets/INDEX.md, and commit the documentation changes."
+
+policy:
+  allow_implicit_invocation: false
+

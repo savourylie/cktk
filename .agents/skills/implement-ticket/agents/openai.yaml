@@ -1,0 +1,8 @@
+interface:
+  display_name: "Implement Ticket"
+  short_description: "Implement backlog tickets from docs/tickets with validation and status updates"
+  default_prompt: "Read the ticket tracker, implement the requested ticket, validate the changes, commit them, and update the ticket status."
+
+policy:
+  allow_implicit_invocation: false
+
