@@ -1,7 +1,7 @@
 {
   "name": "dev-skills",
   "version": "1.0.0",
-  "description": "Software development workflow skills — implement tickets, code review, and ticket status management",
+  "description": "Software development workflow skills — implement tickets, code review, ticket status management, and feature cataloging",
   "author": {
     "name": "savourylie"
   },

@@ -19,6 +19,9 @@ Creates a git commit from the current staged and unstaged changes.
 ### `/commit-push-pr`
 Commits changes, pushes the branch, and opens a pull request in one step.
 
+### `/feature-catalog`
+Generates a structured catalog of user-facing features from a codebase. Explores routes, components, API endpoints, and configuration to discover what end users can do, then produces a categorized Markdown document.
+
 ## Install
 
 ```
@@ -42,6 +45,8 @@ Commits changes, pushes the branch, and opens a pull request in one step.
 
 /commit-ticket                     # Commit current changes
 /commit-push-pr                    # Commit, push, and open a PR
+
+/feature-catalog                   # Generate feature catalog for current project
 ```
 
 ## Project Structure
