@@ -7,5 +7,5 @@
   },
   "skills": "./skills/",
   "repository": "https://github.com/savourylie/dev-skills",
-  "keywords": ["development", "review-ticket", "tickets", "implement-ticket", "commit-ticket", "commit-push-pr", "workflow"]
+  "keywords": ["development", "review-ticket", "tickets", "implement-ticket", "commit-ticket", "commit-push-pr", "feature-catalog", "workflow"]
 }
