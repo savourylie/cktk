@@ -1,11 +1,11 @@
 {
-  "name": "dev-skills",
+  "name": "cktk",
   "version": "1.0.0",
   "description": "Software development workflow skills — implement tickets, code review, ticket status management, and feature cataloging",
   "author": {
     "name": "savourylie"
   },
   "skills": "./skills/",
-  "repository": "https://github.com/savourylie/dev-skills",
+  "repository": "https://github.com/savourylie/cktk",
   "keywords": ["development", "review-ticket", "tickets", "implement-ticket", "commit-ticket", "commit-push-pr", "feature-catalog", "workflow"]
 }

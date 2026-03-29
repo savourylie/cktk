@@ -1,4 +1,4 @@
-# dev-skills
+# cktk
 
 Software development workflow skills for both OpenAI Codex and Claude Code.
 
@@ -32,7 +32,7 @@ If you want to use this skill set from another repo without copying it, symlink 
 
 ```sh
 mkdir -p /path/to/target-repo/.agents
-ln -s /absolute/path/to/dev-skills/.agents/skills /path/to/target-repo/.agents/skills
+ln -s /absolute/path/to/cktk/.agents/skills /path/to/target-repo/.agents/skills
 ```
 
 ### User-global
@@ -41,7 +41,7 @@ If you want these skills available across repos, install them under `$HOME/.agen
 
 ```sh
 mkdir -p "$HOME/.agents"
-ln -s /absolute/path/to/dev-skills/.agents/skills "$HOME/.agents/skills"
+ln -s /absolute/path/to/cktk/.agents/skills "$HOME/.agents/skills"
 ```
 
 If you already have other global Codex skills, symlink individual skill folders instead of replacing the whole directory.
@@ -57,7 +57,7 @@ After any installer-based install, restart Codex if the new skills do not appear
 Use one installer request with all six skill paths:
 
 ```text
-$skill-installer install from https://github.com/savourylie/dev-skills with these paths:
+$skill-installer install from https://github.com/savourylie/cktk with these paths:
 .agents/skills/commit-ticket
 .agents/skills/commit-push-pr
 .agents/skills/feature-catalog
@@ -71,12 +71,12 @@ $skill-installer install from https://github.com/savourylie/dev-skills with thes
 Use the GitHub directory URL for the specific skill you want:
 
 ```text
-$skill-installer install https://github.com/savourylie/dev-skills/tree/main/.agents/skills/commit-ticket
-$skill-installer install https://github.com/savourylie/dev-skills/tree/main/.agents/skills/commit-push-pr
-$skill-installer install https://github.com/savourylie/dev-skills/tree/main/.agents/skills/feature-catalog
-$skill-installer install https://github.com/savourylie/dev-skills/tree/main/.agents/skills/implement-ticket
-$skill-installer install https://github.com/savourylie/dev-skills/tree/main/.agents/skills/review-ticket
-$skill-installer install https://github.com/savourylie/dev-skills/tree/main/.agents/skills/update-ticket
+$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/commit-ticket
+$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/commit-push-pr
+$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/feature-catalog
+$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/implement-ticket
+$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/review-ticket
+$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/update-ticket
 ```
 
 ## Codex Usage
@@ -99,8 +99,8 @@ $feature-catalog
 ## Claude Code Install
 
 ```text
-/plugin marketplace add savourylie/dev-skills
-/plugin install dev-skills@savourylie
+/plugin marketplace add savourylie/cktk
+/plugin install cktk@savourylie
 ```
 
 ## Claude Code Usage
