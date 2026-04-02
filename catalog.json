@@ -1,0 +1,78 @@
+{
+  "name": "cktk",
+  "version": "1.1.0",
+  "description": "Software development and UI design workflow skills.",
+  "author": "Calvin Ku",
+  "skills": [
+    {
+      "name": "create-tickets",
+      "path": ".agent/skills/create-tickets",
+      "description": "Generate development tickets from PRD and optional design/UX documents"
+    },
+    {
+      "name": "implement-ticket",
+      "path": ".agent/skills/implement-ticket",
+      "description": "Implement a specific ticket with code review"
+    },
+    {
+      "name": "review-ticket",
+      "path": ".agent/skills/review-ticket",
+      "description": "Review code changes for bugs and ticket alignment"
+    },
+    {
+      "name": "update-ticket",
+      "path": ".agent/skills/update-ticket",
+      "description": "Update ticket status, cascade dependencies, and refresh INDEX.md"
+    },
+    {
+      "name": "commit-ticket",
+      "path": ".agent/skills/commit-ticket",
+      "description": "Create a single git commit from current changes"
+    },
+    {
+      "name": "commit-push-pr",
+      "path": ".agent/skills/commit-push-pr",
+      "description": "Create commit, push branch, and open a pull request"
+    },
+    {
+      "name": "feature-catalog",
+      "path": ".agent/skills/feature-catalog",
+      "description": "Explore a codebase and produce a user-facing feature catalog"
+    },
+    {
+      "name": "cktk-upgrade",
+      "path": ".agent/skills/cktk-upgrade",
+      "description": "Pull the latest cktk skills from GitHub"
+    },
+    {
+      "name": "design-system-extractor",
+      "path": ".agent/skills/design-system-extractor",
+      "description": "Extract design tokens from UI screenshots into structured JSON"
+    },
+    {
+      "name": "design-system-web-applier",
+      "path": ".agent/skills/design-system-web-applier",
+      "description": "Generate web theme files from design token JSON"
+    },
+    {
+      "name": "design-system-mobile-applier",
+      "path": ".agent/skills/design-system-mobile-applier",
+      "description": "Generate native mobile theme files from design token JSON"
+    },
+    {
+      "name": "wcag-accessibility-checker",
+      "path": ".agent/skills/wcag-accessibility-checker",
+      "description": "Audit React/Next.js apps for WCAG 2.2 accessibility compliance"
+    },
+    {
+      "name": "ux-design",
+      "path": ".agent/skills/ux-design",
+      "description": "Generate UX design specification from a PRD using 6 forced designer passes"
+    },
+    {
+      "name": "ux-redesign",
+      "path": ".agent/skills/ux-redesign",
+      "description": "Audit codebase against UX spec and redesign with 6 forced designer passes"
+    }
+  ]
+}

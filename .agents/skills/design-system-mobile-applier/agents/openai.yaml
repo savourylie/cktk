@@ -1,0 +1,7 @@
+interface:
+  display_name: "Design System Mobile Applier"
+  short_description: "Generate native mobile theme files from design token JSON"
+  default_prompt: "Convert the provided design token JSON into native theme files for the detected mobile platform (iOS, Android, Flutter, React Native)."
+
+policy:
+  allow_implicit_invocation: true

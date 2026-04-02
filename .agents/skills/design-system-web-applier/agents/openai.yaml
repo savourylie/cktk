@@ -1,0 +1,7 @@
+interface:
+  display_name: "Design System Web Applier"
+  short_description: "Generate web theme files from design token JSON"
+  default_prompt: "Convert the provided design token JSON into production-ready theme files for the detected web stack (CSS, SCSS, Tailwind, React, Vue)."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Design System Extractor"
+  short_description: "Extract design tokens from UI screenshots into structured JSON"
+  default_prompt: "Analyze the provided UI screenshots and extract a structured set of design tokens (colors, typography, spacing, border radii, shadows, component patterns) into a Markdown + JSON artifact."
+
+policy:
+  allow_implicit_invocation: true

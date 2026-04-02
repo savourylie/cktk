@@ -1,0 +1,7 @@
+interface:
+  display_name: "UX Design"
+  short_description: "Generate a UX design specification from a PRD using 6 forced designer passes"
+  default_prompt: "Read docs/PRD.md and optional docs/FEATURES.md, execute 6 forced designer mindset passes, and write the UX specification to docs/UX_DESIGN.md."
+
+policy:
+  allow_implicit_invocation: false

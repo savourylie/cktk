@@ -1,0 +1,7 @@
+interface:
+  display_name: "UX Redesign"
+  short_description: "Audit codebase against UX spec and redesign with 6 forced designer passes"
+  default_prompt: "Audit the codebase against docs/UX_DESIGN.md and docs/PRD.md, write an audit report to docs/reports/UX_DESIGN_REPORT.md, then rewrite docs/UX_DESIGN.md using 6 redesign-adapted passes."
+
+policy:
+  allow_implicit_invocation: false

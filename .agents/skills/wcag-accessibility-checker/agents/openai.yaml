@@ -1,0 +1,7 @@
+interface:
+  display_name: "WCAG Accessibility Checker"
+  short_description: "Audit React/Next.js apps for WCAG 2.2 accessibility compliance"
+  default_prompt: "Run a WCAG 2.2 accessibility audit on this codebase using static analysis and optional axe-core runtime testing, then produce a structured conformance report."
+
+policy:
+  allow_implicit_invocation: true
