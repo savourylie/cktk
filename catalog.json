@@ -73,6 +73,11 @@
       "name": "ux-redesign",
       "path": ".agent/skills/ux-redesign",
       "description": "Audit codebase against UX spec and redesign with 6 forced designer passes"
+    },
+    {
+      "name": "cinematic-design-system",
+      "path": ".agent/skills/cinematic-design-system",
+      "description": "Generate a cinematic design system bundle (4 Markdown docs + 2 HTML previews) from a director and a specific film via a 4-phase workflow"
     }
   ]
 }

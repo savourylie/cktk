@@ -1,0 +1,7 @@
+interface:
+  display_name: "Cinematic Design System"
+  short_description: "Generate a cinematic design system bundle (4 Markdown docs + 2 HTML previews) from a director + film via a 4-phase film-driven workflow"
+  default_prompt: "Run the cinematic-design-system skill: complete the start questionnaire, then run the 4-phase workflow (decisions → storyboard → back-derived design system → preview rendering) writing docs/RESEARCH.md, docs/UX_DESIGN.md, docs/INFO_ARCHITECTURE.md, docs/DESIGN.md, docs/preview.html, and docs/preview-dark.html."
+
+policy:
+  allow_implicit_invocation: false

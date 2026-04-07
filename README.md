@@ -42,6 +42,10 @@ The Claude and Codex trees share support files where possible, but they do not s
 - `ux-design` — transform a PRD into a UX design specification using 6 forced designer mindset passes (mental models, IA, affordances, cognitive load, state design, flow integrity) with ASCII wireframes
 - `ux-redesign` — audit an existing codebase against its UX spec and PRD, produce a comprehensive audit report, then rewrite the UX spec with improvements
 
+**Cinematic Design** — film-driven design system bundle from a director and a specific film:
+
+- `cinematic-design-system` — generate a cinematic design system bundle (`docs/RESEARCH.md`, `docs/UX_DESIGN.md`, `docs/INFO_ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/preview.html`, `docs/preview-dark.html`) by running a 4-phase film-driven workflow (decisions → storyboard → back-derived design system → preview rendering). Picks a director + film via a start questionnaire, researches them, writes per-page scene theses and signature compositions, then back-derives the shared design system from locked page compositions. Use when the user wants a film-inspired or director-driven design system rather than a PRD-driven UX spec or a screenshot-driven token extraction.
+
 ## Codex Install
 
 Codex discovers repo-local skills from `.agents/skills/` when you launch Codex inside the repo or a child directory.
@@ -76,7 +80,7 @@ After any installer-based install, restart Codex if the new skills do not appear
 
 #### Install all skills
 
-Use one installer request with all fourteen skill paths:
+Use one installer request with all fifteen skill paths:
 
 ```text
 $skill-installer install from https://github.com/savourylie/cktk with these paths:
@@ -94,6 +98,7 @@ $skill-installer install from https://github.com/savourylie/cktk with these path
 .agents/skills/wcag-accessibility-checker
 .agents/skills/ux-design
 .agents/skills/ux-redesign
+.agents/skills/cinematic-design-system
 ```
 
 #### Install an individual skill
@@ -115,6 +120,7 @@ $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/sk
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/wcag-accessibility-checker
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/ux-design
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/ux-redesign
+$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/cinematic-design-system
 ```
 
 ## Codex Usage
@@ -138,6 +144,7 @@ $design-system-mobile-applier tokens.json
 $wcag-accessibility-checker
 $ux-design
 $ux-redesign
+$cinematic-design-system
 ```
 
 `review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy workflows (`create-tickets`, `implement-ticket`, `update-ticket`, `commit-ticket`, `commit-push-pr`, `ux-design`, `ux-redesign`) remain explicit-only in their `agents/openai.yaml` policy.
@@ -180,6 +187,7 @@ $ux-redesign
 /wcag-accessibility-checker        # Run WCAG accessibility audit
 /ux-design                         # Generate UX spec from PRD
 /ux-redesign                       # Audit and redesign UX spec
+/cinematic-design-system           # Film-driven design system bundle (4 docs + 2 HTML previews)
 ```
 
 ## Antigravity Install
@@ -198,7 +206,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in create-tickets implement-ticket review-ticket update-ticket commit-ticket commit-push-pr feature-catalog cktk-upgrade design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign; do
+for s in create-tickets implement-ticket review-ticket update-ticket commit-ticket commit-push-pr feature-catalog cktk-upgrade design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills
