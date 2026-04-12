@@ -12,7 +12,7 @@ If the user included a ticket identifier after `$implement-ticket`, implement on
 ## Phase 1: Understand the Project
 
 1. Read `docs/PRD.md`.
-2. Read `docs/DESIGN.md`.
+2. Read `docs/DESIGN.md` (or `docs/design/DESIGN.md` if that path is used instead).
 3. Build a working mental model of the product requirements, architecture, constraints, and acceptance criteria before changing code.
 
 ## Phase 2: Pick the Ticket
@@ -26,7 +26,7 @@ If the user included a ticket identifier after `$implement-ticket`, implement on
 ## Phase 3: Implement
 
 1. State what you are about to implement, which files you expect to touch, and the main risks.
-2. Implement the ticket fully against the ticket requirements and `docs/DESIGN.md`.
+2. Implement the ticket fully against the ticket requirements and the project's DESIGN.md.
 3. Follow project conventions and add tests whenever the repo has a test suite or the ticket implies testable behavior.
 4. Handle edge cases and integration details before moving on.
 
@@ -76,7 +76,7 @@ Perform the ticket status update yourself instead of delegating to another skill
 
 ## Safety Rules
 
-- If `docs/PRD.md`, `docs/DESIGN.md`, or the ticket tracker files are missing, stop and report the missing inputs.
+- If `docs/PRD.md`, the project's DESIGN.md (`docs/DESIGN.md` or `docs/design/DESIGN.md`), or the ticket tracker files are missing, stop and report the missing inputs.
 - If a dependency is unresolved, do not implement a blocked ticket out of order.
 - If unrelated user changes conflict with the ticket, stop and ask how to proceed instead of overwriting them.
 
