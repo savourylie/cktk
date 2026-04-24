@@ -1,22 +1,6 @@
 ---
 name: cinematic-design-system
-description: >
-  Cinematic design system bundle generator. Runs a 4-phase film-driven workflow
-  (decisions → storyboard → back-derived design system → preview rendering) and
-  writes six files into the user's project: docs/RESEARCH.md, docs/UX_DESIGN.md,
-  docs/INFO_ARCHITECTURE.md, docs/DESIGN.md, docs/preview.html, docs/preview-dark.html.
-  Picks a director + film via a start questionnaire (Screenshot / Step-by-step /
-  Surprise me), researches them, writes per-page scene theses and signature
-  compositions, then back-derives the shared design system from locked page
-  compositions. Use when the user wants a cinematic design system, a film-inspired
-  or director-driven design spec, a movie-style brand package, or a design system
-  bundle derived from a specific film. Triggers on requests like "cinematic design
-  system", "film-inspired design system", "director-driven design system", "design
-  system from Blade Runner", "cinematic UI spec", "film brand package", or the
-  same phrases in Chinese (電影風格設計系統 / 电影风格设计系统 / 電影 UI / 电影 UI /
-  導演設計 / 导演设计). Do NOT use for generic design system work — prefer
-  design-system-extractor (screenshots → tokens) or ux-design (PRD → UX spec)
-  when the user is not asking for a film or director reference.
+description: "Generate a cinematic design system bundle (4 Markdown docs + 2 HTML previews) from a director + film using a 4-phase film-driven workflow. Use for prompts like cinematic design system, film-inspired design system, director-driven design, design system from Blade Runner, or 電影風格設計系統."
 ---
 
 # Cinematic Design System

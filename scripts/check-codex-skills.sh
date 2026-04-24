@@ -16,6 +16,54 @@ fail() {
   failed=1
 }
 
+load_skill_names() {
+  local dir="$1"
+  find "$dir" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort
+}
+
+validate_skill_md() {
+  local skill_md="$1"
+  local label="$2"
+  local description_length
+
+  if [[ ! -f "$skill_md" ]]; then
+    fail "missing $label SKILL.md: $skill_md"
+    return
+  fi
+
+  if ! description_length="$(ruby -e '
+    require "yaml"
+
+    metadata = YAML.load_file(ARGV[0])
+    unless metadata.is_a?(Hash)
+      warn "frontmatter did not parse to a mapping"
+      exit 2
+    end
+
+    name = metadata["name"]
+    description = metadata["description"]
+
+    unless name.is_a?(String) && !name.empty?
+      warn "missing or invalid name frontmatter"
+      exit 3
+    end
+
+    unless description.is_a?(String) && !description.empty?
+      warn "missing or invalid description frontmatter"
+      exit 4
+    end
+
+    puts description.length
+  ' "$skill_md" 2>&1)"; then
+    fail "invalid YAML frontmatter in $skill_md: $description_length"
+    return
+  fi
+
+  if [[ "$description_length" -gt 1024 ]]; then
+    fail "$label description exceeds 1024 characters in $skill_md ($description_length)"
+  fi
+}
+
 if [[ ! -d "$claude_root" ]]; then
   fail "missing Claude skill root: $claude_root"
 fi
@@ -24,33 +72,34 @@ if [[ ! -d "$codex_root" ]]; then
   fail "missing Codex skill root: $codex_root"
 fi
 
-mapfile -t claude_skills < <(find "$claude_root" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
-mapfile -t codex_skills < <(find "$codex_root" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+claude_skills=()
+while IFS= read -r skill; do
+  claude_skills+=("$skill")
+done < <(load_skill_names "$claude_root")
+
+codex_skills=()
+while IFS= read -r skill; do
+  codex_skills+=("$skill")
+done < <(load_skill_names "$codex_root")
 
 if [[ "${#claude_skills[@]}" -eq 0 ]]; then
   fail "no Claude skills found under $claude_root"
 fi
 
 for skill in "${claude_skills[@]}"; do
+  claude_skill_md="$claude_root/$skill/SKILL.md"
   codex_skill="$codex_root/$skill"
   codex_skill_md="$codex_skill/SKILL.md"
   codex_yaml="$codex_skill/agents/openai.yaml"
+
+  validate_skill_md "$claude_skill_md" "Claude"
 
   if [[ ! -d "$codex_skill" ]]; then
     fail "missing Codex skill directory for $skill"
     continue
   fi
 
-  if [[ ! -f "$codex_skill_md" ]]; then
-    fail "missing Codex SKILL.md for $skill"
-  else
-    if ! rg -q '^name:' "$codex_skill_md"; then
-      fail "missing name frontmatter in $codex_skill_md"
-    fi
-    if ! rg -q '^description:' "$codex_skill_md"; then
-      fail "missing description frontmatter in $codex_skill_md"
-    fi
-  fi
+  validate_skill_md "$codex_skill_md" "Codex"
 
   if [[ ! -f "$codex_yaml" ]]; then
     fail "missing openai.yaml for $skill"
