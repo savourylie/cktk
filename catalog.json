@@ -7,7 +7,7 @@
     {
       "name": "create-tickets",
       "path": ".agent/skills/create-tickets",
-      "description": "Generate development tickets from PRD or feature catalogs, with optional design inputs — files, directories, URLs, PDF, PPTX, or HTML (including Claude Design handoff bundles)"
+      "description": "Generate development tickets from a PRD, feature catalog, or Plan Mode plan, with optional design inputs — files, directories, URLs, PDF, PPTX, or HTML (including Claude Design handoff bundles)"
     },
     {
       "name": "implement-ticket",

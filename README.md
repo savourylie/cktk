@@ -18,7 +18,7 @@ The Claude and Codex trees share support files where possible, but they do not s
 
 ### Development Skills
 
-- `create-tickets` — generate dev tickets from a PRD and optional design/UX/reference documents into `docs/tickets/` with dependency ordering and an INDEX.md tracker
+- `create-tickets` — generate dev tickets from a PRD, a features catalog, or a Plan Mode plan (plus optional design/UX/reference documents) into `docs/tickets/` with dependency ordering and an INDEX.md tracker
 - `implement-ticket` — implement a specific ticket from `docs/tickets/`, run code review, and provide manual testing instructions
 - `review-ticket` — review uncommitted changes, branch diffs, PR diffs, or ticket implementations for bugs and scope gaps
 - `update-ticket` — change a ticket status, check matching `.worktrees/` implementations, cascade dependency markers, refresh `docs/tickets/INDEX.md`, and commit the doc updates
@@ -143,6 +143,8 @@ $create-tickets PRD:docs/PRD.md DESIGN:docs/DESIGN.md
 $create-tickets PRD:docs/PRD.md DESIGN:https://api.anthropic.com/v1/design/h/abc123
 $create-tickets PRD:docs/PRD.md DESIGN:system-design/
 $create-tickets FEATURES:docs/FEATURES.md
+$create-tickets PLAN
+$create-tickets PLAN:~/.claude/plans/022-agile-candy.md
 $implement-ticket TICKET-003
 $implement-ticket TICKET-003 worktree
 $implement-ticket TICKET-003 worktree dev
@@ -187,6 +189,8 @@ $cinematic-design-system
 /create-tickets PRD:docs/PRD.md DESIGN:system-design/   # Claude Design handoff bundle folder
 /create-tickets PRD:docs/PRD.md DESIGN:docs/mockups.pdf UX:docs/flows.pptx
 /create-tickets FEATURES:docs/FEATURES.md   # Append new features to existing project
+/create-tickets PLAN               # Break the current Plan Mode plan into tickets
+/create-tickets PLAN:~/.claude/plans/022-agile-candy.md   # Ticket a saved plan file
 /create-tickets                    # Auto-detects PRD in docs/tickets/
 
 /implement-ticket 003              # Implement a specific ticket

@@ -1,7 +1,7 @@
 interface:
   display_name: "Create Tickets"
-  short_description: "Generate development ticket files from requirements documents"
-  default_prompt: "Read the requirements documents, break them into development tickets, write ticket files to docs/tickets/, and create an INDEX.md tracker."
+  short_description: "Generate development ticket files from a PRD, features catalog, or Plan Mode plan"
+  default_prompt: "Read the provided requirements, features catalog, or Plan Mode plan, break it into development tickets, write ticket files to docs/tickets/, and create or update an INDEX.md tracker."
 
 policy:
   allow_implicit_invocation: false
