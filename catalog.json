@@ -93,6 +93,11 @@
       "name": "readme-builder",
       "path": ".agent/skills/readme-builder",
       "description": "Generate or refresh README.md from observed codebase facts plus optional UI screenshots via Playwright MCP"
+    },
+    {
+      "name": "gen-image-codex",
+      "path": ".agent/skills/gen-image-codex",
+      "description": "Generate images, icons, logos, or banners with gpt-image-2 via the local Codex CLI and save them into the project"
     }
   ]
 }

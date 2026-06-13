@@ -1,0 +1,7 @@
+interface:
+  display_name: "Gen Image (Codex)"
+  short_description: "Generate images, icons, logos, or banners with gpt-image-2 and save them into the project"
+  default_prompt: "Generate the requested image with the built-in $imagegen tool (gpt-image-2), passing the user's description verbatim, and save the PNG to the requested path (default ./images/)."
+
+policy:
+  allow_implicit_invocation: false

@@ -51,6 +51,10 @@ The Claude and Codex trees share support files where possible, but they do not s
 
 - `cinematic-design-system` — generate a cinematic design system bundle (`docs/RESEARCH.md`, `docs/UX_DESIGN.md`, `docs/INFO_ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/preview.html`, `docs/preview-dark.html`) by running a 4-phase film-driven workflow (decisions → storyboard → back-derived design system → preview rendering). Picks a director + film via a start questionnaire, researches them, writes per-page scene theses and signature compositions, then back-derives the shared design system from locked page compositions. Use when the user wants a film-inspired or director-driven design system rather than a PRD-driven UX spec or a screenshot-driven token extraction.
 
+### Image Generation
+
+- `gen-image-codex` — generate images, illustrations, icons, logos, banners, sprites, or textures with OpenAI's gpt-image-2 through the locally installed Codex CLI (billed via the user's ChatGPT subscription — no API key), saving the PNG into the project (default `./images/`). Shells out to `codex exec` with the built-in `$imagegen` tool; also edits an existing image via `--image`. Requires `codex` installed and logged in with ChatGPT
+
 ## Codex Install
 
 Codex discovers repo-local skills from `.agents/skills/` when you launch Codex inside the repo or a child directory.
@@ -85,7 +89,7 @@ After any installer-based install, restart Codex if the new skills do not appear
 
 #### Install all skills
 
-Use one installer request with all eighteen skill paths:
+Use one installer request with all nineteen skill paths:
 
 ```text
 $skill-installer install from https://github.com/savourylie/cktk with these paths:
@@ -107,6 +111,7 @@ $skill-installer install from https://github.com/savourylie/cktk with these path
 .agents/skills/ux-design
 .agents/skills/ux-redesign
 .agents/skills/cinematic-design-system
+.agents/skills/gen-image-codex
 ```
 
 #### Install an individual skill
@@ -132,6 +137,7 @@ $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/sk
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/ux-design
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/ux-redesign
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/cinematic-design-system
+$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/gen-image-codex
 ```
 
 ## Codex Usage
@@ -169,9 +175,10 @@ $wcag-accessibility-checker
 $ux-design
 $ux-redesign
 $cinematic-design-system
+$gen-image-codex a dark-mode dashboard banner
 ```
 
-`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy workflows (`create-tickets`, `implement-ticket`, `update-ticket`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `ux-design`, `ux-redesign`, `readme-builder`) remain explicit-only in their `agents/openai.yaml` policy.
+`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy and external-service workflows (`create-tickets`, `implement-ticket`, `update-ticket`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `ux-design`, `ux-redesign`, `readme-builder`, `gen-image-codex`) remain explicit-only in their `agents/openai.yaml` policy.
 
 ## Claude Code Install
 
@@ -230,6 +237,8 @@ $cinematic-design-system
 
 /readme-builder                    # Generate or refresh README.md from codebase facts + screenshots
 /readme-builder no-screenshots     # Same, but skip Playwright screenshot capture
+
+/gen-image-codex a hero banner for a fintech landing page   # PNG into ./images/ via gpt-image-2
 ```
 
 ## Antigravity Install
@@ -248,7 +257,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in create-tickets implement-ticket review-ticket update-ticket commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system; do
+for s in create-tickets implement-ticket review-ticket update-ticket commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills
