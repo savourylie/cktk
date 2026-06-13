@@ -1,0 +1,7 @@
+interface:
+  display_name: "Gen Image (Antigravity)"
+  short_description: "Generate images, icons, logos, or banners with Nano Banana via the local Antigravity CLI and save them into the project"
+  default_prompt: "Generate the requested image by running scripts/gen-image.sh with the user's description verbatim and an explicit ./images/<slug>.png output path; capture the script's one-line stdout and report the saved PNG path."
+
+policy:
+  allow_implicit_invocation: false

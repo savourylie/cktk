@@ -54,6 +54,7 @@ The Claude and Codex trees share support files where possible, but they do not s
 ### Image Generation
 
 - `gen-image-codex` — generate images, illustrations, icons, logos, banners, sprites, or textures with OpenAI's gpt-image-2 through the locally installed Codex CLI (billed via the user's ChatGPT subscription — no API key), saving the PNG into the project (default `./images/`). Shells out to `codex exec` with the built-in `$imagegen` tool; also edits an existing image via `--image`. Requires `codex` installed and logged in with ChatGPT
+- `gen-image-agy` — generate images, illustrations, icons, logos, banners, sprites, or textures with Google's Nano Banana (Gemini image) model through the locally installed Antigravity CLI (`agy`), billed to the user's Google AI Pro subscription over OAuth (no API key), saving the PNG into the project (default `./images/`). Runs `agy` headless inside a PTY via the bundled `scripts/gen-image.sh`, which forces the real image-generation tool and verifies a genuine raster landed. Requires `agy` installed and a one-time interactive Google login
 
 ## Codex Install
 
@@ -89,7 +90,7 @@ After any installer-based install, restart Codex if the new skills do not appear
 
 #### Install all skills
 
-Use one installer request with all nineteen skill paths:
+Use one installer request with all twenty skill paths:
 
 ```text
 $skill-installer install from https://github.com/savourylie/cktk with these paths:
@@ -112,6 +113,7 @@ $skill-installer install from https://github.com/savourylie/cktk with these path
 .agents/skills/ux-redesign
 .agents/skills/cinematic-design-system
 .agents/skills/gen-image-codex
+.agents/skills/gen-image-agy
 ```
 
 #### Install an individual skill
@@ -138,6 +140,7 @@ $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/sk
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/ux-redesign
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/cinematic-design-system
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/gen-image-codex
+$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/gen-image-agy
 ```
 
 ## Codex Usage
@@ -176,9 +179,10 @@ $ux-design
 $ux-redesign
 $cinematic-design-system
 $gen-image-codex a dark-mode dashboard banner
+$gen-image-agy a photorealistic red apple on a wooden table
 ```
 
-`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy and external-service workflows (`create-tickets`, `implement-ticket`, `update-ticket`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `ux-design`, `ux-redesign`, `readme-builder`, `gen-image-codex`) remain explicit-only in their `agents/openai.yaml` policy.
+`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy and external-service workflows (`create-tickets`, `implement-ticket`, `update-ticket`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `ux-design`, `ux-redesign`, `readme-builder`, `gen-image-codex`, `gen-image-agy`) remain explicit-only in their `agents/openai.yaml` policy.
 
 ## Claude Code Install
 
@@ -239,6 +243,7 @@ $gen-image-codex a dark-mode dashboard banner
 /readme-builder no-screenshots     # Same, but skip Playwright screenshot capture
 
 /gen-image-codex a hero banner for a fintech landing page   # PNG into ./images/ via gpt-image-2
+/gen-image-agy a photorealistic red apple on a wooden table # PNG into ./images/ via Nano Banana (agy, AI Pro)
 ```
 
 ## Antigravity Install
@@ -257,7 +262,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in create-tickets implement-ticket review-ticket update-ticket commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex; do
+for s in create-tickets implement-ticket review-ticket update-ticket commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills

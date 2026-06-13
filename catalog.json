@@ -98,6 +98,11 @@
       "name": "gen-image-codex",
       "path": ".agent/skills/gen-image-codex",
       "description": "Generate images, icons, logos, or banners with gpt-image-2 via the local Codex CLI and save them into the project"
+    },
+    {
+      "name": "gen-image-agy",
+      "path": ".agent/skills/gen-image-agy",
+      "description": "Generate images, icons, logos, or banners with Google's Nano Banana via the local Antigravity CLI (agy), billed to the user's Google AI Pro subscription — no API key"
     }
   ]
 }
