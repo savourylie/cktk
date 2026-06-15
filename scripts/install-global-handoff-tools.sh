@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+bin_dir="$HOME/.local/bin"
+exporter="$root/skills/codex-handoff/scripts/codex-handoff.sh"
+finder="$root/skills/takeover/scripts/find-handoff.sh"
+
+die() {
+  printf 'install-global-handoff-tools: %s\n' "$*" >&2
+  exit 1
+}
+
+command -v python3 >/dev/null 2>&1 || die "Python 3 is required"
+[[ -x "$exporter" ]] || die "missing executable: $exporter"
+[[ -x "$finder" ]] || die "missing executable: $finder"
+
+resolve_link() {
+  python3 - "$1" <<'PY'
+import os
+import sys
+
+print(os.path.realpath(sys.argv[1]))
+PY
+}
+
+check_destination() {
+  local destination="$1"
+  local resolved
+
+  if [[ -L "$destination" ]]; then
+    resolved="$(resolve_link "$destination")"
+    case "$resolved" in
+      "$root" | "$root"/*)
+        return 0
+        ;;
+      *)
+        die "Refusing to overwrite unrelated symlink: $destination -> $(readlink "$destination")"
+        ;;
+    esac
+  elif [[ -e "$destination" ]]; then
+    die "Refusing to overwrite existing file: $destination"
+  fi
+}
+
+check_destination "$bin_dir/codex-handoff"
+check_destination "$bin_dir/cktk-takeover"
+
+mkdir -p "$bin_dir"
+ln -sfn "$exporter" "$bin_dir/codex-handoff"
+ln -sfn "$finder" "$bin_dir/cktk-takeover"
+
+printf 'Installed:\n'
+printf '  %s -> %s\n' "$bin_dir/codex-handoff" "$exporter"
+printf '  %s -> %s\n' "$bin_dir/cktk-takeover" "$finder"
+
+case ":${PATH:-}:" in
+  *":$bin_dir:"*)
+    ;;
+  *)
+    printf '\n%s is not currently in PATH.\n' "$bin_dir"
+    printf 'Add this line to your shell profile:\n'
+    printf '  export PATH="$HOME/.local/bin:$PATH"\n'
+    ;;
+esac

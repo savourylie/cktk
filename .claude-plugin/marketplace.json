@@ -9,12 +9,12 @@
       "name": "cktk",
       "description": "Software development and UI design workflow skills — generate tickets from PRDs, implement tickets, code review, design system extraction, theme generation, WCAG auditing, and UX design",
       "source": "./",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": {
         "name": "savourylie"
       },
       "category": "development",
-      "keywords": ["development", "design", "review-ticket", "tickets", "implement-ticket", "commit-ticket", "commit-push-pr", "feature-catalog", "create-tickets", "cktk-upgrade", "design-system", "design-tokens", "wcag", "accessibility", "ux-design", "ux-redesign", "workflow"]
+      "keywords": ["development", "design", "review-ticket", "tickets", "implement-ticket", "commit-ticket", "commit-push-pr", "feature-catalog", "create-tickets", "cktk-upgrade", "codex-handoff", "takeover", "agent-handoff", "design-system", "design-tokens", "wcag", "accessibility", "ux-design", "ux-redesign", "workflow"]
     }
   ]
 }

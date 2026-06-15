@@ -1,0 +1,7 @@
+interface:
+  display_name: "Codex Handoff"
+  short_description: "Redirect Codex users to pending takeover work"
+  default_prompt: "Explain that Codex is already the target agent and direct the user to run $takeover instead."
+
+policy:
+  allow_implicit_invocation: false

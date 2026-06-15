@@ -1,7 +1,7 @@
 interface:
   display_name: "cktk Upgrade"
   short_description: "Upgrade cktk skills to the latest version from GitHub"
-  default_prompt: "Detect the cktk install type, pull the latest version from GitHub, and report what changed."
+  default_prompt: "Detect the cktk install type, pull the latest version from GitHub, report what changed, then offer the optional handoff gitignore and global-helper setup with explicit consent."
 
 policy:
   allow_implicit_invocation: false

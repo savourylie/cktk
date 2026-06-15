@@ -1,0 +1,7 @@
+interface:
+  display_name: "Take Over Agent Work"
+  short_description: "Continue a pending local handoff from another coding agent"
+  default_prompt: "Find a pending handoff bundle in this repository, summarize the previous agent's work and risks before editing, mark it in progress, then continue and verify the original task."
+
+policy:
+  allow_implicit_invocation: false

@@ -1,6 +1,6 @@
 {
   "name": "cktk",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Software development and UI design workflow skills.",
   "author": "Calvin Ku",
   "skills": [
@@ -53,6 +53,16 @@
       "name": "cktk-upgrade",
       "path": ".agent/skills/cktk-upgrade",
       "description": "Pull the latest cktk skills from GitHub"
+    },
+    {
+      "name": "codex-handoff",
+      "path": ".agent/skills/codex-handoff",
+      "description": "Export a pending coding task from the current agent into a handoff bundle so Codex can take over"
+    },
+    {
+      "name": "takeover",
+      "path": ".agent/skills/takeover",
+      "description": "Find and continue a pending handoff bundle left by another coding agent"
     },
     {
       "name": "design-system-extractor",

@@ -28,6 +28,8 @@ The Claude and Codex trees share support files where possible, but they do not s
 - `merge-worktree` — merge ticket worktree branches back into their base, then remove the worktree and delete the local branch (cleanup half of `create-worktree`)
 - `feature-catalog` — explore a codebase and produce a user-facing feature catalog
 - `cktk-upgrade` — pull the latest cktk skills from GitHub and update the local installation
+- `codex-handoff` — export the latest Claude Code session and git state into a local bundle so Codex can take over
+- `takeover` — find a pending local handoff, summarize the previous agent's state, and continue the task safely
 - `readme-builder` — generate or refresh `README.md` from observed facts (framework, scripts, env vars, existing docs) plus optional UI screenshots via Playwright MCP. Pass `no-screenshots` for a pure-text README
 
 ### Design Skills
@@ -88,9 +90,11 @@ Codex can also install skills directly from this GitHub repo via `$skill-install
 
 After any installer-based install, restart Codex if the new skills do not appear immediately.
 
+`codex-handoff` and `takeover` are not compatible with archive-based or sparse-checkout `$skill-installer` installation because their Codex folders use repository-relative symlinks to shared scripts under `skills/`. Install those two through the repo-local or user-global full-tree symlink methods above.
+
 #### Install all skills
 
-Use one installer request with all twenty skill paths:
+Use one installer request with all twenty installer-compatible skill paths:
 
 ```text
 $skill-installer install from https://github.com/savourylie/cktk with these paths:
@@ -169,6 +173,8 @@ $merge-worktree 7
 $merge-worktree 7 8 dev
 $feature-catalog
 $cktk-upgrade
+$codex-handoff   # Explains that this is unnecessary inside Codex
+$takeover
 $readme-builder
 $readme-builder no-screenshots
 $design-system-extractor
@@ -182,7 +188,7 @@ $gen-image-codex a dark-mode dashboard banner
 $gen-image-agy a photorealistic red apple on a wooden table
 ```
 
-`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy and external-service workflows (`create-tickets`, `implement-ticket`, `update-ticket`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `ux-design`, `ux-redesign`, `readme-builder`, `gen-image-codex`, `gen-image-agy`) remain explicit-only in their `agents/openai.yaml` policy.
+`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy, handoff, and external-service workflows (`create-tickets`, `implement-ticket`, `update-ticket`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `codex-handoff`, `takeover`, `ux-design`, `ux-redesign`, `readme-builder`, `gen-image-codex`, `gen-image-agy`) remain explicit-only in their `agents/openai.yaml` policy.
 
 ## Claude Code Install
 
@@ -230,6 +236,8 @@ $gen-image-agy a photorealistic red apple on a wooden table
 /feature-catalog                   # Generate feature catalog for current project
 
 /cktk-upgrade                      # Upgrade cktk to latest version from GitHub
+/codex-handoff                     # Prepare a local bundle for Codex takeover
+/takeover                          # Continue a pending handoff from another agent
 
 /design-system-extractor           # Extract tokens from UI screenshots
 /design-system-web-applier         # Generate web theme files from tokens
@@ -245,6 +253,44 @@ $gen-image-agy a photorealistic red apple on a wooden table
 /gen-image-codex a hero banner for a fintech landing page   # PNG into ./images/ via gpt-image-2
 /gen-image-agy a photorealistic red apple on a wooden table # PNG into ./images/ via Nano Banana (agy, AI Pro)
 ```
+
+## Agent Handoff
+
+Handoff bundles let one coding agent continue work left by another without manually locating local transcript files. The MVP supports exporting from Claude Code to Codex and generic takeover by any supported agent.
+
+When Claude Code is responsive:
+
+```text
+/codex-handoff
+```
+
+Then open Codex in the same repository:
+
+```text
+$takeover
+```
+
+If Claude Code has already hit a usage or context limit, install the optional terminal helpers and export directly:
+
+```bash
+./scripts/install-global-handoff-tools.sh
+
+cd /path/to/project
+codex-handoff
+codex
+# Then inside Codex:
+$takeover
+```
+
+The installer adds `codex-handoff` and `cktk-takeover` symlinks under `~/.local/bin` without overwriting unrelated files. `$cktk-upgrade` and `/cktk-upgrade` also offer this setup after a successful version check.
+
+Bundles are written beneath `.ai/handoffs/` and remain entirely local. They may contain Claude Code transcripts, tool output, file paths, command output, and git diffs, including secrets accidentally printed during the source session. Add this directory to every participating project's `.gitignore`:
+
+```gitignore
+.ai/handoffs/
+```
+
+Do not upload or commit generated handoff bundles.
 
 ## Antigravity Install
 
@@ -262,7 +308,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in create-tickets implement-ticket review-ticket update-ticket commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
+for s in create-tickets implement-ticket review-ticket update-ticket commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade codex-handoff takeover readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills
