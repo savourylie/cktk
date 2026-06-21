@@ -1,11 +1,11 @@
 ---
 name: "cktk-upgrade"
-description: "Use when the user explicitly asks to upgrade cktk to the latest version from GitHub. Prefer explicit invocation with $cktk-upgrade."
+description: "Use when the user explicitly asks to upgrade cktk to the latest version from GitHub and automatically reconcile Claude Code, Codex, Antigravity, and handoff helper installs. Prefer explicit invocation with $cktk-upgrade."
 ---
 
 # Upgrade cktk
 
-Pull the latest cktk skills from GitHub and update the local installation. Treat this as an explicit workflow skill. Do not trigger it just because a user mentioned upgrading in passing.
+Pull the latest cktk skills from GitHub, then automatically reconcile local installs for Claude Code, Codex, Antigravity, and handoff shell helpers. Treat this as an explicit workflow skill. Do not trigger it just because a user mentioned upgrading in passing.
 
 ## Workflow
 
@@ -25,36 +25,33 @@ Pull the latest cktk skills from GitHub and update the local installation. Treat
    ```
    cd <CKTK_DIR> && git fetch origin && git pull origin main
    ```
-   If the pull reports "Already up to date", record that result but continue to optional setup.
+   If the pull reports "Already up to date", record that result but continue to all-agent install reconciliation.
 
 5. If new commits were pulled, for **plugin-marketplace** installs only, sync the updated files to the plugin cache directory at `$HOME/.claude/plugins/cache/cktk/cktk/<version>/` (excluding `.git`).
 
-6. Show the user what changed:
+6. After every successful version check, including "Already up to date", run the all-agent installer from the active cktk checkout:
+   ```
+   PROJECT_ROOT="<PROJECT_ROOT>" bash <CKTK_DIR>/scripts/install-all-agent-skills.sh
+   ```
+   If `PROJECT_ROOT` is unavailable, omit the `PROJECT_ROOT=...` assignment.
+
+   This automatically:
+   - installs or updates handoff shell helpers under `~/.local/bin`;
+   - installs or updates Codex global skill links under `${CODEX_HOME:-$HOME/.codex}/skills`;
+   - installs or updates Antigravity global skill links under `${AGENT_HOME:-$HOME/.agent}/skills`;
+   - adds `.ai/handoffs/` to the invoking project's `.gitignore` when `PROJECT_ROOT` is a git repository and the path is not already ignored.
+
+7. Show the user what changed:
    - Previous commit vs new commit (short hashes)
    - `git log --oneline <OLD_HEAD>..HEAD`
    - For plugin-marketplace installs: note that a Claude Code restart may be needed.
+   - The all-agent installer actions for shell helpers, Codex skills, Antigravity skills, and project `.gitignore`.
    If no commits changed, state that cktk is already current.
-
-7. After every successful version check, ask for explicit consent:
-
-   ```text
-   Recommended setup:
-   1. Add `.ai/handoffs/` to this repo's `.gitignore`.
-   2. Install global helper scripts into `~/.local/bin`:
-      - codex-handoff
-      - cktk-takeover
-
-   Apply recommended setup? [Y/n]
-   ```
-
-8. If approved:
-   - If `PROJECT_ROOT` exists, use `git -C <PROJECT_ROOT> check-ignore -q .ai/handoffs/`. Add exactly `.ai/handoffs/` to `<PROJECT_ROOT>/.gitignore` only when it is not already ignored; create the file if needed.
-   - If the invocation was outside a git repository, explain that no `.gitignore` was changed.
-   - Run `bash <CKTK_DIR>/scripts/install-global-handoff-tools.sh` and relay its PATH guidance.
 
 ## Safety Rules
 
-- Do not change `.gitignore` or `~/.local/bin` without explicit setup consent.
+- Run `scripts/install-all-agent-skills.sh` automatically after a successful version check; do not ask a second confirmation question.
 - Only edit the invoking project's `.gitignore`; do not infer a different project after changing directories.
+- The installer may replace existing cktk-owned skill folders or symlinks, but must not overwrite unrelated files or unrelated skill directories.
 - Do not force-push or reset. Use `git pull` only.
 - If the pull fails due to local changes, report the error and stop instead of discarding changes.

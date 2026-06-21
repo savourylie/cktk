@@ -27,7 +27,7 @@ The Claude and Codex trees share support files where possible, but they do not s
 - `create-worktree` — create git worktrees for one or more tickets under `.worktrees/NNN-slug/`, each on its own branch off a chosen base
 - `merge-worktree` — merge ticket worktree branches back into their base, then remove the worktree and delete the local branch (cleanup half of `create-worktree`)
 - `feature-catalog` — explore a codebase and produce a user-facing feature catalog
-- `cktk-upgrade` — pull the latest cktk skills from GitHub and update the local installation
+- `cktk-upgrade` — pull the latest cktk skills from GitHub and reconcile Claude Code, Codex, Antigravity, and handoff helper installs
 - `codex-handoff` — export the latest Claude Code session and git state into a local bundle so Codex can take over
 - `takeover` — find a pending local handoff, summarize the previous agent's state, and continue the task safely
 - `readme-builder` — generate or refresh `README.md` from observed facts (framework, scripts, env vars, existing docs) plus optional UI screenshots via Playwright MCP. Pass `no-screenshots` for a pure-text README
@@ -75,14 +75,13 @@ ln -s /absolute/path/to/cktk/.agents/skills /path/to/target-repo/.agents/skills
 
 ### User-global
 
-If you want these skills available across repos, install them under `$HOME/.agents/skills`:
+If you want these skills available across repos, run the all-agent installer from a full cktk checkout:
 
 ```sh
-mkdir -p "$HOME/.agents"
-ln -s /absolute/path/to/cktk/.agents/skills "$HOME/.agents/skills"
+bash /absolute/path/to/cktk/scripts/install-all-agent-skills.sh
 ```
 
-If you already have other global Codex skills, symlink individual skill folders instead of replacing the whole directory.
+The installer symlinks cktk skill folders into `${CODEX_HOME:-$HOME/.codex}/skills` without replacing unrelated skills. It also reconciles Antigravity global skills and the handoff shell helpers. `$cktk-upgrade` runs this installer automatically after every successful version check.
 
 ### Install from GitHub in Codex Desktop
 
@@ -273,7 +272,7 @@ $takeover
 If Claude Code has already hit a usage or context limit, install the optional terminal helpers and export directly:
 
 ```bash
-./scripts/install-global-handoff-tools.sh
+./scripts/install-all-agent-skills.sh
 
 cd /path/to/project
 codex-handoff
@@ -282,7 +281,7 @@ codex
 $takeover
 ```
 
-The installer adds `codex-handoff` and `cktk-takeover` symlinks under `~/.local/bin` without overwriting unrelated files. `$cktk-upgrade` and `/cktk-upgrade` also offer this setup after a successful version check.
+The all-agent installer adds `codex-handoff` and `cktk-takeover` symlinks under `~/.local/bin`, symlinks cktk skills into the global Codex and Antigravity skill locations, and avoids overwriting unrelated files. `$cktk-upgrade` and `/cktk-upgrade` run this setup automatically after a successful version check.
 
 Bundles are written beneath `.ai/handoffs/` and remain entirely local. They may contain Claude Code transcripts, tool output, file paths, command output, and git diffs, including secrets accidentally printed during the source session. Add this directory to every participating project's `.gitignore`:
 
@@ -312,6 +311,12 @@ for s in create-tickets implement-ticket review-ticket update-ticket commit-tick
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills
+```
+
+For user-global Antigravity skills from a full cktk checkout, run:
+
+```bash
+bash /absolute/path/to/cktk/scripts/install-all-agent-skills.sh
 ```
 
 ## Supported Platforms

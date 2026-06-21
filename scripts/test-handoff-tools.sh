@@ -6,6 +6,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 exporter="$root/skills/codex-handoff/scripts/codex-handoff.sh"
 finder="$root/skills/takeover/scripts/find-handoff.sh"
 installer="$root/scripts/install-global-handoff-tools.sh"
+all_agent_installer="$root/scripts/install-all-agent-skills.sh"
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/cktk-handoff-test.XXXXXX")"
 tmp="$(cd "$tmp" && pwd -P)"
 tests=0
@@ -90,6 +91,7 @@ write_session() {
 [[ -x "$exporter" ]] || fail "exporter is not executable: $exporter"
 [[ -x "$finder" ]] || fail "takeover finder is not executable: $finder"
 [[ -x "$installer" ]] || fail "global installer is not executable: $installer"
+[[ -x "$all_agent_installer" ]] || fail "all-agent installer is not executable: $all_agent_installer"
 
 no_session_repo="$tmp/no-session"
 empty_claude="$tmp/empty-claude"
@@ -403,6 +405,50 @@ fi
   fail "installer changed an unrelated symlink"
 pass "global installer is safe, idempotent, and PATH-aware"
 
+all_agents_home="$tmp/all-agents-home"
+all_agents_codex_home="$tmp/all-agents-codex"
+all_agents_project="$tmp/all-agents-project"
+mkdir -p "$all_agents_home" "$all_agents_codex_home/skills"
+init_repo "$all_agents_project"
+printf 'do not touch\n' >"$all_agents_codex_home/skills/private-skill.txt"
+HOME="$all_agents_home" CODEX_HOME="$all_agents_codex_home" PROJECT_ROOT="$all_agents_project" PATH="/usr/bin:/bin" \
+  "$all_agent_installer" >"$tmp/all-agents.out" 2>"$tmp/all-agents.err"
+assert_symlink "$all_agents_home/.local/bin/codex-handoff"
+assert_symlink "$all_agents_home/.local/bin/cktk-takeover"
+[[ "$(readlink "$all_agents_home/.local/bin/codex-handoff")" = "$exporter" ]] ||
+  fail "all-agent installer pointed codex-handoff at the wrong exporter"
+[[ "$(readlink "$all_agents_home/.local/bin/cktk-takeover")" = "$finder" ]] ||
+  fail "all-agent installer pointed cktk-takeover at the wrong finder"
+assert_symlink "$all_agents_codex_home/skills/takeover"
+assert_symlink "$all_agents_codex_home/skills/codex-handoff"
+[[ "$(readlink "$all_agents_codex_home/skills/takeover")" = "$root/.agents/skills/takeover" ]] ||
+  fail "Codex takeover symlink points to the wrong skill"
+[[ "$(readlink "$all_agents_codex_home/skills/codex-handoff")" = "$root/.agents/skills/codex-handoff" ]] ||
+  fail "Codex codex-handoff symlink points to the wrong skill"
+assert_contains "$all_agents_codex_home/skills/private-skill.txt" "do not touch"
+assert_symlink "$all_agents_home/.agent/skills"
+[[ "$(readlink "$all_agents_home/.agent/skills")" = "$root/.agent/skills" ]] ||
+  fail "Antigravity global skills symlink points to the wrong tree"
+assert_contains "$tmp/all-agents.out" "Codex skills"
+assert_contains "$tmp/all-agents.out" "Antigravity skills"
+assert_contains "$tmp/all-agents.out" "Shell helpers"
+assert_contains "$all_agents_project/.gitignore" ".ai/handoffs/"
+HOME="$all_agents_home" CODEX_HOME="$all_agents_codex_home" PATH="/usr/bin:/bin" \
+  "$all_agent_installer" >"$tmp/all-agents-again.out" 2>"$tmp/all-agents-again.err"
+stale_home="$tmp/stale-agents-home"
+stale_codex_home="$tmp/stale-codex"
+stale_tree="$tmp/stale-cktk/.agent/skills"
+mkdir -p "$stale_home/.agent" "$stale_codex_home" "$stale_tree/cktk-upgrade"
+printf -- '---\nname: cktk-upgrade\ndescription: stale fixture\n---\n' \
+  >"$stale_tree/cktk-upgrade/SKILL.md"
+ln -s "$stale_tree" "$stale_home/.agent/skills"
+HOME="$stale_home" CODEX_HOME="$stale_codex_home" PATH="/usr/bin:/bin" \
+  "$all_agent_installer" >"$tmp/stale-agents.out" 2>"$tmp/stale-agents.err"
+assert_symlink "$stale_home/.agent/skills"
+[[ "$(readlink "$stale_home/.agent/skills")" = "$root/.agent/skills" ]] ||
+  fail "stale Antigravity skills symlink was not updated to the active cktk tree"
+pass "all-agent installer reconciles global Codex, Antigravity, and shell surfaces"
+
 for skill in codex-handoff takeover; do
   assert_file "$root/skills/$skill/SKILL.md"
   assert_file "$root/.agents/skills/$skill/SKILL.md"
@@ -448,6 +494,8 @@ assert_contains "$root/README.md" '$takeover'
 assert_contains "$root/README.md" "/codex-handoff"
 assert_contains "$root/README.md" ".ai/handoffs/"
 assert_contains "$root/README.md" "not compatible with archive-based"
+assert_contains "$root/README.md" "install-all-agent-skills.sh"
+assert_contains "$root/README.md" '${CODEX_HOME:-$HOME/.codex}/skills'
 assert_not_contains "$root/README.md" ".agents/skills/codex-handoff"
 assert_not_contains "$root/README.md" ".agents/skills/takeover"
 assert_contains "$root/.gitignore" ".ai/handoffs/"
@@ -455,8 +503,9 @@ for upgrade_skill in \
   "$root/skills/cktk-upgrade/SKILL.md" \
   "$root/.agents/skills/cktk-upgrade/SKILL.md"; do
   assert_contains "$upgrade_skill" "Already up to date"
-  assert_contains "$upgrade_skill" "Apply recommended setup?"
-  assert_contains "$upgrade_skill" "install-global-handoff-tools.sh"
+  assert_contains "$upgrade_skill" "install-all-agent-skills.sh"
+  assert_contains "$upgrade_skill" "automatically"
+  assert_not_contains "$upgrade_skill" "Apply recommended setup?"
 done
 pass "documentation and release metadata register the MVP"
 

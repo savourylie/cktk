@@ -1,7 +1,7 @@
 interface:
   display_name: "cktk Upgrade"
-  short_description: "Upgrade cktk skills to the latest version from GitHub"
-  default_prompt: "Detect the cktk install type, pull the latest version from GitHub, report what changed, then offer the optional handoff gitignore and global-helper setup with explicit consent."
+  short_description: "Upgrade cktk skills and reconcile local agent installs"
+  default_prompt: "Detect the active cktk install, pull the latest version from GitHub, run the all-agent installer to reconcile Claude Code, Codex, Antigravity, and handoff helper installs, then report what changed."
 
 policy:
   allow_implicit_invocation: false
