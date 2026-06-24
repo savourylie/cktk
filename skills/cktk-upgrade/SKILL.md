@@ -1,13 +1,13 @@
 ---
 name: cktk-upgrade
-description: "Upgrade cktk to the latest version and automatically reconcile Claude Code, Codex, Antigravity, and handoff helper installs. Triggers on: /cktk-upgrade, upgrade cktk, update cktk, get latest cktk"
+description: "Upgrade cktk to the latest version and automatically reconcile Claude Code, Codex, Antigravity, OpenCode, and handoff helper installs. Triggers on: /cktk-upgrade, upgrade cktk, update cktk, get latest cktk"
 user-invocable: true
 allowed-tools: Bash(git:*), Bash(test:*), Bash(ls:*), Bash(cp:*), Bash(rm:*), Bash(mkdir:*), Bash(cat:*), Bash(rsync:*), Bash(bash:*), Read
 ---
 
 # Upgrade cktk
 
-Pull the latest cktk skills from GitHub, then automatically reconcile the local installs for Claude Code, Codex, Antigravity, and the handoff shell helpers.
+Pull the latest cktk skills from GitHub, then automatically reconcile the local installs for Claude Code, Codex, Antigravity, OpenCode, and the handoff shell helpers.
 
 ## Step 1: Detect install type
 
@@ -85,6 +85,7 @@ This script automatically:
 - installs or updates handoff shell helpers under `~/.local/bin`;
 - installs or updates Codex global skill links under `${CODEX_HOME:-$HOME/.codex}/skills`;
 - installs or updates Antigravity global skill links under `${AGENT_HOME:-$HOME/.agent}/skills`;
+- installs or updates OpenCode global skill links under `${OPENCODE_HOME:-$HOME/.config/opencode}/skills`;
 - adds `.ai/handoffs/` to the invoking project's `.gitignore` when **PROJECT_ROOT** is a git repository and the path is not already ignored.
 
 If the script reports that `~/.local/bin` is not in `PATH`, include that guidance in the final response.
@@ -98,7 +99,7 @@ Report to the user:
 - Updated to: `<NEW_HEAD short>`
 - Changes pulled (the log output)
 - If **INSTALL_TYPE** is `plugin-marketplace`: note that a Claude Code restart may be needed for the updated skills to take effect.
-- The all-agent installer actions for shell helpers, Codex skills, Antigravity skills, and project `.gitignore`.
+- The all-agent installer actions for shell helpers, Codex skills, Antigravity skills, OpenCode skills, and project `.gitignore`.
 
 If there were no new commits, report that cktk is already on the latest version instead of listing changes.
 

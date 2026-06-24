@@ -12,6 +12,8 @@ codex_home="${CODEX_HOME:-$HOME/.codex}"
 codex_target="$codex_home/skills"
 antigravity_home="${AGENT_HOME:-$HOME/.agent}"
 antigravity_target="$antigravity_home/skills"
+opencode_home="${OPENCODE_HOME:-$HOME/.config/opencode}"
+opencode_target="$opencode_home/skills"
 
 die() {
   printf 'install-all-agent-skills: %s\n' "$*" >&2
@@ -172,6 +174,22 @@ install_antigravity_skills() {
   printf '  installed %d skill link(s) under %s\n' "$count" "$antigravity_target"
 }
 
+install_opencode_skills() {
+  local skill
+  local count=0
+
+  [[ -d "$claude_skills" ]] || die "missing Claude skill tree: $claude_skills"
+  mkdir -p "$opencode_target"
+
+  while IFS= read -r skill; do
+    link_skill_dir "$claude_skills/$skill" "$opencode_target/$skill" "$skill"
+    count=$((count + 1))
+  done < <(find "$claude_skills" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+
+  printf '\nOpenCode skills:\n'
+  printf '  installed %d skill link(s) under %s\n' "$count" "$opencode_target"
+}
+
 install_project_ignore() {
   local project_root="${PROJECT_ROOT:-}"
   local git_root
@@ -204,4 +222,5 @@ command -v python3 >/dev/null 2>&1 || die "Python 3 is required"
 install_shell_helpers
 install_codex_skills
 install_antigravity_skills
+install_opencode_skills
 install_project_ignore
