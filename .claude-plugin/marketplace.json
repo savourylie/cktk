@@ -14,7 +14,7 @@
         "name": "savourylie"
       },
       "category": "development",
-      "keywords": ["development", "design", "review-ticket", "tickets", "implement-ticket", "commit-ticket", "commit-push-pr", "feature-catalog", "create-tickets", "cktk-upgrade", "codex-handoff", "takeover", "agent-handoff", "design-system", "design-tokens", "wcag", "accessibility", "ux-design", "ux-redesign", "workflow"]
+      "keywords": ["development", "design", "review-ticket", "tickets", "implement-ticket", "commit-ticket", "commit-push-pr", "feature-catalog", "create-tickets", "cktk-upgrade", "codex-handoff", "grok-handoff", "takeover", "agent-handoff", "design-system", "design-tokens", "wcag", "accessibility", "ux-design", "ux-redesign", "workflow"]
     }
   ]
 }

@@ -4,6 +4,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 exporter="$root/skills/codex-handoff/scripts/codex-handoff.sh"
+grok_exporter="$root/skills/grok-handoff/scripts/grok-handoff.sh"
 finder="$root/skills/takeover/scripts/find-handoff.sh"
 installer="$root/scripts/install-global-handoff-tools.sh"
 all_agent_installer="$root/scripts/install-all-agent-skills.sh"
@@ -89,6 +90,7 @@ write_session() {
 }
 
 [[ -x "$exporter" ]] || fail "exporter is not executable: $exporter"
+[[ -x "$grok_exporter" ]] || fail "grok exporter is not executable: $grok_exporter"
 [[ -x "$finder" ]] || fail "takeover finder is not executable: $finder"
 [[ -x "$installer" ]] || fail "global installer is not executable: $installer"
 [[ -x "$all_agent_installer" ]] || fail "all-agent installer is not executable: $all_agent_installer"
@@ -247,6 +249,109 @@ assert latest["target_agent"] == "codex-next"
 PY
 pass "exporter creates a complete local handoff bundle"
 
+# --- grok-handoff: sessionless export with agent summary ---
+grok_repo="$tmp/grok-project"
+init_repo "$grok_repo"
+printf 'grok unstaged\n' >>"$grok_repo/tracked.txt"
+printf 'summary body MARKER\n' >"$tmp/agent-summary.md"
+(
+  cd "$grok_repo"
+  "$grok_exporter" --source codex --summary "$tmp/agent-summary.md" --no-session
+) >"$tmp/grok-export.out" 2>"$tmp/grok-export.err"
+grok_bundle="$(tail -n 1 "$tmp/grok-export.out")"
+[[ "$grok_bundle" = "$grok_repo"/.ai/handoffs/grok/*-codex ]] ||
+  fail "unexpected grok bundle path: $grok_bundle"
+for name in \
+  HANDOFF.json \
+  TAKEOVER.md \
+  agent-summary.md \
+  git-status.txt \
+  git-diff-stat.txt \
+  git-diff.patch \
+  git-log.txt; do
+  assert_file "$grok_bundle/$name"
+done
+[[ ! -e "$grok_bundle/source-session.jsonl" ]] ||
+  fail "sessionless grok export unexpectedly included a Claude session"
+assert_contains "$grok_bundle/agent-summary.md" "summary body MARKER"
+assert_contains "$grok_bundle/TAKEOVER.md" "agent-summary.md"
+assert_contains "$grok_bundle/TAKEOVER.md" "Grok Build"
+assert_contains "$tmp/grok-export.err" "is not ignored by git"
+python3 - "$grok_bundle" "$grok_repo" <<'PY'
+import json
+import os
+import sys
+
+bundle, repo = sys.argv[1:]
+with open(os.path.join(bundle, "HANDOFF.json"), encoding="utf-8") as handle:
+    handoff = json.load(handle)
+with open(os.path.join(repo, ".ai/handoffs/latest.json"), encoding="utf-8") as handle:
+    latest = json.load(handle)
+
+assert handoff["schema_version"] == "1.0"
+assert handoff["target_agent"] == "grok"
+assert handoff["source_agent"] == "codex"
+assert handoff["repo_root"] == repo
+assert handoff["status"] == "pending"
+assert handoff["session"] == {"type": "none"}
+assert handoff["summary_path"] == "agent-summary.md"
+assert latest["target_agent"] == "grok"
+assert latest["status"] == "pending"
+assert os.path.normpath(os.path.join(repo, latest["handoff_dir"])) == bundle
+PY
+pass "grok-handoff creates a sessionless bundle with agent summary"
+
+# --- grok-handoff: auto-attach Claude session when present ---
+grok_claude_repo="$tmp/grok-claude-project"
+grok_claude_config="$tmp/grok-claude-config"
+init_repo "$grok_claude_repo"
+printf 'session work\n' >>"$grok_claude_repo/tracked.txt"
+grok_key="$(project_key "$grok_claude_repo")"
+grok_project_dir="$grok_claude_config/projects/$grok_key"
+mkdir -p "$grok_project_dir"
+write_session "$grok_project_dir/session.jsonl" "gline" 4
+printf 'claude summary\n' >"$tmp/claude-summary.md"
+(
+  cd "$grok_claude_repo"
+  CLAUDE_CONFIG_DIR="$grok_claude_config" "$grok_exporter" \
+    --source claude \
+    --summary "$tmp/claude-summary.md" \
+    --tail-lines 2
+) >"$tmp/grok-session.out" 2>"$tmp/grok-session.err"
+grok_session_bundle="$(tail -n 1 "$tmp/grok-session.out")"
+[[ "$grok_session_bundle" = "$grok_claude_repo"/.ai/handoffs/grok/*-claude ]] ||
+  fail "unexpected grok+claude bundle path: $grok_session_bundle"
+assert_file "$grok_session_bundle/source-session.jsonl"
+assert_file "$grok_session_bundle/source-session-tail.jsonl"
+assert_file "$grok_session_bundle/agent-summary.md"
+[[ "$(wc -l <"$grok_session_bundle/source-session-tail.jsonl" | tr -d ' ')" = "2" ]] ||
+  fail "grok session tail does not contain 2 lines"
+python3 - "$grok_session_bundle/HANDOFF.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    handoff = json.load(handle)
+assert handoff["target_agent"] == "grok"
+assert handoff["source_agent"] == "claude"
+assert handoff["session"] == {
+    "type": "claude-code-jsonl",
+    "path": "source-session.jsonl",
+    "tail_path": "source-session-tail.jsonl",
+}
+assert handoff["summary_path"] == "agent-summary.md"
+PY
+
+# --require-session fails cleanly with no Claude session
+if (
+  cd "$grok_repo"
+  CLAUDE_CONFIG_DIR="$tmp/empty-claude" "$grok_exporter" --require-session --source claude
+) >"$tmp/grok-require.out" 2>"$tmp/grok-require.err"; then
+  fail "grok-handoff --require-session unexpectedly succeeded without a Claude session"
+fi
+assert_contains "$tmp/grok-require.err" "No Claude Code session found"
+pass "grok-handoff attaches Claude sessions and enforces --require-session"
+
 (
   cd "$repo"
   "$finder" --json
@@ -377,9 +482,12 @@ mkdir -p "$install_home"
 HOME="$install_home" PATH="/usr/bin:/bin" "$installer" \
   >"$tmp/install.out" 2>"$tmp/install.err"
 assert_symlink "$install_home/.local/bin/codex-handoff"
+assert_symlink "$install_home/.local/bin/grok-handoff"
 assert_symlink "$install_home/.local/bin/cktk-takeover"
 [[ "$(readlink "$install_home/.local/bin/codex-handoff")" = "$exporter" ]] ||
   fail "codex-handoff symlink points to the wrong exporter"
+[[ "$(readlink "$install_home/.local/bin/grok-handoff")" = "$grok_exporter" ]] ||
+  fail "grok-handoff symlink points to the wrong exporter"
 [[ "$(readlink "$install_home/.local/bin/cktk-takeover")" = "$finder" ]] ||
   fail "cktk-takeover symlink points to the wrong finder"
 assert_contains "$tmp/install.out" "not currently in PATH"
@@ -414,17 +522,23 @@ printf 'do not touch\n' >"$all_agents_codex_home/skills/private-skill.txt"
 HOME="$all_agents_home" CODEX_HOME="$all_agents_codex_home" PROJECT_ROOT="$all_agents_project" PATH="/usr/bin:/bin" \
   "$all_agent_installer" >"$tmp/all-agents.out" 2>"$tmp/all-agents.err"
 assert_symlink "$all_agents_home/.local/bin/codex-handoff"
+assert_symlink "$all_agents_home/.local/bin/grok-handoff"
 assert_symlink "$all_agents_home/.local/bin/cktk-takeover"
 [[ "$(readlink "$all_agents_home/.local/bin/codex-handoff")" = "$exporter" ]] ||
   fail "all-agent installer pointed codex-handoff at the wrong exporter"
+[[ "$(readlink "$all_agents_home/.local/bin/grok-handoff")" = "$grok_exporter" ]] ||
+  fail "all-agent installer pointed grok-handoff at the wrong exporter"
 [[ "$(readlink "$all_agents_home/.local/bin/cktk-takeover")" = "$finder" ]] ||
   fail "all-agent installer pointed cktk-takeover at the wrong finder"
 assert_symlink "$all_agents_codex_home/skills/takeover"
 assert_symlink "$all_agents_codex_home/skills/codex-handoff"
+assert_symlink "$all_agents_codex_home/skills/grok-handoff"
 [[ "$(readlink "$all_agents_codex_home/skills/takeover")" = "$root/.agents/skills/takeover" ]] ||
   fail "Codex takeover symlink points to the wrong skill"
 [[ "$(readlink "$all_agents_codex_home/skills/codex-handoff")" = "$root/.agents/skills/codex-handoff" ]] ||
   fail "Codex codex-handoff symlink points to the wrong skill"
+[[ "$(readlink "$all_agents_codex_home/skills/grok-handoff")" = "$root/.agents/skills/grok-handoff" ]] ||
+  fail "Codex grok-handoff symlink points to the wrong skill"
 assert_contains "$all_agents_codex_home/skills/private-skill.txt" "do not touch"
 assert_symlink "$all_agents_home/.agent/skills"
 [[ "$(readlink "$all_agents_home/.agent/skills")" = "$root/.agent/skills" ]] ||
@@ -449,7 +563,7 @@ assert_symlink "$stale_home/.agent/skills"
   fail "stale Antigravity skills symlink was not updated to the active cktk tree"
 pass "all-agent installer reconciles global Codex, Antigravity, and shell surfaces"
 
-for skill in codex-handoff takeover; do
+for skill in codex-handoff grok-handoff takeover; do
   assert_file "$root/skills/$skill/SKILL.md"
   assert_file "$root/.agents/skills/$skill/SKILL.md"
   assert_file "$root/.agents/skills/$skill/agents/openai.yaml"
@@ -460,12 +574,18 @@ for skill in codex-handoff takeover; do
     "allow_implicit_invocation: false"
 done
 assert_symlink "$root/.agents/skills/codex-handoff/scripts"
+assert_symlink "$root/.agents/skills/grok-handoff/scripts"
 assert_symlink "$root/.agents/skills/takeover/scripts"
 assert_contains "$root/.agents/skills/codex-handoff/SKILL.md" \
   "You are already in Codex"
 assert_contains "$root/.agents/skills/codex-handoff/SKILL.md" '$takeover'
+assert_contains "$root/.agents/skills/grok-handoff/SKILL.md" "Grok Build"
+assert_contains "$root/.agents/skills/grok-handoff/SKILL.md" '$grok-handoff'
+assert_contains "$root/skills/grok-handoff/SKILL.md" "agent-summary"
 assert_contains "$root/skills/takeover/SKILL.md" "untrusted"
+assert_contains "$root/skills/takeover/SKILL.md" "agent-summary.md"
 assert_contains "$root/.agents/skills/takeover/SKILL.md" "untrusted"
+assert_contains "$root/.agents/skills/takeover/SKILL.md" "agent-summary.md"
 pass "all three agent skill trees expose the handoff skills correctly"
 
 python3 - "$root" <<'PY'
@@ -488,10 +608,12 @@ for rel in (
 
 with open(os.path.join(root, "catalog.json"), encoding="utf-8") as handle:
     names = {skill["name"] for skill in json.load(handle)["skills"]}
-assert {"codex-handoff", "takeover"} <= names
+assert {"codex-handoff", "grok-handoff", "takeover"} <= names
 PY
 assert_contains "$root/README.md" '$takeover'
 assert_contains "$root/README.md" "/codex-handoff"
+assert_contains "$root/README.md" "/grok-handoff"
+assert_contains "$root/README.md" '$grok-handoff'
 assert_contains "$root/README.md" ".ai/handoffs/"
 assert_contains "$root/README.md" "not compatible with archive-based"
 assert_contains "$root/README.md" "install-all-agent-skills.sh"

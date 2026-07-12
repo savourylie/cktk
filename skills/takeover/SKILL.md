@@ -21,11 +21,12 @@ Find a pending local handoff, reconstruct the previous task cautiously, and cont
 
 3. From the selected handoff directory, read in this order:
    1. `TAKEOVER.md`
-   2. `git-status.txt`
-   3. `git-diff-stat.txt`
-   4. `git-diff.patch`
-   5. `git-log.txt`
-   6. `source-session-tail.jsonl`
+   2. `agent-summary.md` (when present — preferred structured continuation note)
+   3. `git-status.txt`
+   4. `git-diff-stat.txt`
+   5. `git-diff.patch`
+   6. `git-log.txt`
+   7. `source-session-tail.jsonl` (when present)
 
 4. Read `source-session.jsonl` only when the tail is insufficient. Inspect `subagents/` only when the main transcript indicates relevant subagent work.
 

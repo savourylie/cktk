@@ -60,6 +60,11 @@
       "description": "Export a pending coding task from the current agent into a handoff bundle so Codex can take over"
     },
     {
+      "name": "grok-handoff",
+      "path": ".agent/skills/grok-handoff",
+      "description": "Export a pending coding task from any coding agent into a handoff bundle so Grok Build can take over"
+    },
+    {
       "name": "takeover",
       "path": ".agent/skills/takeover",
       "description": "Find and continue a pending handoff bundle left by another coding agent"

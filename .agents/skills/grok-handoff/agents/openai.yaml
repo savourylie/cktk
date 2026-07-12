@@ -1,0 +1,7 @@
+interface:
+  display_name: "Grok Handoff"
+  short_description: "Export pending work into a local handoff bundle for Grok Build"
+  default_prompt: "Write a concise agent summary of the current task, export a Grok handoff bundle with the skill script, and tell the user to open Grok Build and run $takeover."
+
+policy:
+  allow_implicit_invocation: false
