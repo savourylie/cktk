@@ -5,6 +5,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 exporter="$root/skills/codex-handoff/scripts/codex-handoff.sh"
 grok_exporter="$root/skills/grok-handoff/scripts/grok-handoff.sh"
+opencode_exporter="$root/skills/opencode-handoff/scripts/opencode-handoff.sh"
 finder="$root/skills/takeover/scripts/find-handoff.sh"
 installer="$root/scripts/install-global-handoff-tools.sh"
 all_agent_installer="$root/scripts/install-all-agent-skills.sh"
@@ -352,6 +353,109 @@ fi
 assert_contains "$tmp/grok-require.err" "No Claude Code session found"
 pass "grok-handoff attaches Claude sessions and enforces --require-session"
 
+# --- opencode-handoff: sessionless export with agent summary ---
+opencode_repo="$tmp/opencode-project"
+init_repo "$opencode_repo"
+printf 'opencode unstaged\n' >>"$opencode_repo/tracked.txt"
+printf 'opencode summary body MARKER\n' >"$tmp/opencode-agent-summary.md"
+(
+  cd "$opencode_repo"
+  "$opencode_exporter" --source codex --summary "$tmp/opencode-agent-summary.md" --no-session
+) >"$tmp/opencode-export.out" 2>"$tmp/opencode-export.err"
+opencode_bundle="$(tail -n 1 "$tmp/opencode-export.out")"
+[[ "$opencode_bundle" = "$opencode_repo"/.ai/handoffs/opencode/*-codex ]] ||
+  fail "unexpected opencode bundle path: $opencode_bundle"
+for name in \
+  HANDOFF.json \
+  TAKEOVER.md \
+  agent-summary.md \
+  git-status.txt \
+  git-diff-stat.txt \
+  git-diff.patch \
+  git-log.txt; do
+  assert_file "$opencode_bundle/$name"
+done
+[[ ! -e "$opencode_bundle/source-session.jsonl" ]] ||
+  fail "sessionless opencode export unexpectedly included a Claude session"
+assert_contains "$opencode_bundle/agent-summary.md" "opencode summary body MARKER"
+assert_contains "$opencode_bundle/TAKEOVER.md" "agent-summary.md"
+assert_contains "$opencode_bundle/TAKEOVER.md" "OpenCode"
+assert_contains "$tmp/opencode-export.err" "is not ignored by git"
+python3 - "$opencode_bundle" "$opencode_repo" <<'PY'
+import json
+import os
+import sys
+
+bundle, repo = sys.argv[1:]
+with open(os.path.join(bundle, "HANDOFF.json"), encoding="utf-8") as handle:
+    handoff = json.load(handle)
+with open(os.path.join(repo, ".ai/handoffs/latest.json"), encoding="utf-8") as handle:
+    latest = json.load(handle)
+
+assert handoff["schema_version"] == "1.0"
+assert handoff["target_agent"] == "opencode"
+assert handoff["source_agent"] == "codex"
+assert handoff["repo_root"] == repo
+assert handoff["status"] == "pending"
+assert handoff["session"] == {"type": "none"}
+assert handoff["summary_path"] == "agent-summary.md"
+assert latest["target_agent"] == "opencode"
+assert latest["status"] == "pending"
+assert os.path.normpath(os.path.join(repo, latest["handoff_dir"])) == bundle
+PY
+pass "opencode-handoff creates a sessionless bundle with agent summary"
+
+# --- opencode-handoff: auto-attach Claude session when present ---
+opencode_claude_repo="$tmp/opencode-claude-project"
+opencode_claude_config="$tmp/opencode-claude-config"
+init_repo "$opencode_claude_repo"
+printf 'session work\n' >>"$opencode_claude_repo/tracked.txt"
+opencode_key="$(project_key "$opencode_claude_repo")"
+opencode_project_dir="$opencode_claude_config/projects/$opencode_key"
+mkdir -p "$opencode_project_dir"
+write_session "$opencode_project_dir/session.jsonl" "oline" 4
+printf 'claude summary for opencode\n' >"$tmp/opencode-claude-summary.md"
+(
+  cd "$opencode_claude_repo"
+  CLAUDE_CONFIG_DIR="$opencode_claude_config" "$opencode_exporter" \
+    --source claude \
+    --summary "$tmp/opencode-claude-summary.md" \
+    --tail-lines 2
+) >"$tmp/opencode-session.out" 2>"$tmp/opencode-session.err"
+opencode_session_bundle="$(tail -n 1 "$tmp/opencode-session.out")"
+[[ "$opencode_session_bundle" = "$opencode_claude_repo"/.ai/handoffs/opencode/*-claude ]] ||
+  fail "unexpected opencode+claude bundle path: $opencode_session_bundle"
+assert_file "$opencode_session_bundle/source-session.jsonl"
+assert_file "$opencode_session_bundle/source-session-tail.jsonl"
+assert_file "$opencode_session_bundle/agent-summary.md"
+[[ "$(wc -l <"$opencode_session_bundle/source-session-tail.jsonl" | tr -d ' ')" = "2" ]] ||
+  fail "opencode session tail does not contain 2 lines"
+python3 - "$opencode_session_bundle/HANDOFF.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    handoff = json.load(handle)
+assert handoff["target_agent"] == "opencode"
+assert handoff["source_agent"] == "claude"
+assert handoff["session"] == {
+    "type": "claude-code-jsonl",
+    "path": "source-session.jsonl",
+    "tail_path": "source-session-tail.jsonl",
+}
+assert handoff["summary_path"] == "agent-summary.md"
+PY
+
+# --require-session fails cleanly with no Claude session
+if (
+  cd "$opencode_repo"
+  CLAUDE_CONFIG_DIR="$tmp/empty-claude" "$opencode_exporter" --require-session --source claude
+) >"$tmp/opencode-require.out" 2>"$tmp/opencode-require.err"; then
+  fail "opencode-handoff --require-session unexpectedly succeeded without a Claude session"
+fi
+assert_contains "$tmp/opencode-require.err" "No Claude Code session found"
+pass "opencode-handoff attaches Claude sessions and enforces --require-session"
+
 (
   cd "$repo"
   "$finder" --json
@@ -483,11 +587,14 @@ HOME="$install_home" PATH="/usr/bin:/bin" "$installer" \
   >"$tmp/install.out" 2>"$tmp/install.err"
 assert_symlink "$install_home/.local/bin/codex-handoff"
 assert_symlink "$install_home/.local/bin/grok-handoff"
+assert_symlink "$install_home/.local/bin/opencode-handoff"
 assert_symlink "$install_home/.local/bin/cktk-takeover"
 [[ "$(readlink "$install_home/.local/bin/codex-handoff")" = "$exporter" ]] ||
   fail "codex-handoff symlink points to the wrong exporter"
 [[ "$(readlink "$install_home/.local/bin/grok-handoff")" = "$grok_exporter" ]] ||
   fail "grok-handoff symlink points to the wrong exporter"
+[[ "$(readlink "$install_home/.local/bin/opencode-handoff")" = "$opencode_exporter" ]] ||
+  fail "opencode-handoff symlink points to the wrong exporter"
 [[ "$(readlink "$install_home/.local/bin/cktk-takeover")" = "$finder" ]] ||
   fail "cktk-takeover symlink points to the wrong finder"
 assert_contains "$tmp/install.out" "not currently in PATH"
@@ -523,22 +630,28 @@ HOME="$all_agents_home" CODEX_HOME="$all_agents_codex_home" PROJECT_ROOT="$all_a
   "$all_agent_installer" >"$tmp/all-agents.out" 2>"$tmp/all-agents.err"
 assert_symlink "$all_agents_home/.local/bin/codex-handoff"
 assert_symlink "$all_agents_home/.local/bin/grok-handoff"
+assert_symlink "$all_agents_home/.local/bin/opencode-handoff"
 assert_symlink "$all_agents_home/.local/bin/cktk-takeover"
 [[ "$(readlink "$all_agents_home/.local/bin/codex-handoff")" = "$exporter" ]] ||
   fail "all-agent installer pointed codex-handoff at the wrong exporter"
 [[ "$(readlink "$all_agents_home/.local/bin/grok-handoff")" = "$grok_exporter" ]] ||
   fail "all-agent installer pointed grok-handoff at the wrong exporter"
+[[ "$(readlink "$all_agents_home/.local/bin/opencode-handoff")" = "$opencode_exporter" ]] ||
+  fail "all-agent installer pointed opencode-handoff at the wrong exporter"
 [[ "$(readlink "$all_agents_home/.local/bin/cktk-takeover")" = "$finder" ]] ||
   fail "all-agent installer pointed cktk-takeover at the wrong finder"
 assert_symlink "$all_agents_codex_home/skills/takeover"
 assert_symlink "$all_agents_codex_home/skills/codex-handoff"
 assert_symlink "$all_agents_codex_home/skills/grok-handoff"
+assert_symlink "$all_agents_codex_home/skills/opencode-handoff"
 [[ "$(readlink "$all_agents_codex_home/skills/takeover")" = "$root/.agents/skills/takeover" ]] ||
   fail "Codex takeover symlink points to the wrong skill"
 [[ "$(readlink "$all_agents_codex_home/skills/codex-handoff")" = "$root/.agents/skills/codex-handoff" ]] ||
   fail "Codex codex-handoff symlink points to the wrong skill"
 [[ "$(readlink "$all_agents_codex_home/skills/grok-handoff")" = "$root/.agents/skills/grok-handoff" ]] ||
   fail "Codex grok-handoff symlink points to the wrong skill"
+[[ "$(readlink "$all_agents_codex_home/skills/opencode-handoff")" = "$root/.agents/skills/opencode-handoff" ]] ||
+  fail "Codex opencode-handoff symlink points to the wrong skill"
 assert_contains "$all_agents_codex_home/skills/private-skill.txt" "do not touch"
 assert_symlink "$all_agents_home/.agent/skills"
 [[ "$(readlink "$all_agents_home/.agent/skills")" = "$root/.agent/skills" ]] ||
@@ -563,7 +676,7 @@ assert_symlink "$stale_home/.agent/skills"
   fail "stale Antigravity skills symlink was not updated to the active cktk tree"
 pass "all-agent installer reconciles global Codex, Antigravity, and shell surfaces"
 
-for skill in codex-handoff grok-handoff takeover; do
+for skill in codex-handoff grok-handoff opencode-handoff takeover; do
   assert_file "$root/skills/$skill/SKILL.md"
   assert_file "$root/.agents/skills/$skill/SKILL.md"
   assert_file "$root/.agents/skills/$skill/agents/openai.yaml"
@@ -575,6 +688,7 @@ for skill in codex-handoff grok-handoff takeover; do
 done
 assert_symlink "$root/.agents/skills/codex-handoff/scripts"
 assert_symlink "$root/.agents/skills/grok-handoff/scripts"
+assert_symlink "$root/.agents/skills/opencode-handoff/scripts"
 assert_symlink "$root/.agents/skills/takeover/scripts"
 assert_contains "$root/.agents/skills/codex-handoff/SKILL.md" \
   "You are already in Codex"
@@ -582,6 +696,9 @@ assert_contains "$root/.agents/skills/codex-handoff/SKILL.md" '$takeover'
 assert_contains "$root/.agents/skills/grok-handoff/SKILL.md" "Grok Build"
 assert_contains "$root/.agents/skills/grok-handoff/SKILL.md" '$grok-handoff'
 assert_contains "$root/skills/grok-handoff/SKILL.md" "agent-summary"
+assert_contains "$root/.agents/skills/opencode-handoff/SKILL.md" "OpenCode"
+assert_contains "$root/.agents/skills/opencode-handoff/SKILL.md" '$opencode-handoff'
+assert_contains "$root/skills/opencode-handoff/SKILL.md" "agent-summary"
 assert_contains "$root/skills/takeover/SKILL.md" "untrusted"
 assert_contains "$root/skills/takeover/SKILL.md" "agent-summary.md"
 assert_contains "$root/.agents/skills/takeover/SKILL.md" "untrusted"
@@ -608,12 +725,14 @@ for rel in (
 
 with open(os.path.join(root, "catalog.json"), encoding="utf-8") as handle:
     names = {skill["name"] for skill in json.load(handle)["skills"]}
-assert {"codex-handoff", "grok-handoff", "takeover"} <= names
+assert {"codex-handoff", "grok-handoff", "opencode-handoff", "takeover"} <= names
 PY
 assert_contains "$root/README.md" '$takeover'
 assert_contains "$root/README.md" "/codex-handoff"
 assert_contains "$root/README.md" "/grok-handoff"
 assert_contains "$root/README.md" '$grok-handoff'
+assert_contains "$root/README.md" "/opencode-handoff"
+assert_contains "$root/README.md" '$opencode-handoff'
 assert_contains "$root/README.md" ".ai/handoffs/"
 assert_contains "$root/README.md" "not compatible with archive-based"
 assert_contains "$root/README.md" "install-all-agent-skills.sh"

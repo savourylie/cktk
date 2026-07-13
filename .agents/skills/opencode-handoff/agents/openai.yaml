@@ -1,0 +1,7 @@
+interface:
+  display_name: "OpenCode Handoff"
+  short_description: "Export pending work into a local handoff bundle for OpenCode"
+  default_prompt: "Write a concise agent summary of the current task, export an OpenCode handoff bundle with the skill script, and tell the user to open OpenCode and run $takeover."
+
+policy:
+  allow_implicit_invocation: false

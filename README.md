@@ -30,6 +30,7 @@ The Claude and Codex trees share support files where possible, but they do not s
 - `cktk-upgrade` — pull the latest cktk skills from GitHub and reconcile Claude Code, Codex, Antigravity, and handoff helper installs
 - `codex-handoff` — export the latest Claude Code session and git state into a local bundle so Codex can take over
 - `grok-handoff` — export the current task (git state, optional Claude session, and agent summary) into a local bundle so Grok Build can take over from any coding agent
+- `opencode-handoff` — export the current task (git state, optional Claude session, and agent summary) into a local bundle so OpenCode can take over from any coding agent
 - `takeover` — find a pending local handoff, summarize the previous agent's state, and continue the task safely
 - `readme-builder` — generate or refresh `README.md` from observed facts (framework, scripts, env vars, existing docs) plus optional UI screenshots via Playwright MCP. Pass `no-screenshots` for a pure-text README
 
@@ -90,7 +91,7 @@ Codex can also install skills directly from this GitHub repo via `$skill-install
 
 After any installer-based install, restart Codex if the new skills do not appear immediately.
 
-`codex-handoff`, `grok-handoff`, and `takeover` are not compatible with archive-based or sparse-checkout `$skill-installer` installation because their Codex folders use repository-relative symlinks to shared scripts under `skills/`. Install those three through the repo-local or user-global full-tree symlink methods above.
+`codex-handoff`, `grok-handoff`, `opencode-handoff`, and `takeover` are not compatible with archive-based or sparse-checkout `$skill-installer` installation because their Codex folders use repository-relative symlinks to shared scripts under `skills/`. Install those four through the repo-local or user-global full-tree symlink methods above.
 
 #### Install all skills
 
@@ -175,6 +176,7 @@ $feature-catalog
 $cktk-upgrade
 $codex-handoff   # Explains that this is unnecessary inside Codex
 $grok-handoff    # Export a local bundle so Grok Build can take over
+$opencode-handoff # Export a local bundle so OpenCode can take over
 $takeover
 $readme-builder
 $readme-builder no-screenshots
@@ -189,7 +191,7 @@ $gen-image-codex a dark-mode dashboard banner
 $gen-image-agy a photorealistic red apple on a wooden table
 ```
 
-`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy, handoff, and external-service workflows (`create-tickets`, `implement-ticket`, `update-ticket`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `codex-handoff`, `grok-handoff`, `takeover`, `ux-design`, `ux-redesign`, `readme-builder`, `gen-image-codex`, `gen-image-agy`) remain explicit-only in their `agents/openai.yaml` policy.
+`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy, handoff, and external-service workflows (`create-tickets`, `implement-ticket`, `update-ticket`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `codex-handoff`, `grok-handoff`, `opencode-handoff`, `takeover`, `ux-design`, `ux-redesign`, `readme-builder`, `gen-image-codex`, `gen-image-agy`) remain explicit-only in their `agents/openai.yaml` policy.
 
 ## Claude Code Install
 
@@ -239,6 +241,7 @@ $gen-image-agy a photorealistic red apple on a wooden table
 /cktk-upgrade                      # Upgrade cktk to latest version from GitHub
 /codex-handoff                     # Prepare a local bundle for Codex takeover
 /grok-handoff                      # Prepare a local bundle for Grok Build takeover
+/opencode-handoff                  # Prepare a local bundle for OpenCode takeover
 /takeover                          # Continue a pending handoff from another agent
 
 /design-system-extractor           # Extract tokens from UI screenshots
@@ -262,6 +265,7 @@ Handoff bundles let one coding agent continue work left by another without manua
 
 - **Claude Code → Codex** via `codex-handoff`
 - **Any coding agent → Grok Build** via `grok-handoff` (git snapshot + agent summary; optionally attaches a Claude Code transcript when present)
+- **Any coding agent → OpenCode** via `opencode-handoff` (git snapshot + agent summary; optionally attaches a Claude Code transcript when present)
 - **Generic takeover** via `takeover` in the receiving agent
 
 Bundles are written beneath `.ai/handoffs/` and remain entirely local. They may contain Claude Code transcripts, agent summaries, tool output, file paths, command output, and git diffs, including secrets accidentally printed during the source session. Add this directory to every participating project's `.gitignore`:
@@ -280,7 +284,7 @@ Install shell helpers once so you can still export when the source agent is rate
 bash /absolute/path/to/cktk/scripts/install-all-agent-skills.sh
 ```
 
-That adds `codex-handoff`, `grok-handoff`, and `cktk-takeover` under `~/.local/bin`, and also reconciles global Codex / Antigravity skill links. `$cktk-upgrade` and `/cktk-upgrade` run this setup automatically after a successful version check.
+That adds `codex-handoff`, `grok-handoff`, `opencode-handoff`, and `cktk-takeover` under `~/.local/bin`, and also reconciles global Codex / Antigravity / OpenCode skill links. `$cktk-upgrade` and `/cktk-upgrade` run this setup automatically after a successful version check.
 
 If `~/.local/bin` is not on your PATH:
 
@@ -293,6 +297,7 @@ Without installing helpers, you can still run the scripts by absolute path from 
 ```bash
 bash /absolute/path/to/cktk/skills/codex-handoff/scripts/codex-handoff.sh
 bash /absolute/path/to/cktk/skills/grok-handoff/scripts/grok-handoff.sh --source claude
+bash /absolute/path/to/cktk/skills/opencode-handoff/scripts/opencode-handoff.sh --source claude
 ```
 
 ### Claude Code → Codex
@@ -400,6 +405,70 @@ You cannot run `/grok-handoff` inside the blocked agent. Export from the termina
    /takeover
    ```
 
+### Any agent → OpenCode
+
+#### When the source agent is still responsive
+
+1. In the source agent, invoke the skill (it should write an agent summary, then run the exporter):
+
+   ```text
+   /opencode-handoff
+   ```
+
+   In Codex:
+
+   ```text
+   $opencode-handoff
+   ```
+
+2. Open OpenCode in the **same repository**.
+
+3. In OpenCode:
+
+   ```text
+   /takeover
+   ```
+
+#### When Claude Code (or another source agent) has hit a rate / usage / context limit
+
+You cannot run `/opencode-handoff` inside the blocked agent. Export from the terminal instead:
+
+1. Make sure shell helpers are installed (see [One-time setup](#one-time-setup-shell-helpers)).
+
+2. From the project repo:
+
+   ```bash
+   cd /path/to/project
+   opencode-handoff --source claude
+   ```
+
+   By default this:
+
+   - Snapshots git status, diffs, log, and untracked files
+   - Auto-attaches the latest Claude Code session for the repo when one exists
+   - Writes a bundle under `.ai/handoffs/opencode/` and prints the absolute path
+
+   Useful variants:
+
+   ```bash
+   # Fail if no Claude Code session is found
+   opencode-handoff --source claude --require-session
+
+   # Git-only (no transcript)
+   opencode-handoff --source claude --no-session
+
+   # Attach your own continuation notes (recommended if you can write them)
+   opencode-handoff --source claude --summary /tmp/agent-summary.md
+   ```
+
+3. Open OpenCode in the **same repository**.
+
+4. In OpenCode:
+
+   ```text
+   /takeover
+   ```
+
 ### After takeover
 
 In the receiving agent, `$takeover` / `/takeover`:
@@ -425,7 +494,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in create-tickets implement-ticket review-ticket update-ticket commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade codex-handoff grok-handoff takeover readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
+for s in create-tickets implement-ticket review-ticket update-ticket commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills

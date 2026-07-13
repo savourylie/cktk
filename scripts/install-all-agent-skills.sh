@@ -100,19 +100,23 @@ link_skill_dir() {
 install_shell_helpers() {
   local codex_exporter="$claude_skills/codex-handoff/scripts/codex-handoff.sh"
   local grok_exporter="$claude_skills/grok-handoff/scripts/grok-handoff.sh"
+  local opencode_exporter="$claude_skills/opencode-handoff/scripts/opencode-handoff.sh"
   local finder="$claude_skills/takeover/scripts/find-handoff.sh"
 
   [[ -x "$codex_exporter" ]] || die "missing executable: $codex_exporter"
   [[ -x "$grok_exporter" ]] || die "missing executable: $grok_exporter"
+  [[ -x "$opencode_exporter" ]] || die "missing executable: $opencode_exporter"
   [[ -x "$finder" ]] || die "missing executable: $finder"
 
   link_path "$codex_exporter" "$bin_dir/codex-handoff" "shell helper"
   link_path "$grok_exporter" "$bin_dir/grok-handoff" "shell helper"
+  link_path "$opencode_exporter" "$bin_dir/opencode-handoff" "shell helper"
   link_path "$finder" "$bin_dir/cktk-takeover" "shell helper"
 
   printf 'Shell helpers:\n'
   printf '  %s -> %s\n' "$bin_dir/codex-handoff" "$codex_exporter"
   printf '  %s -> %s\n' "$bin_dir/grok-handoff" "$grok_exporter"
+  printf '  %s -> %s\n' "$bin_dir/opencode-handoff" "$opencode_exporter"
   printf '  %s -> %s\n' "$bin_dir/cktk-takeover" "$finder"
 
   case ":${PATH:-}:" in

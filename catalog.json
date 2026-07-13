@@ -65,6 +65,11 @@
       "description": "Export a pending coding task from any coding agent into a handoff bundle so Grok Build can take over"
     },
     {
+      "name": "opencode-handoff",
+      "path": ".agent/skills/opencode-handoff",
+      "description": "Export a pending coding task from any coding agent into a handoff bundle so OpenCode can take over"
+    },
+    {
       "name": "takeover",
       "path": ".agent/skills/takeover",
       "description": "Find and continue a pending handoff bundle left by another coding agent"
