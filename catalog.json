@@ -15,6 +15,11 @@
       "description": "Implement a specific ticket with code review, optionally in an isolated worktree"
     },
     {
+      "name": "clarify-ticket-linear",
+      "path": ".agent/skills/clarify-ticket-linear",
+      "description": "Fetch a Linear issue and interactively clarify its details and risks against the codebase before implementation — read-only (requires Linear MCP)"
+    },
+    {
       "name": "implement-ticket-linear",
       "path": ".agent/skills/implement-ticket-linear",
       "description": "Implement a Linear issue with code review, optionally in an isolated worktree (requires Linear MCP)"

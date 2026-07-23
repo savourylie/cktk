@@ -7,5 +7,5 @@
   },
   "skills": "./skills/",
   "repository": "https://github.com/savourylie/cktk",
-  "keywords": ["development", "design", "review-ticket", "tickets", "implement-ticket", "implement-ticket-linear", "update-ticket-linear", "linear", "commit-ticket", "commit-push-pr", "feature-catalog", "create-tickets", "cktk-upgrade", "codex-handoff", "grok-handoff", "opencode-handoff", "takeover", "agent-handoff", "design-system", "design-tokens", "wcag", "accessibility", "ux-design", "ux-redesign", "cinematic-design-system", "film-design", "director-driven", "gen-image-codex", "gen-image-agy", "image-generation", "workflow"]
+  "keywords": ["development", "design", "review-ticket", "tickets", "implement-ticket", "clarify-ticket-linear", "implement-ticket-linear", "update-ticket-linear", "linear", "commit-ticket", "commit-push-pr", "feature-catalog", "create-tickets", "cktk-upgrade", "codex-handoff", "grok-handoff", "opencode-handoff", "takeover", "agent-handoff", "design-system", "design-tokens", "wcag", "accessibility", "ux-design", "ux-redesign", "cinematic-design-system", "film-design", "director-driven", "gen-image-codex", "gen-image-agy", "image-generation", "workflow"]
 }
