@@ -15,6 +15,11 @@
       "description": "Implement a specific ticket with code review, optionally in an isolated worktree"
     },
     {
+      "name": "implement-ticket-linear",
+      "path": ".agent/skills/implement-ticket-linear",
+      "description": "Implement a Linear issue with code review, optionally in an isolated worktree (requires Linear MCP)"
+    },
+    {
       "name": "review-ticket",
       "path": ".agent/skills/review-ticket",
       "description": "Review code changes for bugs and ticket alignment"
