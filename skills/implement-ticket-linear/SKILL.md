@@ -163,6 +163,7 @@ Present:
 3. Deviations from the issue or design sources, and why
 4. Remaining concerns or follow-ups
 5. Reminder that **Linear was not updated** (status still whatever it was) and **nothing was committed**
+6. **Next step for Linear status:** when the user is ready to mark the issue done (or move it to another state), run `/update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear; this skill stays Linear-read-only.
 
 ### Worktree Note (only when `use_worktree` was true)
 
@@ -187,7 +188,7 @@ Step-by-step verification: prerequisites, commands, URLs, inputs, expected resul
 ## Safety Rules
 
 - **Never** update Linear (status, comments, assignee, labels).
-- **Never** commit, and do not invoke `/commit-ticket`, `/commit-push-pr`, or `/update-ticket`.
+- **Never** commit, and do not invoke `/commit-ticket`, `/commit-push-pr`, `/update-ticket`, or `/update-ticket-linear` (status updates belong in a separate `/update-ticket-linear` invocation after implementation).
 - Do not read or write `docs/tickets/` as the ticket source (optional project context elsewhere is fine).
 - If unrelated dirty changes in `WORK_DIR` conflict with the issue, stop and ask instead of overwriting.
 - In worktree mode, do not switch the user's main checkout branch and do not delete the worktree at the end.

@@ -92,7 +92,8 @@ Stop after a clear summary:
 2. Deviations and follow-ups
 3. Explicit note: **no git commit**, **Linear status unchanged**
 4. Manual testing steps
-5. If worktree mode: path, branch, base, and **manual land** instructions — `$merge-worktree` only understands markdown `TICKET-NNN` worktrees:
+5. **Next step for Linear status:** when ready to mark the issue done (or move it), run `$update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear; this skill stays Linear-read-only.
+6. If worktree mode: path, branch, base, and **manual land** instructions — `$merge-worktree` only understands markdown `TICKET-NNN` worktrees:
 
 ```bash
 git checkout <base>
@@ -103,7 +104,7 @@ git merge linear-<issue_id>-<slug>
 ## Safety Rules
 
 - Never mutate Linear.
-- Never commit; do not call `$commit-ticket`, `$commit-push-pr`, or `$update-ticket`.
+- Never commit; do not call `$commit-ticket`, `$commit-push-pr`, `$update-ticket`, or `$update-ticket-linear` (status updates belong in a separate `$update-ticket-linear` invocation after implementation).
 - Do not use `docs/tickets/` as the ticket source.
 - If dirty unrelated changes conflict with the issue, stop and ask.
 - In worktree mode, do not switch the main checkout branch or delete the worktree at the end.

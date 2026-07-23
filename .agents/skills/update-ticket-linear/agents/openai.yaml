@@ -1,0 +1,7 @@
+interface:
+  display_name: "Update Ticket (Linear)"
+  short_description: "Update a Linear issue status after AC evaluation"
+  default_prompt: "Evaluate acceptance criteria for the Linear issue (using a matching linear worktree when present), update Linear state via MCP, cascade unblocked relations when safe, and do not commit git changes."
+
+policy:
+  allow_implicit_invocation: false

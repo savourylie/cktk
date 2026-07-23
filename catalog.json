@@ -30,6 +30,11 @@
       "description": "Update ticket status, checking matching worktrees, cascade dependencies, and refresh INDEX.md"
     },
     {
+      "name": "update-ticket-linear",
+      "path": ".agent/skills/update-ticket-linear",
+      "description": "Update a Linear issue status after AC evaluation, checking matching linear worktrees (requires Linear MCP)"
+    },
+    {
       "name": "commit-ticket",
       "path": ".agent/skills/commit-ticket",
       "description": "Create a single git commit from current changes"

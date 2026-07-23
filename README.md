@@ -23,6 +23,7 @@ The Claude and Codex trees share support files where possible, but they do not s
 - `implement-ticket-linear` — implement a Linear issue (via Linear MCP) with code review and optional worktree; does not use `docs/tickets/` and does not write back to Linear
 - `review-ticket` — review uncommitted changes, branch diffs, PR diffs, or ticket implementations for bugs and scope gaps
 - `update-ticket` — change a ticket status, check matching `.worktrees/` implementations, cascade dependency markers, refresh `docs/tickets/INDEX.md`, and commit the doc updates
+- `update-ticket-linear` — change a Linear issue status (via Linear MCP) after acceptance-criteria evaluation, check matching linear worktrees, cascade blocked relations when safe; does not use `docs/tickets/` and does not create a git commit
 - `commit-ticket` — create a single git commit from the intended repo changes
 - `commit-push-pr` — create one commit, push the branch, and open a pull request
 - `create-worktree` — create git worktrees for one or more tickets under `.worktrees/NNN-slug/`, each on its own branch off a chosen base
@@ -96,7 +97,7 @@ After any installer-based install, restart Codex if the new skills do not appear
 
 #### Install all skills
 
-Use one installer request with all twenty-one installer-compatible skill paths:
+Use one installer request with all twenty-two installer-compatible skill paths:
 
 ```text
 $skill-installer install from https://github.com/savourylie/cktk with these paths:
@@ -110,6 +111,7 @@ $skill-installer install from https://github.com/savourylie/cktk with these path
 .agents/skills/implement-ticket-linear
 .agents/skills/review-ticket
 .agents/skills/update-ticket
+.agents/skills/update-ticket-linear
 .agents/skills/cktk-upgrade
 .agents/skills/readme-builder
 .agents/skills/design-system-extractor
@@ -138,6 +140,7 @@ $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/sk
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/implement-ticket-linear
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/review-ticket
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/update-ticket
+$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/update-ticket-linear
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/cktk-upgrade
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/readme-builder
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/design-system-extractor
@@ -172,6 +175,9 @@ $review-ticket
 $review-ticket main
 $review-ticket --pr 42
 $update-ticket TICKET-003 done
+$update-ticket-linear ENG-42
+$update-ticket-linear ENG-42 done
+$update-ticket-linear ENG-42 in-progress
 $commit-ticket
 $commit-push-pr
 $create-worktree 7
@@ -197,7 +203,7 @@ $gen-image-codex a dark-mode dashboard banner
 $gen-image-agy a photorealistic red apple on a wooden table
 ```
 
-`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy, handoff, and external-service workflows (`create-tickets`, `implement-ticket`, `implement-ticket-linear`, `update-ticket`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `codex-handoff`, `grok-handoff`, `opencode-handoff`, `takeover`, `ux-design`, `ux-redesign`, `readme-builder`, `gen-image-codex`, `gen-image-agy`) remain explicit-only in their `agents/openai.yaml` policy.
+`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy, handoff, and external-service workflows (`create-tickets`, `implement-ticket`, `implement-ticket-linear`, `update-ticket`, `update-ticket-linear`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `codex-handoff`, `grok-handoff`, `opencode-handoff`, `takeover`, `ux-design`, `ux-redesign`, `readme-builder`, `gen-image-codex`, `gen-image-agy`) remain explicit-only in their `agents/openai.yaml` policy.
 
 ## Claude Code Install
 
@@ -235,6 +241,10 @@ $gen-image-agy a photorealistic red apple on a wooden table
 
 /update-ticket TICKET-003 done     # Mark done; checks .worktrees/003-slug if present
 /update-ticket 5 in-progress       # Update ticket status
+
+/update-ticket-linear ENG-42              # Auto-eval AC; mark Done when safe (Linear MCP)
+/update-ticket-linear ENG-42 done         # Explicit Done; checks linear worktree if present
+/update-ticket-linear ENG-42 in-progress  # Move Linear issue to In Progress
 
 /commit-ticket                     # Commit current changes
 /commit-push-pr                    # Commit, push, and open a PR
@@ -504,7 +514,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in create-tickets implement-ticket implement-ticket-linear review-ticket update-ticket commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
+for s in create-tickets implement-ticket implement-ticket-linear review-ticket update-ticket update-ticket-linear commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills
