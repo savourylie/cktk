@@ -81,8 +81,9 @@ Run this whether or not worktree mode is requested — both modes need the same 
 
 ## Phase 6: Commit
 
-1. Stage the files for the ticket (in `$WORK_DIR`, on the ticket branch when in worktree mode).
-2. Create one commit with a clear conventional message such as:
+1. Append an `## As-Built Notes` section to `$WORK_DIR/docs/tickets/NNN-*.md` before staging — a dated entry with deviations from spec and why, key decisions, and follow-ups/tech debt (write "None" where a bucket is empty; if the section already exists, add a new dated entry beneath it). Do not change `## Status` or acceptance checkboxes here — Phase 7 owns those.
+2. Stage the files for the ticket, including the ticket file with its As-Built Notes (in `$WORK_DIR`, on the ticket branch when in worktree mode).
+3. Create one commit with a clear conventional message such as:
 
 ```text
 feat(TICKET-ID): short summary
@@ -91,7 +92,7 @@ feat(TICKET-ID): short summary
 - key change
 ```
 
-3. Do not mix unrelated changes into the ticket commit.
+4. Do not mix unrelated changes into the ticket commit.
 
 ## Phase 7: Update Ticket Status Directly
 

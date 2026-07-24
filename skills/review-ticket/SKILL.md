@@ -25,7 +25,7 @@ Determine what to review based on `$ARGUMENTS`:
 2. Identify all files changed in the diff.
 3. Read the full content of each changed file to understand surrounding code and context.
 4. Check for CLAUDE.md files in the repo root and in each directory containing changed files. If found, read them — review findings should respect any project-specific guidelines they contain.
-5. **Ticket mode only:** Read the matched ticket file from `docs/tickets/`. Use its requirements, acceptance criteria, and description as additional review context. Evaluate whether the uncommitted changes correctly and completely implement what the ticket specifies.
+5. **Ticket mode only:** Read the matched ticket file from `docs/tickets/`. Use its requirements, acceptance criteria, and description as additional review context. Evaluate whether the uncommitted changes correctly and completely implement what the ticket specifies. If the ticket contains an `## As-Built Notes` section, treat deviations documented there as intentional, agreed context — not scope drift — but still flag any documented deviation that contradicts an acceptance criterion.
 
 ## Review Instructions
 

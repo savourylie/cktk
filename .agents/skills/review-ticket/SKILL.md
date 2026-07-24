@@ -25,7 +25,7 @@ Parse any text that follows the skill invocation. Support these modes:
 3. Read the full content of every changed file.
 4. Read `AGENTS.md` files in the repo root and relevant subdirectories if they exist.
 5. Also read `CLAUDE.md` files when present because some repos still keep local guidance there.
-6. In ticket mode, read the matched ticket file and use it as extra review context.
+6. In ticket mode, read the matched ticket file and use it as extra review context. Treat deviations documented in its `## As-Built Notes` section as intentional context, not scope drift, unless they contradict an acceptance criterion.
 
 ## Review Instructions
 

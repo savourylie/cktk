@@ -110,14 +110,34 @@ If the code review finds any issues:
 
 Do not proceed to the next phase until the build passes cleanly AND the code review returns no P0 or P1 findings.
 
-## Phase 6: Summary and Manual Testing
+## Phase 6: As-Built Notes, Summary, and Manual Testing
+
+### As-Built Notes (write to the ticket file)
+
+Before presenting the summary, append an `## As-Built Notes` section to `$WORK_DIR/docs/tickets/NNN-<slug>.md`. If the section already exists from a previous session, add a new dated entry beneath the existing content instead of duplicating the heading:
+
+```markdown
+## As-Built Notes
+> Appended by implement-ticket on YYYY-MM-DD.
+
+### Deviations from spec
+- <what differs from the ticket/design source and why> (or "None")
+
+### Key decisions
+- <decision made during implementation and its rationale>
+
+### Follow-ups / tech debt
+- <deferred item or concern> (or "None")
+```
+
+This is the only ticket-file edit this skill makes — never change `## Status`, acceptance-criteria checkboxes, or `INDEX.md`. Leave the edit uncommitted alongside the code changes so it lands in the same commit the user makes later. In worktree mode the append happens in the worktree's copy of `docs/tickets/` and merges back via `/merge-worktree`.
 
 Present the following to the user:
 
 ### Implementation Summary
 1. State which ticket was implemented (ID and title).
 2. Briefly summarize what was built — key files created or modified, architectural decisions made.
-3. Note any deviations from the ticket spec or design source, and why.
+3. Summarize the deviations recorded in `## As-Built Notes` (or state there were none).
 4. Note any remaining concerns, tech debt, or follow-up items.
 
 ### Worktree Note (only when `use_worktree` was true)
@@ -141,4 +161,4 @@ Provide clear, step-by-step instructions for how to manually verify the implemen
 
 If the implementation is purely internal (e.g., a refactor with no user-facing changes), state that manual testing is not applicable and explain what the automated tests cover instead.
 
-**Do NOT commit changes, update ticket status, or invoke the `/update-ticket`, `/commit-ticket`, or `/commit-push-pr` skills.** The user will handle those steps separately. (In worktree mode the natural next step after manual testing is `/merge-worktree NNN <base>`.)
+**Do NOT commit changes, update ticket status, or invoke the `/update-ticket`, `/commit-ticket`, or `/commit-push-pr` skills.** The user will handle those steps separately. Appending `## As-Built Notes` to the ticket file (Phase 6) is the one intended ticket-file edit; status and checkboxes stay untouched. (In worktree mode the natural next step after manual testing is `/merge-worktree NNN <base>`.)
