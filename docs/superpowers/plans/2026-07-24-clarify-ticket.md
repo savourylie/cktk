@@ -527,12 +527,12 @@ for s in create-tickets implement-ticket clarify-ticket clarify-ticket-linear im
 ```bash
 python3 -m json.tool catalog.json > /dev/null && echo "catalog.json valid"
 python3 -m json.tool .claude-plugin/plugin.json > /dev/null && echo "plugin.json valid"
-echo "clarify-ticket-linear occurrences (expect 7, unchanged): $(grep -o 'clarify-ticket-linear' README.md | wc -l | tr -d ' ')"
-echo "clarify-ticket total occurrences (expect 14 = 7 linear + 7 new): $(grep -o 'clarify-ticket' README.md | wc -l | tr -d ' ')"
+echo "clarify-ticket-linear occurrences (expect 8): $(grep -o 'clarify-ticket-linear' README.md | wc -l | tr -d ' ')"
+echo "clarify-ticket total occurrences (expect 15): $(grep -o 'clarify-ticket' README.md | wc -l | tr -d ' ')"
 grep -q 'twenty-four installer-compatible' README.md && echo "count wording OK"
 bash scripts/check-codex-skills.sh
 ```
-Expected: both JSON files valid; `clarify-ticket-linear` occurrences = **7** (unchanged); total `clarify-ticket` occurrences = **14** (the 7 linear ones each contain the substring, plus 7 new non-linear mentions); `count wording OK`; validator prints `Validated 28 Codex skill(s).` (exit 0). If the total is not 14, an insertion was missed or duplicated — reconcile against Steps 3–10 (7 add a `clarify-ticket` mention: bullet, path list, installer command, `$`-example, policy sentence, `/`-example, `for` loop; Step 4 only changes the count wording).
+Expected: both JSON files valid; `clarify-ticket-linear` occurrences = **8**; total `clarify-ticket` occurrences = **15**; `count wording OK`; validator prints `Validated 28 Codex skill(s).` (exit 0). The arithmetic: 7 pre-existing `clarify-ticket-linear` lines stay, plus the Step 3 bullet adds one more `clarify-ticket-linear` via its "(the markdown-ticket twin of `clarify-ticket-linear`)" cross-reference → **8**; the total is those 8 (each contains the `clarify-ticket` substring) plus **7** new standalone `clarify-ticket` mentions (Steps 3, 5, 6, 7, 8, 9, 10 — Step 4 only changes the count wording) → **15**. So standalone insertions = 15 − 8 = 7. If the standalone count isn't 7, an insertion was missed or duplicated — reconcile against Steps 3–10.
 
 - [ ] **Step 12: Commit**
 
