@@ -190,10 +190,10 @@ Present a `Clarification Briefing — TICKET-NNN` with readiness, code context, 
 Run:
 
 ```bash
-grep -c "Blind spots" skills/clarify-ticket/SKILL.md .agents/skills/clarify-ticket/SKILL.md
+grep -ci "blind spots" skills/clarify-ticket/SKILL.md .agents/skills/clarify-ticket/SKILL.md
 ```
 
-Expected: `skills/clarify-ticket/SKILL.md:` ≥ 3 and `.agents/skills/clarify-ticket/SKILL.md:` ≥ 2.
+Expected (case-insensitive — the Codex dialect's framing mention "hunt as blind spots" is lowercase): `skills/clarify-ticket/SKILL.md:` ≥ 3 and `.agents/skills/clarify-ticket/SKILL.md:` ≥ 2.
 
 ```bash
 grep -c "Unknown knowns" skills/clarify-ticket/SKILL.md
@@ -381,10 +381,10 @@ Present a `Clarification Briefing — <ISSUE-ID>` with readiness, analysis mode,
 - [ ] **Step 6: Verify**
 
 ```bash
-grep -c "Blind spots" skills/clarify-ticket-linear/SKILL.md .agents/skills/clarify-ticket-linear/SKILL.md
+grep -ci "blind spots" skills/clarify-ticket-linear/SKILL.md .agents/skills/clarify-ticket-linear/SKILL.md
 ```
 
-Expected: Claude ≥ 3, Codex ≥ 2.
+Expected (case-insensitive — the Codex dialect's framing mention "hunt as blind spots" is lowercase): Claude ≥ 3, Codex ≥ 2.
 
 ```bash
 grep -c "text-only" skills/clarify-ticket-linear/SKILL.md
