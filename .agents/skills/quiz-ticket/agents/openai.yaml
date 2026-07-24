@@ -1,0 +1,7 @@
+interface:
+  display_name: "Quiz Ticket"
+  short_description: "Quiz yourself on an implemented markdown ticket"
+  default_prompt: "Use $quiz-ticket to read one implemented docs/tickets/ ticket and its diff, then quiz the user's understanding one question at a time, or produce a stakeholder explainer with `explain`."
+
+policy:
+  allow_implicit_invocation: false
