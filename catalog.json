@@ -12,22 +12,22 @@
     {
       "name": "implement-ticket",
       "path": ".agent/skills/implement-ticket",
-      "description": "Implement a specific ticket with code review, optionally in an isolated worktree"
+      "description": "Implement a specific ticket with code review, optionally in an isolated worktree (docs/tickets twin of implement-ticket-linear)"
     },
     {
       "name": "clarify-ticket",
       "path": ".agent/skills/clarify-ticket",
-      "description": "Read a docs/tickets/ ticket and interactively clarify its details and risks against the codebase before implementation — read-only (markdown twin of clarify-ticket-linear)"
+      "description": "Read a docs/tickets/ ticket and interactively clarify its details and risks against the codebase before implementation — read-only (docs/tickets twin of clarify-ticket-linear)"
     },
     {
       "name": "clarify-ticket-linear",
       "path": ".agent/skills/clarify-ticket-linear",
-      "description": "Fetch a Linear issue and interactively clarify its details and risks against the codebase before implementation — read-only (requires Linear MCP)"
+      "description": "Fetch a Linear issue and interactively clarify its details and risks against the codebase before implementation — read-only (requires Linear MCP; Linear twin of clarify-ticket)"
     },
     {
       "name": "implement-ticket-linear",
       "path": ".agent/skills/implement-ticket-linear",
-      "description": "Implement a Linear issue with code review, optionally in an isolated worktree (requires Linear MCP)"
+      "description": "Implement a Linear issue with code review, optionally in an isolated worktree (requires Linear MCP; Linear twin of implement-ticket)"
     },
     {
       "name": "review-ticket",
@@ -37,12 +37,12 @@
     {
       "name": "update-ticket",
       "path": ".agent/skills/update-ticket",
-      "description": "Update ticket status, checking matching worktrees, cascade dependencies, and refresh INDEX.md"
+      "description": "Update ticket status, checking matching worktrees, cascade dependencies, and refresh INDEX.md (docs/tickets twin of update-ticket-linear)"
     },
     {
       "name": "update-ticket-linear",
       "path": ".agent/skills/update-ticket-linear",
-      "description": "Update a Linear issue status after AC evaluation, checking matching linear worktrees (requires Linear MCP)"
+      "description": "Update a Linear issue status after AC evaluation, checking matching linear worktrees (requires Linear MCP; Linear twin of update-ticket)"
     },
     {
       "name": "commit-ticket",

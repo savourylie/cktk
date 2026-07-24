@@ -19,13 +19,13 @@ The Claude and Codex trees share support files where possible, but they do not s
 ### Development Skills
 
 - `create-tickets` — generate dev tickets from a PRD, a features catalog, or a Plan Mode plan (plus optional design/UX/reference documents) into `docs/tickets/` with dependency ordering and an INDEX.md tracker
-- `implement-ticket` — implement a specific ticket from `docs/tickets/`, run code review, and provide manual testing instructions
-- `clarify-ticket` — read a ticket from `docs/tickets/` and interactively clarify its details and risks against the codebase before implementation; read-only, never edits tickets, `INDEX.md`, or git (the markdown-ticket twin of `clarify-ticket-linear`)
-- `clarify-ticket-linear` — fetch a Linear issue (via Linear MCP) and interactively clarify its details and risks against the codebase before implementation; read-only, does not use `docs/tickets/`, and never modifies Linear or git
-- `implement-ticket-linear` — implement a Linear issue (via Linear MCP) with code review and optional worktree; does not use `docs/tickets/` and does not write back to Linear
+- `implement-ticket` — implement a specific ticket from `docs/tickets/`, run code review, and provide manual testing instructions (the `docs/tickets/` twin of `implement-ticket-linear`)
+- `clarify-ticket` — read a ticket from `docs/tickets/` and interactively clarify its details and risks against the codebase before implementation; read-only, never edits tickets, `INDEX.md`, or git (the `docs/tickets/` twin of `clarify-ticket-linear`)
+- `clarify-ticket-linear` — fetch a Linear issue (via Linear MCP) and interactively clarify its details and risks against the codebase before implementation; read-only, does not use `docs/tickets/`, and never modifies Linear or git (the Linear twin of `clarify-ticket`)
+- `implement-ticket-linear` — implement a Linear issue (via Linear MCP) with code review and optional worktree; does not use `docs/tickets/` and does not write back to Linear (the Linear twin of `implement-ticket`)
 - `review-ticket` — review uncommitted changes, branch diffs, PR diffs, or ticket implementations for bugs and scope gaps
-- `update-ticket` — change a ticket status, check matching `.worktrees/` implementations, cascade dependency markers, refresh `docs/tickets/INDEX.md`, and commit the doc updates
-- `update-ticket-linear` — change a Linear issue status (via Linear MCP) after acceptance-criteria evaluation, check matching linear worktrees, cascade blocked relations when safe; does not use `docs/tickets/` and does not create a git commit
+- `update-ticket` — change a ticket status, check matching `.worktrees/` implementations, cascade dependency markers, refresh `docs/tickets/INDEX.md`, and commit the doc updates (the `docs/tickets/` twin of `update-ticket-linear`)
+- `update-ticket-linear` — change a Linear issue status (via Linear MCP) after acceptance-criteria evaluation, check matching linear worktrees, cascade blocked relations when safe; does not use `docs/tickets/` and does not create a git commit (the Linear twin of `update-ticket`)
 - `commit-ticket` — create a single git commit from the intended repo changes
 - `commit-push-pr` — create one commit, push the branch, and open a pull request
 - `create-worktree` — create git worktrees for one or more tickets under `.worktrees/NNN-slug/`, each on its own branch off a chosen base
