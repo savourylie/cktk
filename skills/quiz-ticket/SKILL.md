@@ -39,10 +39,9 @@ Accept one optional `<ticket>` plus one optional mode token:
 
 ## Phase 1: Resolve the Ticket
 
-1. Resolve repository roots:
+1. Resolve the repository root:
    ```
    MAIN_ROOT=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
-   CURRENT_ROOT=$(git rev-parse --show-toplevel)
    ```
 2. Parse the invocation input or surrounding request. If a ticket ref exists, normalize it to `NNN`; otherwise auto-detect:
    - Current branch matching `^ticket-(\d{3})-.+$` → use its `NNN`.

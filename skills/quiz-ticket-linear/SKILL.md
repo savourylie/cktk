@@ -42,10 +42,9 @@ Accept one optional `<issue>` plus one optional mode token:
 
 ## Phase 1: Resolve the Issue and Fetch It
 
-1. Resolve repository roots:
+1. Resolve the repository root:
    ```
    MAIN_ROOT=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
-   CURRENT_ROOT=$(git rev-parse --show-toplevel)
    ```
 2. Parse the invocation input. Normalize `^[A-Za-z]+-\d+$` by uppercasing the team key; for a URL, extract a complete `TEAM-NUMBER` path token and fail if none exists. With no ref, auto-detect from the current branch or registered worktree branches matching `^linear-([A-Za-z]+-\d+)-.+$`; one candidate → use it; multiple → apply the portable interaction rules; none → stop and request an issue id or URL.
 3. Fetch the issue by exact normalized identifier through Linear MCP read tools. Missing or ambiguous → stop. Capture the canonical id, title, description, state, acceptance criteria (checklists or a labeled section), relations, and comments — including any as-built comment a previous `implement-ticket-linear` run posted; deviations documented there are prime quiz material.
