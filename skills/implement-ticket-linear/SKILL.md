@@ -163,7 +163,7 @@ Present:
 3. Deviations from the issue or design sources, and why
 4. Remaining concerns or follow-ups
 5. Reminder that **Linear status was not changed** and **nothing was committed** (the only possible Linear write is the opt-in as-built comment below)
-6. **Next step for Linear status:** when the user is ready to mark the issue done (or move it to another state), run `/update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear; this skill stays Linear-read-only.
+6. **Next step for Linear status:** when the user is ready to mark the issue done (or move it to another state), run `/update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear; this skill never changes Linear status (its only Linear write is the opt-in as-built comment).
 
 ### As-Built Comment (opt-in Linear write)
 

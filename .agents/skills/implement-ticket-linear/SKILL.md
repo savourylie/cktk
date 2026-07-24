@@ -7,7 +7,7 @@ description: "Use when the user explicitly asks to implement a Linear issue (not
 
 Implement one Linear issue end to end: fetch it via Linear MCP, write the code, validate, and review. Treat this as an explicit workflow skill because it writes code and runs checks.
 
-**This skill does not use `docs/tickets/`.** The Linear issue is the source of truth. It also does **not** commit git changes and does **not** mutate Linear (no status/comment/assignee updates).
+**This skill does not use `docs/tickets/`.** The Linear issue is the source of truth. It also does **not** commit git changes and does **not** mutate Linear except for a single opt-in as-built comment (see Phase 7) — never status, assignee, or label changes.
 
 If the user included an issue id or URL after `$implement-ticket-linear`, implement that issue. Empty args are invalid — always require an id or URL.
 
@@ -92,7 +92,7 @@ Stop after a clear summary:
 2. Deviations and follow-ups
 3. Explicit note: **no git commit**, **Linear status unchanged**
 4. Manual testing steps
-5. **Next step for Linear status:** when ready to mark the issue done (or move it), run `$update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear; this skill stays Linear-read-only.
+5. **Next step for Linear status:** when ready to mark the issue done (or move it), run `$update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear; this skill never changes Linear status (its only Linear write is the opt-in as-built comment).
 6. **As-built comment (opt-in):** ask exactly once — "Post this as-built summary as a comment on <issue_id>? (y/N)", default no. Only an explicit yes posts one comment (deviations from spec and why, key decisions, follow-ups/tech debt; "None" where empty) via the Linear MCP comment tool. Never change any other Linear field.
 7. If worktree mode: path, branch, base, and **manual land** instructions — `$merge-worktree` only understands markdown `TICKET-NNN` worktrees:
 
