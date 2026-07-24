@@ -139,9 +139,10 @@ Mandatory. Invoke `/review-ticket` via the `Skill` tool:
 
 ```
 skill: "review-ticket"
+args: "<issue_id>"
 ```
 
-`/review-ticket` reads the diff via git in the pinned cwd, so it sees the worktree or main checkout correctly. When reviewing, treat the Linear issue title + description + acceptance criteria as the ticket requirements (there is no `docs/tickets/` file).
+`/review-ticket <issue_id>` runs in its Linear mode: it fetches the issue via Linear MCP and reviews the uncommitted diff against the issue's title, description, and acceptance criteria. The diff is read via git in the pinned cwd, so it sees the worktree or main checkout correctly.
 
 ### 7c: Fix and Re-review
 
@@ -149,7 +150,7 @@ If review finds issues:
 
 1. Fix them
 2. Re-run build/tests (7a)
-3. Re-invoke `/review-ticket`
+3. Re-invoke `/review-ticket <issue_id>`
 4. Repeat until build is clean and review has no P0/P1 findings
 
 ## Phase 8: Summary and Manual Testing

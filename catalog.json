@@ -32,7 +32,7 @@
     {
       "name": "review-ticket",
       "path": ".agent/skills/review-ticket",
-      "description": "Review code changes for bugs and ticket alignment"
+      "description": "Review code changes for bugs and ticket alignment — diffs, branches, PRs, single commits, docs tickets, or Linear issues (Linear mode requires Linear MCP)"
     },
     {
       "name": "update-ticket",

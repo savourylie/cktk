@@ -79,7 +79,7 @@ Not accepted: title-only search, status flags, commit flags, multi-issue batches
 1. Run lint, type-check, test, and build commands for the repo (cwd is `$WORK_DIR`).
 2. Fix regressions introduced by the work.
 3. Review pass against `$review-ticket` guidelines:
-   - Prefer invoking `$review-ticket` when available
+   - Prefer invoking `$review-ticket <issue_id>` when available — its Linear mode fetches the issue and checks acceptance-criteria alignment
    - Or read `../review-ticket/references/review-guidelines.md` and review only the ticket diff
    - Treat Linear title + description + AC as the requirements
 4. Fix findings and re-check until build is clean and no P0/P1 remain.

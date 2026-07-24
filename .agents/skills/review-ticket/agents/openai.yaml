@@ -1,6 +1,6 @@
 interface:
   display_name: "Review Ticket"
-  short_description: "Review a diff, branch, PR, or ticket implementation for bugs and scope gaps"
+  short_description: "Review a diff, branch, PR, commit, or ticket/Linear issue for bugs and scope gaps"
   default_prompt: "Review the relevant code changes for bugs, regressions, and ticket alignment, then report high-confidence findings."
 
 policy:

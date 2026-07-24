@@ -35,7 +35,7 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 | `create-tickets` | Generate dev tickets into `docs/tickets/` from a PRD, a features catalog, or a Plan Mode plan (plus optional design/UX/reference documents), with dependency ordering and an INDEX.md tracker | |
 | `clarify-ticket` · `clarify-ticket-linear` | Interactively clarify a ticket's details, blind spots, and risks against the codebase before implementation | Read-only: never edits tickets, INDEX.md, Linear, or git |
 | `implement-ticket` · `implement-ticket-linear` | Implement a ticket end to end with code review and manual testing instructions; optional `worktree` keyword for isolated parallel work | docs twin appends as-built notes to the ticket file; the Linear twin's only Linear write is an opt-in as-built comment posted after explicit confirmation |
-| `review-ticket` | Review uncommitted changes, branch diffs, PR diffs, or ticket implementations for bugs and scope gaps | |
+| `review-ticket` | Review uncommitted changes, branch diffs, PR diffs, single commits, or ticket/Linear-issue implementations for bugs and scope gaps | Linear issue mode requires Linear MCP |
 | `update-ticket` · `update-ticket-linear` | Change a ticket/issue status, check matching worktree implementations, and cascade dependency/blocked markers | docs twin refreshes INDEX.md and commits the doc update; Linear twin evaluates acceptance criteria first and creates no git commit |
 | `quiz-ticket` · `quiz-ticket-linear` | Quiz your understanding of an implemented ticket from its implementation diff, or produce a stakeholder explainer with `explain` | Read-only against the repo and Linear |
 
@@ -218,6 +218,8 @@ All commands below use Claude Code's `/name` syntax. In **Codex**, invoke the sa
 /review-ticket main                          # Compare HEAD against main
 /review-ticket --pr 42                       # Review a pull request
 /review-ticket 42                            # Review against ticket #42
+/review-ticket ENG-42                        # Review uncommitted changes against a Linear issue
+/review-ticket abc1234                       # Review a single commit
 
 /update-ticket TICKET-003 done               # Mark done; checks .worktrees/003-slug if present
 /update-ticket-linear ENG-42                 # Auto-eval acceptance criteria; mark Done when safe
