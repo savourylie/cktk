@@ -1,0 +1,7 @@
+interface:
+  display_name: "Quiz Ticket (Linear)"
+  short_description: "Quiz yourself on an implemented Linear issue"
+  default_prompt: "Use $quiz-ticket-linear to fetch one implemented Linear issue and study its local diff, then quiz the user's understanding one question at a time, or produce a stakeholder explainer with `explain`."
+
+policy:
+  allow_implicit_invocation: false
