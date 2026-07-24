@@ -16,7 +16,7 @@ A Linear issue id or URL is required (e.g. `ENG-42` or a `linear.app` issue URL)
 
 1. **Linear MCP** must be available and authenticated in the host agent (official server: `https://mcp.linear.app/mcp`, documented at https://linear.app/docs/mcp).
 2. If no Linear MCP tools are available, stop and tell the user to configure Linear MCP. Do **not** invent API-key, CLI, or browser workarounds in this skill.
-3. Prefer Linear MCP tools that **read** a single issue (get / list / search by identifier). **Do not** call update, create, delete, comment, or assign tools — this skill is read-only against Linear.
+3. Prefer Linear MCP tools that **read** a single issue (get / list / search by identifier). **Do not** call update, create, delete, or assign tools. The **only** permitted write is the single opt-in as-built comment in Phase 8, posted only after the user explicitly confirms.
 
 ## Argument grammar
 
@@ -162,8 +162,16 @@ Present:
 2. What was built — key files, decisions
 3. Deviations from the issue or design sources, and why
 4. Remaining concerns or follow-ups
-5. Reminder that **Linear was not updated** (status still whatever it was) and **nothing was committed**
+5. Reminder that **Linear status was not changed** and **nothing was committed** (the only possible Linear write is the opt-in as-built comment below)
 6. **Next step for Linear status:** when the user is ready to mark the issue done (or move it to another state), run `/update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear; this skill stays Linear-read-only.
+
+### As-Built Comment (opt-in Linear write)
+
+After presenting the summary, ask exactly once, as its own question: "Post this as-built summary as a comment on <issue_id>? (y/N)". Default is no.
+
+- Only an explicit yes posts the comment; any other answer (no, silence, ambiguity) skips it without re-asking.
+- On yes, post one comment via the Linear MCP comment-creation tool containing: deviations from the issue spec and why, key decisions made during implementation, and follow-ups/tech debt (write "None" where a bucket is empty).
+- This is the only Linear write this skill may ever perform — never change status, assignee, labels, or any other field.
 
 ### Worktree Note (only when `use_worktree` was true)
 
@@ -187,7 +195,7 @@ Step-by-step verification: prerequisites, commands, URLs, inputs, expected resul
 
 ## Safety Rules
 
-- **Never** update Linear (status, comments, assignee, labels).
+- **Never** change Linear status, assignee, labels, or any other field. The single permitted write is the opt-in as-built comment in Phase 8, and only after explicit user confirmation.
 - **Never** commit, and do not invoke `/commit-ticket`, `/commit-push-pr`, `/update-ticket`, or `/update-ticket-linear` (status updates belong in a separate `/update-ticket-linear` invocation after implementation).
 - Do not read or write `docs/tickets/` as the ticket source (optional project context elsewhere is fine).
 - If unrelated dirty changes in `WORK_DIR` conflict with the issue, stop and ask instead of overwriting.

@@ -15,7 +15,7 @@ If the user included an issue id or URL after `$implement-ticket-linear`, implem
 
 1. Linear MCP must be available and authenticated (official: `https://mcp.linear.app/mcp` — https://linear.app/docs/mcp).
 2. If Linear MCP tools are missing, stop with a short setup hint. Do not invent API-key or CLI fallbacks.
-3. Use only **read** Linear tools (get/list/search issue). Never call update/create/delete/comment/assign.
+3. Use only **read** Linear tools (get/list/search issue). Never call update/create/delete/assign. The only permitted write is the single opt-in as-built comment in Phase 7, posted only after explicit user confirmation.
 
 ## Argument grammar
 
@@ -84,7 +84,7 @@ Not accepted: title-only search, status flags, commit flags, multi-issue batches
    - Treat Linear title + description + AC as the requirements
 4. Fix findings and re-check until build is clean and no P0/P1 remain.
 
-## Phase 7: Summary (no commit, no Linear write)
+## Phase 7: Summary (no commit; Linear write only by opt-in)
 
 Stop after a clear summary:
 
@@ -93,7 +93,8 @@ Stop after a clear summary:
 3. Explicit note: **no git commit**, **Linear status unchanged**
 4. Manual testing steps
 5. **Next step for Linear status:** when ready to mark the issue done (or move it), run `$update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear; this skill stays Linear-read-only.
-6. If worktree mode: path, branch, base, and **manual land** instructions — `$merge-worktree` only understands markdown `TICKET-NNN` worktrees:
+6. **As-built comment (opt-in):** ask exactly once — "Post this as-built summary as a comment on <issue_id>? (y/N)", default no. Only an explicit yes posts one comment (deviations from spec and why, key decisions, follow-ups/tech debt; "None" where empty) via the Linear MCP comment tool. Never change any other Linear field.
+7. If worktree mode: path, branch, base, and **manual land** instructions — `$merge-worktree` only understands markdown `TICKET-NNN` worktrees:
 
 ```bash
 git checkout <base>
@@ -103,7 +104,7 @@ git merge linear-<issue_id>-<slug>
 
 ## Safety Rules
 
-- Never mutate Linear.
+- Never mutate Linear except the single opt-in as-built comment after explicit user confirmation; never change status, assignee, labels, or any other field.
 - Never commit; do not call `$commit-ticket`, `$commit-push-pr`, `$update-ticket`, or `$update-ticket-linear` (status updates belong in a separate `$update-ticket-linear` invocation after implementation).
 - Do not use `docs/tickets/` as the ticket source.
 - If dirty unrelated changes conflict with the issue, stop and ask.
