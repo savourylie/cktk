@@ -92,7 +92,14 @@ All reads and code inspection run against `WORK_DIR`.
 
 ## Phase 4: Codebase-Grounded Analysis
 
-Explore with read-only tools and safe read-only shell commands. Ground every claim in evidence actually found. Produce four buckets plus a verdict.
+Explore with read-only tools and safe read-only shell commands. Ground every claim in evidence actually found. Produce five buckets plus a verdict.
+
+Frame the analysis with the four types of unknowns:
+
+- **Known knowns** — what the ticket states; verify these against the code.
+- **Known unknowns** — gaps the ticket admits; turn each into an open question.
+- **Unknown knowns** — details obvious to the user but unwritten; elicit these in the guided discussion.
+- **Unknown unknowns** — factors nobody has considered; hunt these in the Blind spots bucket.
 
 ### Details to confirm
 
@@ -107,6 +114,18 @@ Tag every risk `high`, `medium`, or `low` and cite `path:line` evidence:
 - Missing libraries, migrations, flags, configuration, or prerequisites
 - Data, compatibility, or breaking-change concerns
 - Feasibility of each acceptance criterion
+
+### Blind spots
+
+Deliberately hunt what the ticket does not mention. Check each category against the actual code; report a finding with `path:line` evidence or move on:
+
+- Adjacent code paths that call, render, or depend on the areas this ticket changes
+- Error and edge paths the ticket ignores (failures, empty states, concurrency, permissions)
+- Data-shape changes with migration, backfill, or rollback implications
+- Implicit conventions the ticket silently assumes (project guidance or dominant code patterns)
+- Test surface: existing tests that will break, or coverage the ticket does not request
+
+If no category produces a finding, record "No blind spots found" — never silently omit the bucket.
 
 ### Dependencies
 
@@ -141,6 +160,9 @@ Present before discussion:
 ### Risks (code-grounded)
 - [high] ... — evidence: `src/...:NN`
 
+### Blind spots
+- <category>: ... — evidence: `src/...:NN` (or "No blind spots found")
+
 ### Dependencies
 - Requires #NNN (<status>, <satisfied | unsatisfied | inconsistent>) ...
 - Blocks #MMM ...
@@ -151,12 +173,17 @@ Present before discussion:
 
 ## Phase 6: Guided Discussion
 
-Walk substantive open items one topic at a time using the portable interaction rules. Batch trivial confirmations. Record each outcome as:
+Open with two calibration questions, asked one at a time before the open items:
+
+1. **Unknown knowns** — "What's obvious to you about this ticket that isn't written down?" Fold answers into resolved details, risks, or blind spots.
+2. **Experience calibration** — "How familiar are you with this area of the code?" Scale later explanations to the answer: more background when familiarity is low, terser confirmation when high.
+
+Then walk substantive open items one topic at a time using the portable interaction rules. Batch trivial confirmations. Record each outcome as:
 
 - **Resolved here** — capture the user's decision.
 - **Still open** — retain it for the ticket author or another external source.
 
-If there are no open items, skip directly to the summary.
+If there are no open items beyond the two calibration questions, proceed directly to the summary after asking them.
 
 ## Phase 7: Readiness Summary
 

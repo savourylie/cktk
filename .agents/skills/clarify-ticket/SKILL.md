@@ -58,10 +58,13 @@ Within `WORK_DIR`, read applicable root and scoped repository guidance (`AGENTS.
 
 ## Phase 4: Analyze
 
+Frame the analysis with the four types of unknowns: known knowns (verify against code), known unknowns (turn into open questions), unknown knowns (elicit in discussion), unknown unknowns (hunt as blind spots).
+
 Use read-only exploration and safe read-only shell commands. Produce:
 
 - **Details to confirm** — ambiguity, tracker inconsistency, missing/untestable criteria, and project-guidance/PRD/design conflicts.
 - **Risks** — likely files/modules, divergent patterns, missing prerequisites, migrations/compatibility, blast radius, and AC feasibility. Tag severity and cite `path:line`.
+- **Blind spots** — what the ticket does not mention: adjacent callers/dependents, ignored error and edge paths, migration/backfill/rollback implications, implicit conventions from project guidance or dominant patterns, and test surface. Cite `path:line`, or record "No blind spots found".
 - **Dependencies** — required tickets with marker/status/satisfaction, reverse dependencies, and code prerequisites.
 - **Open questions** — what no available source answers.
 - **Verdict**:
@@ -71,7 +74,7 @@ Use read-only exploration and safe read-only shell commands. Produce:
 
 ## Phase 5: Briefing and Discussion
 
-Present a `Clarification Briefing — TICKET-NNN` with readiness, code context, the four analysis buckets, severity, and evidence. Then walk substantive open items one at a time using portable interaction; batch trivial confirmations. Record outcomes as **resolved here** or **still open**. Skip discussion if nothing is open.
+Present a `Clarification Briefing — TICKET-NNN` with readiness, code context, the five analysis buckets, severity, and evidence. Open the discussion with two calibration questions, one at a time: what is obvious to the user but not written down (unknown knowns), and how familiar they are with this area of the code (scale explanation depth to the answer). Then walk substantive open items one at a time using portable interaction; batch trivial confirmations. Record outcomes as **resolved here** or **still open**. Skip discussion if nothing is open.
 
 ## Phase 6: Readiness Summary
 
