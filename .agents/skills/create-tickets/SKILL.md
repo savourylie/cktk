@@ -83,6 +83,7 @@ Rules:
 - Dependencies: `- Requires: #NNN, #NNN` or `- Requires: None`
 - Acceptance criteria: 2–3 minimum, specific and testable
 - Design/Visual Reference: include for UI tickets, delete for non-UI
+- References: existing code or documents to imitate, each with a note on what to take from it; populate in FEATURES/PLAN modes and from provided design/UX inputs; verify paths exist; delete when there is no exemplar
 - Implementation Notes: key files, decisions, gotchas
 - Testing: how to verify completion
 
@@ -114,7 +115,7 @@ Review ALL tickets for:
 3. Scope creep (>3 files or >5 criteria → split)
 4. Gaps (PRD/FEATURES entries with no ticket, missing infrastructure)
 5. Checkpoint coverage (every phase has one, final ticket is a checkpoint in PRD mode, gate deps correct, criteria are pass/fail)
-6. Consistency (template format, status correctness, INDEX accuracy, checkpoint rows bold with `Gate:` notes)
+6. Consistency (template format, status correctness, INDEX accuracy, checkpoint rows bold with `Gate:` notes, every `## References` path exists in the repo)
 7. **Append-mode checks** (FEATURES mode, PRD+Append, and PLAN+Append): new tickets continue from `max_num + 1` with the detected width; no existing files modified; INDEX merged not rewritten; no duplicate coverage.
 8. **PLAN-mode coverage** (PLAN mode): every actionable item in the plan's Approach/Files is ticketed; nothing the plan put out of scope was ticketed; no scaffolding ticket for an existing project.
 

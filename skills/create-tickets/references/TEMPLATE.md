@@ -31,6 +31,12 @@ Explain what this ticket accomplishes and why it matters at this point in the se
 
 Example: "The landing page hero section is visible at `/`. Left side shows the heading in Outfit 800 with a yellow circle behind it. Right side shows a placeholder image with blob clip-path. A dot-grid pattern fills the background. The primary CTA button uses the Candy Button style and responds to hover/active with shadow shifts."
 
+## References
+> Existing code or documents to imitate, each with a note on what to take from it. Delete this section when the project has no relevant exemplar.
+
+- `src/components/SettingsModal.tsx` — focus trap and escape handling to reuse for the new modal
+- `docs/DESIGN.md` § Forms — validation error copy pattern
+
 ## Implementation Notes
 - Key files to create or modify
 - Architectural decisions or assumptions made

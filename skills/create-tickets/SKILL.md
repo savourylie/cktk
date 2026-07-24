@@ -191,6 +191,7 @@ Rules for each ticket:
 - **Acceptance Criteria**: Write specific, testable statements. Not "it works" but "the chat input accepts text and sends it on Enter, displaying the message in the conversation view." Minimum 2–3 criteria per ticket.
 - **Design Reference**: For UI tickets, reference specific sections from the design document (e.g., "§ Typography > Scale", "§ Components > Buttons"). Delete this section entirely for non-UI tickets.
 - **Visual Reference**: For frontend tickets, describe what the user should see when the ticket is complete — specific enough that someone could visually verify it. Delete this section entirely for non-UI tickets.
+- **References**: Pointers to existing code or documents to imitate, each with a note on what to take from it. Populate in FEATURES and PLAN modes (the existing codebase offers exemplars) and whenever provided design/UX/reference documents contain a relevant pattern; verify every referenced path exists before writing it. Delete this section entirely when there is no relevant exemplar.
 - **Implementation Notes**: Key files to create/modify, architectural decisions, gotchas. Reference CLAUDE.md conventions here if applicable.
 - **Testing**: How to verify the ticket is complete — commands to run, URLs to visit, expected behavior.
 
@@ -267,6 +268,7 @@ This phase is mandatory. After writing all tickets, review every ticket in `docs
    - Are status values correct given dependencies?
    - Does INDEX.md accurately reflect all ticket files?
    - Are checkpoint rows bold in INDEX.md with `Gate:` notes?
+   - Does every path listed in a `## References` section exist in the repo (verify with a glob or file read)?
 
 7. **Append-mode checks** (applies to FEATURES mode, PRD+Append, and PLAN+Append; skip in greenfield / PRD+Overwrite)
    - **Numbering**: the lowest new ticket number equals `max_num + 1` from Phase 1, and all new tickets share the same zero-padding width as existing ones.
