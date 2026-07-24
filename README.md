@@ -4,6 +4,16 @@ Software development and UI design workflow skills for OpenAI Codex, Claude Code
 
 cktk ships these workflows as **skills** — Markdown files with frontmatter that the host agent loads on demand. There is no runtime or build step: cloning or installing the skill set makes it discoverable to your agent of choice.
 
+**Contents**
+
+- [Compatibility Layout](#compatibility-layout)
+- [Skills](#skills)
+- [Install](#install)
+- [Usage](#usage)
+- [Agent Handoff](#agent-handoff)
+- [Supported Platforms](#supported-platforms) · [Token Schema](#token-schema) · [Project Structure](#project-structure)
+- [Contributing](#contributing) · [Validation](#validation) · [License](#license)
+
 ## Compatibility Layout
 
 This repo intentionally carries three skill trees:
@@ -16,74 +26,89 @@ The Claude and Codex trees share support files where possible, but they do not s
 
 ## Skills
 
-### Development Skills
+Ticket skills come in twins: the plain skill works against `docs/tickets/` markdown files, and the `-linear` twin works against Linear issues (via Linear MCP) without touching `docs/tickets/`.
 
-- `create-tickets` — generate dev tickets from a PRD, a features catalog, or a Plan Mode plan (plus optional design/UX/reference documents) into `docs/tickets/` with dependency ordering and an INDEX.md tracker
-- `implement-ticket` — implement a specific ticket from `docs/tickets/`, run code review, append as-built notes (deviations, decisions, follow-ups) to the ticket file, and provide manual testing instructions (the `docs/tickets/` twin of `implement-ticket-linear`)
-- `clarify-ticket` — read a ticket from `docs/tickets/` and interactively clarify its details and risks against the codebase before implementation; read-only, never edits tickets, `INDEX.md`, or git (the `docs/tickets/` twin of `clarify-ticket-linear`)
-- `clarify-ticket-linear` — fetch a Linear issue (via Linear MCP) and interactively clarify its details and risks against the codebase before implementation; read-only, does not use `docs/tickets/`, and never modifies Linear or git (the Linear twin of `clarify-ticket`)
-- `implement-ticket-linear` — implement a Linear issue (via Linear MCP) with code review and optional worktree; does not use `docs/tickets/`; its only Linear write is an opt-in as-built comment posted after explicit confirmation (the Linear twin of `implement-ticket`)
-- `review-ticket` — review uncommitted changes, branch diffs, PR diffs, or ticket implementations for bugs and scope gaps
-- `update-ticket` — change a ticket status, check matching `.worktrees/` implementations, cascade dependency markers, refresh `docs/tickets/INDEX.md`, and commit the doc updates (the `docs/tickets/` twin of `update-ticket-linear`)
-- `update-ticket-linear` — change a Linear issue status (via Linear MCP) after acceptance-criteria evaluation, check matching linear worktrees, cascade blocked relations when safe; does not use `docs/tickets/` and does not create a git commit (the Linear twin of `update-ticket`)
-- `quiz-ticket` — quiz your understanding of an implemented `docs/tickets/` ticket from its implementation diff, or generate a stakeholder explainer with `explain`; read-only (the `docs/tickets/` twin of `quiz-ticket-linear`)
-- `quiz-ticket-linear` — quiz your understanding of an implemented Linear issue (via Linear MCP) from its local implementation diff, or generate a stakeholder explainer with `explain`; read-only against Linear and the repo (the Linear twin of `quiz-ticket`)
-- `commit-ticket` — create a single git commit from the intended repo changes
-- `commit-push-pr` — create one commit, push the branch, and open a pull request
-- `create-worktree` — create git worktrees for one or more tickets under `.worktrees/NNN-slug/`, each on its own branch off a chosen base
-- `merge-worktree` — merge ticket worktree branches back into their base, then remove the worktree and delete the local branch (cleanup half of `create-worktree`)
-- `feature-catalog` — explore a codebase and produce a user-facing feature catalog
-- `cktk-upgrade` — pull the latest cktk skills from GitHub and reconcile Claude Code, Codex, Antigravity, and handoff helper installs
-- `codex-handoff` — export the latest Claude Code session and git state into a local bundle so Codex can take over
-- `grok-handoff` — export the current task (git state, optional Claude session, and agent summary) into a local bundle so Grok Build can take over from any coding agent
-- `opencode-handoff` — export the current task (git state, optional Claude session, and agent summary) into a local bundle so OpenCode can take over from any coding agent
-- `takeover` — find a pending local handoff, summarize the previous agent's state, and continue the task safely
-- `readme-builder` — generate or refresh `README.md` from observed facts (framework, scripts, env vars, existing docs) plus optional UI screenshots via Playwright MCP. Pass `no-screenshots` for a pure-text README
+### Tickets and planning
 
-### Design Skills
+| Skill(s) | What it does | Notes |
+|---|---|---|
+| `create-tickets` | Generate dev tickets into `docs/tickets/` from a PRD, a features catalog, or a Plan Mode plan (plus optional design/UX/reference documents), with dependency ordering and an INDEX.md tracker | |
+| `clarify-ticket` · `clarify-ticket-linear` | Interactively clarify a ticket's details, blind spots, and risks against the codebase before implementation | Read-only: never edits tickets, INDEX.md, Linear, or git |
+| `implement-ticket` · `implement-ticket-linear` | Implement a ticket end to end with code review and manual testing instructions; optional `worktree` keyword for isolated parallel work | docs twin appends as-built notes to the ticket file; the Linear twin's only Linear write is an opt-in as-built comment posted after explicit confirmation |
+| `review-ticket` | Review uncommitted changes, branch diffs, PR diffs, or ticket implementations for bugs and scope gaps | |
+| `update-ticket` · `update-ticket-linear` | Change a ticket/issue status, check matching worktree implementations, and cascade dependency/blocked markers | docs twin refreshes INDEX.md and commits the doc update; Linear twin evaluates acceptance criteria first and creates no git commit |
+| `quiz-ticket` · `quiz-ticket-linear` | Quiz your understanding of an implemented ticket from its implementation diff, or produce a stakeholder explainer with `explain` | Read-only against the repo and Linear |
 
-**UI Design** — extract → review → apply workflow for design systems:
+### Git workflow
 
-- `design-system-extractor` — analyze UI screenshots to reverse-engineer design tokens (colors, typography, spacing, shadows, component patterns) into structured Markdown + JSON
-- `design-system-web-applier` — convert design token JSON into web theme files (CSS custom properties, SCSS, Tailwind, React themes, CSS Modules + TypeScript, Vue 3 composables)
-- `design-system-mobile-applier` — convert design token JSON into native mobile theme files (iOS SwiftUI/UIKit, Android Compose/XML, Flutter, React Native)
+| Skill(s) | What it does | Notes |
+|---|---|---|
+| `commit-ticket` | Create a single git commit from the intended repo changes | |
+| `commit-push-pr` | Create one commit, push the branch, and open a pull request | |
+| `create-worktree` | Create git worktrees for one or more tickets under `.worktrees/NNN-slug/`, each on its own branch off a chosen base | |
+| `merge-worktree` | Merge ticket worktree branches back into their base, then remove the worktree and delete the local branch | Cleanup half of `create-worktree` |
 
-**Accessibility** — automated WCAG compliance auditing:
+### Agent handoff
 
-- `wcag-accessibility-checker` — audit React/Next.js apps for WCAG 2.2 compliance using static code analysis + axe-core runtime testing, producing a structured conformance report
+| Skill(s) | What it does | Notes |
+|---|---|---|
+| `codex-handoff` | Export the latest Claude Code session and git state into a local bundle so Codex can take over | See [Agent Handoff](#agent-handoff) |
+| `grok-handoff` | Export the current task (git state, optional Claude session, agent summary) so Grok Build can take over from any coding agent | See [Agent Handoff](#agent-handoff) |
+| `opencode-handoff` | Export the current task (git state, optional Claude session, agent summary) so OpenCode can take over from any coding agent | See [Agent Handoff](#agent-handoff) |
+| `takeover` | Find a pending local handoff, summarize the previous agent's state, and continue the task safely | Run in the receiving agent |
 
-**UX Design** — PRD-to-UX-design and codebase-to-redesign workflows:
+### Docs and maintenance
 
-- `ux-design` — transform a PRD into a UX design specification using 6 forced designer mindset passes (mental models, IA, affordances, cognitive load, state design, flow integrity) with ASCII wireframes
-- `ux-redesign` — audit an existing codebase against its UX spec and PRD, produce a comprehensive audit report, then rewrite the UX spec with improvements
+| Skill(s) | What it does | Notes |
+|---|---|---|
+| `feature-catalog` | Explore a codebase and produce a user-facing feature catalog | |
+| `readme-builder` | Generate or refresh `README.md` from observed facts (framework, scripts, env vars, existing docs) plus optional UI screenshots via Playwright MCP | Pass `no-screenshots` for a pure-text README |
+| `cktk-upgrade` | Pull the latest cktk skills from GitHub and reconcile Claude Code, Codex, Antigravity, and handoff helper installs | |
 
-**Cinematic Design** — film-driven design system bundle from a director and a specific film:
+### Design and UX
 
-- `cinematic-design-system` — generate a cinematic design system bundle (`docs/RESEARCH.md`, `docs/UX_DESIGN.md`, `docs/INFO_ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/preview.html`, `docs/preview-dark.html`) by running a 4-phase film-driven workflow (decisions → storyboard → back-derived design system → preview rendering). Picks a director + film via a start questionnaire, researches them, writes per-page scene theses and signature compositions, then back-derives the shared design system from locked page compositions. Use when the user wants a film-inspired or director-driven design system rather than a PRD-driven UX spec or a screenshot-driven token extraction.
+| Skill(s) | What it does | Notes |
+|---|---|---|
+| `design-system-extractor` | Analyze UI screenshots to reverse-engineer design tokens (colors, typography, spacing, shadows, component patterns) into structured Markdown + JSON | Extract step of the extract → review → apply workflow |
+| `design-system-web-applier` | Convert design token JSON into web theme files (CSS custom properties, SCSS, Tailwind, React themes, CSS Modules + TypeScript, Vue 3 composables) | |
+| `design-system-mobile-applier` | Convert design token JSON into native mobile theme files (iOS SwiftUI/UIKit, Android Compose/XML, Flutter, React Native) | |
+| `wcag-accessibility-checker` | Audit React/Next.js apps for WCAG 2.2 compliance using static code analysis + axe-core runtime testing, producing a structured conformance report | |
+| `ux-design` | Transform a PRD into a UX design specification using 6 forced designer mindset passes, with ASCII wireframes | |
+| `ux-redesign` | Audit an existing codebase against its UX spec and PRD, produce an audit report, then rewrite the UX spec with improvements | |
+| `cinematic-design-system` | Generate a film-driven design system bundle (4 Markdown docs + 2 HTML previews) via a 4-phase director + film workflow that back-derives the design system from locked page compositions | Use when the brief is film-inspired rather than PRD- or screenshot-driven |
 
-### Image Generation
+### Image generation
 
-- `gen-image-codex` — generate images, illustrations, icons, logos, banners, sprites, or textures with OpenAI's gpt-image-2 through the locally installed Codex CLI (billed via the user's ChatGPT subscription — no API key), saving the PNG into the project (default `./images/`). Shells out to `codex exec` with the built-in `$imagegen` tool; also edits an existing image via `--image`. Requires `codex` installed and logged in with ChatGPT
-- `gen-image-agy` — generate images, illustrations, icons, logos, banners, sprites, or textures with Google's Nano Banana (Gemini image) model through the locally installed Antigravity CLI (`agy`), billed to the user's Google AI Pro subscription over OAuth (no API key), saving the PNG into the project (default `./images/`). Runs `agy` headless inside a PTY via the bundled `scripts/gen-image.sh`, which forces the real image-generation tool and verifies a genuine raster landed. Requires `agy` installed and a one-time interactive Google login
+| Skill(s) | What it does | Notes |
+|---|---|---|
+| `gen-image-codex` | Generate or edit images (icons, logos, banners, sprites, textures) with OpenAI's gpt-image-2 via the local Codex CLI, saving PNGs into `./images/` | Billed via ChatGPT subscription, no API key; requires `codex` installed and logged in |
+| `gen-image-agy` | Generate images with Google's Nano Banana (Gemini image) model via the local Antigravity CLI (`agy`) run headless in a PTY, saving PNGs into `./images/` | Billed to Google AI Pro over OAuth, no API key; requires `agy` and a one-time Google login |
 
-## Codex Install
+## Install
 
-Codex discovers repo-local skills from `.agents/skills/` when you launch Codex inside the repo or a child directory.
+Pick your agent:
 
-### Repo-local
+### Claude Code
 
-If you want these skills available only inside this repository, nothing else is required. Launch Codex from this repo root or from a nested directory and Codex will scan `.agents/skills/`.
+```text
+/plugin marketplace add savourylie/cktk
+/plugin install cktk@savourylie
+```
 
-If you want to use this skill set from another repo without copying it, symlink the Codex tree into that repo:
+### Codex (repo-local)
+
+Codex discovers repo-local skills from `.agents/skills/` when you launch Codex inside the repo or a child directory — clone this repo and nothing else is required.
+
+To use this skill set from another repo without copying it, symlink the Codex tree into that repo:
 
 ```sh
 mkdir -p /path/to/target-repo/.agents
 ln -s /absolute/path/to/cktk/.agents/skills /path/to/target-repo/.agents/skills
 ```
 
-### User-global
+### Codex (user-global)
 
-If you want these skills available across repos, run the all-agent installer from a full cktk checkout:
+To make the skills available across repos, run the all-agent installer from a full cktk checkout:
 
 ```sh
 bash /absolute/path/to/cktk/scripts/install-all-agent-skills.sh
@@ -91,17 +116,13 @@ bash /absolute/path/to/cktk/scripts/install-all-agent-skills.sh
 
 The installer symlinks cktk skill folders into `${CODEX_HOME:-$HOME/.codex}/skills` without replacing unrelated skills. It also reconciles Antigravity global skills and the handoff shell helpers. `$cktk-upgrade` runs this installer automatically after every successful version check.
 
-### Install from GitHub in Codex Desktop
+### Codex ($skill-installer)
 
-Codex can also install skills directly from this GitHub repo via `$skill-installer`.
-
-After any installer-based install, restart Codex if the new skills do not appear immediately.
+Codex Desktop can also install skills directly from this GitHub repo via `$skill-installer`. After any installer-based install, restart Codex if the new skills do not appear immediately.
 
 `codex-handoff`, `grok-handoff`, `opencode-handoff`, and `takeover` are not compatible with archive-based or sparse-checkout `$skill-installer` installation because their Codex folders use repository-relative symlinks to shared scripts under `skills/`. Install those four through the repo-local or user-global full-tree symlink methods above.
 
-#### Install all skills
-
-Use one installer request with all twenty-six installer-compatible skill paths:
+To install everything, use one installer request listing every installer-compatible skill path (all skills except the four handoff skills):
 
 ```text
 $skill-installer install from https://github.com/savourylie/cktk with these paths:
@@ -133,410 +154,13 @@ $skill-installer install from https://github.com/savourylie/cktk with these path
 .agents/skills/gen-image-agy
 ```
 
-#### Install an individual skill
-
-Use the GitHub directory URL for the specific skill you want:
+To install a single skill, use its GitHub directory URL — `https://github.com/savourylie/cktk/tree/main/.agents/skills/<skill-name>` with any path from the list above, for example:
 
 ```text
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/create-tickets
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/commit-ticket
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/commit-push-pr
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/create-worktree
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/merge-worktree
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/feature-catalog
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/implement-ticket
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/clarify-ticket
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/clarify-ticket-linear
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/implement-ticket-linear
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/review-ticket
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/update-ticket
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/update-ticket-linear
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/quiz-ticket
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/quiz-ticket-linear
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/cktk-upgrade
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/readme-builder
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/design-system-extractor
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/design-system-web-applier
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/design-system-mobile-applier
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/wcag-accessibility-checker
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/ux-design
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/ux-redesign
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/cinematic-design-system
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/gen-image-codex
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/gen-image-agy
 ```
 
-## Codex Usage
-
-Prefer explicit skill invocation for deterministic behavior:
-
-```text
-$create-tickets PRD:docs/PRD.md DESIGN:docs/DESIGN.md
-$create-tickets PRD:docs/PRD.md DESIGN:https://api.anthropic.com/v1/design/h/abc123
-$create-tickets PRD:docs/PRD.md DESIGN:system-design/
-$create-tickets FEATURES:docs/FEATURES.md
-$create-tickets PLAN
-$create-tickets PLAN:~/.claude/plans/022-agile-candy.md
-$implement-ticket TICKET-003
-$implement-ticket TICKET-003 worktree
-$implement-ticket TICKET-003 worktree dev
-$clarify-ticket 007
-$clarify-ticket-linear ENG-42
-$implement-ticket-linear ENG-42
-$implement-ticket-linear ENG-42 worktree
-$implement-ticket-linear ENG-42 worktree dev
-$review-ticket
-$review-ticket main
-$review-ticket --pr 42
-$update-ticket TICKET-003 done
-$update-ticket-linear ENG-42
-$update-ticket-linear ENG-42 done
-$update-ticket-linear ENG-42 in-progress
-$quiz-ticket 007
-$quiz-ticket 007 explain
-$quiz-ticket-linear ENG-42
-$quiz-ticket-linear ENG-42 explain
-$commit-ticket
-$commit-push-pr
-$create-worktree 7
-$create-worktree 7 8 9 dev
-$merge-worktree 7
-$merge-worktree 7 8 dev
-$feature-catalog
-$cktk-upgrade
-$codex-handoff   # Explains that this is unnecessary inside Codex
-$grok-handoff    # Export a local bundle so Grok Build can take over
-$opencode-handoff # Export a local bundle so OpenCode can take over
-$takeover
-$readme-builder
-$readme-builder no-screenshots
-$design-system-extractor
-$design-system-web-applier tokens.json
-$design-system-mobile-applier tokens.json
-$wcag-accessibility-checker
-$ux-design
-$ux-redesign
-$cinematic-design-system
-$gen-image-codex a dark-mode dashboard banner
-$gen-image-agy a photorealistic red apple on a wooden table
-```
-
-`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy, handoff, and external-service workflows (`create-tickets`, `implement-ticket`, `clarify-ticket`, `clarify-ticket-linear`, `quiz-ticket`, `quiz-ticket-linear`, `implement-ticket-linear`, `update-ticket`, `update-ticket-linear`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `codex-handoff`, `grok-handoff`, `opencode-handoff`, `takeover`, `ux-design`, `ux-redesign`, `readme-builder`, `gen-image-codex`, `gen-image-agy`) remain explicit-only in their `agents/openai.yaml` policy.
-
-## Claude Code Install
-
-```text
-/plugin marketplace add savourylie/cktk
-/plugin install cktk@savourylie
-```
-
-## Claude Code Usage
-
-```text
-/create-tickets PRD:docs/PRD.md    # Generate tickets from a PRD
-/create-tickets PRD:docs/PRD.md DESIGN:docs/DESIGN.md UX:docs/UX.md
-/create-tickets PRD:docs/PRD.md DESIGN:https://api.anthropic.com/v1/design/h/abc123   # Claude Design URL
-/create-tickets PRD:docs/PRD.md DESIGN:system-design/   # Claude Design handoff bundle folder
-/create-tickets PRD:docs/PRD.md DESIGN:docs/mockups.pdf UX:docs/flows.pptx
-/create-tickets FEATURES:docs/FEATURES.md   # Append new features to existing project
-/create-tickets PLAN               # Break the current Plan Mode plan into tickets
-/create-tickets PLAN:~/.claude/plans/022-agile-candy.md   # Ticket a saved plan file
-/create-tickets                    # Auto-detects PRD in docs/tickets/
-
-/implement-ticket 003              # Implement a specific ticket
-/implement-ticket TICKET-003       # Also accepts full ticket ID
-/implement-ticket 003 worktree     # Implement inside .worktrees/003-slug off origin/main
-/implement-ticket 003 worktree dev # Same, but worktree is based on origin/dev
-
-/clarify-ticket 007                          # Read ticket, analyze vs. code, discuss risks (read-only, docs/tickets/)
-/clarify-ticket-linear ENG-42                # Fetch, analyze vs. code, discuss risks (read-only, Linear MCP)
-/implement-ticket-linear ENG-42              # Implement a Linear issue (requires Linear MCP)
-/implement-ticket-linear ENG-42 worktree     # Isolated worktree off origin/main
-/implement-ticket-linear ENG-42 worktree dev # Worktree based on origin/dev
-
-/review-ticket                     # Auto-detect: uncommitted or branch diff
-/review-ticket main                # Compare HEAD against main
-/review-ticket --pr 42             # Review a pull request
-/review-ticket 42                  # Review against ticket #42
-
-/update-ticket TICKET-003 done     # Mark done; checks .worktrees/003-slug if present
-/update-ticket 5 in-progress       # Update ticket status
-
-/update-ticket-linear ENG-42              # Auto-eval AC; mark Done when safe (Linear MCP)
-/update-ticket-linear ENG-42 done         # Explicit Done; checks linear worktree if present
-/update-ticket-linear ENG-42 in-progress  # Move Linear issue to In Progress
-
-/quiz-ticket 007                          # Quiz your understanding of an implemented ticket (read-only)
-/quiz-ticket 007 explain                  # Stakeholder explainer instead of a quiz
-/quiz-ticket-linear ENG-42                # Same for a Linear issue (requires Linear MCP)
-/quiz-ticket-linear ENG-42 explain        # Stakeholder explainer for a Linear issue
-
-/commit-ticket                     # Commit current changes
-/commit-push-pr                    # Commit, push, and open a PR
-
-/create-worktree 7                 # Worktree for ticket 007 off origin/main
-/create-worktree 7 8 9             # Worktrees for several tickets at once
-/create-worktree 7 dev             # Worktree based on origin/dev instead
-
-/merge-worktree 7                  # Merge ticket 007 into main, remove worktree, delete branch
-/merge-worktree 7 8 dev            # Merge multiple tickets into dev and clean up
-
-/feature-catalog                   # Generate feature catalog for current project
-
-/cktk-upgrade                      # Upgrade cktk to latest version from GitHub
-/codex-handoff                     # Prepare a local bundle for Codex takeover
-/grok-handoff                      # Prepare a local bundle for Grok Build takeover
-/opencode-handoff                  # Prepare a local bundle for OpenCode takeover
-/takeover                          # Continue a pending handoff from another agent
-
-/design-system-extractor           # Extract tokens from UI screenshots
-/design-system-web-applier         # Generate web theme files from tokens
-/design-system-mobile-applier      # Generate mobile theme files from tokens
-/wcag-accessibility-checker        # Run WCAG accessibility audit
-/ux-design                         # Generate UX spec from PRD
-/ux-redesign                       # Audit and redesign UX spec
-/cinematic-design-system           # Film-driven design system bundle (4 docs + 2 HTML previews)
-
-/readme-builder                    # Generate or refresh README.md from codebase facts + screenshots
-/readme-builder no-screenshots     # Same, but skip Playwright screenshot capture
-
-/gen-image-codex a hero banner for a fintech landing page   # PNG into ./images/ via gpt-image-2
-/gen-image-agy a photorealistic red apple on a wooden table # PNG into ./images/ via Nano Banana (agy, AI Pro)
-```
-
-## OpenCode Usage
-
-OpenCode discovers the repo-local `.agents/skills/` tree and the global skills installed by `scripts/install-all-agent-skills.sh`. Skills are loaded through OpenCode's skill mechanism rather than becoming custom slash commands, so name the intended skill in the request:
-
-```text
-Use clarify-ticket for TICKET-007.
-Use clarify-ticket-linear for ENG-42.
-Use quiz-ticket for TICKET-007.
-Use quiz-ticket-linear for ENG-42.
-```
-
-The clarification and quiz skills use host-neutral questions and follow-up wording. They do not assume Claude's `/skill` syntax, Codex's `$skill` syntax, or a particular structured-choice tool.
-
-## Agent Handoff
-
-Handoff bundles let one coding agent continue work left by another without manually locating local transcript files. Supported export paths:
-
-- **Claude Code → Codex** via `codex-handoff`
-- **Any coding agent → Grok Build** via `grok-handoff` (git snapshot + agent summary; optionally attaches a Claude Code transcript when present)
-- **Any coding agent → OpenCode** via `opencode-handoff` (git snapshot + agent summary; optionally attaches a Claude Code transcript when present)
-- **Generic takeover** via `takeover` in the receiving agent
-
-Bundles are written beneath `.ai/handoffs/` and remain entirely local. They may contain Claude Code transcripts, agent summaries, tool output, file paths, command output, and git diffs, including secrets accidentally printed during the source session. Add this directory to every participating project's `.gitignore`:
-
-```gitignore
-.ai/handoffs/
-```
-
-Do not upload or commit generated handoff bundles.
-
-### One-time setup (shell helpers)
-
-Install shell helpers once so you can still export when the source agent is rate-limited or unresponsive. From a full cktk checkout:
-
-```bash
-bash /absolute/path/to/cktk/scripts/install-all-agent-skills.sh
-```
-
-That adds `codex-handoff`, `grok-handoff`, `opencode-handoff`, and `cktk-takeover` under `~/.local/bin`, and also reconciles global Codex / Antigravity / OpenCode skill links. `$cktk-upgrade` and `/cktk-upgrade` run this setup automatically after a successful version check.
-
-If `~/.local/bin` is not on your PATH:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-Without installing helpers, you can still run the scripts by absolute path from a cktk checkout:
-
-```bash
-bash /absolute/path/to/cktk/skills/codex-handoff/scripts/codex-handoff.sh
-bash /absolute/path/to/cktk/skills/grok-handoff/scripts/grok-handoff.sh --source claude
-bash /absolute/path/to/cktk/skills/opencode-handoff/scripts/opencode-handoff.sh --source claude
-```
-
-### Claude Code → Codex
-
-#### When Claude Code is still responsive
-
-1. In Claude Code, from the project repo:
-
-   ```text
-   /codex-handoff
-   ```
-
-2. Open Codex in the **same repository**.
-
-3. In Codex:
-
-   ```text
-   $takeover
-   ```
-
-#### When Claude Code has hit a rate / usage / context limit
-
-You cannot run `/codex-handoff` inside Claude. Export from the terminal instead:
-
-1. Make sure shell helpers are installed (see [One-time setup](#one-time-setup-shell-helpers)).
-
-2. From the project repo:
-
-   ```bash
-   cd /path/to/project
-   codex-handoff
-   ```
-
-   This requires a Claude Code session on disk for the repo (`~/.claude/projects/...`). It writes a bundle under `.ai/handoffs/codex/` and prints the absolute path.
-
-3. Open Codex in the **same repository**.
-
-4. In Codex:
-
-   ```text
-   $takeover
-   ```
-
-### Any agent → Grok Build
-
-#### When the source agent is still responsive
-
-1. In the source agent, invoke the skill (it should write an agent summary, then run the exporter):
-
-   ```text
-   /grok-handoff
-   ```
-
-   In Codex:
-
-   ```text
-   $grok-handoff
-   ```
-
-2. Open Grok Build in the **same repository**.
-
-3. In Grok Build:
-
-   ```text
-   /takeover
-   ```
-
-#### When Claude Code (or another source agent) has hit a rate / usage / context limit
-
-You cannot run `/grok-handoff` inside the blocked agent. Export from the terminal instead:
-
-1. Make sure shell helpers are installed (see [One-time setup](#one-time-setup-shell-helpers)).
-
-2. From the project repo:
-
-   ```bash
-   cd /path/to/project
-   grok-handoff --source claude
-   ```
-
-   By default this:
-
-   - Snapshots git status, diffs, log, and untracked files
-   - Auto-attaches the latest Claude Code session for the repo when one exists
-   - Writes a bundle under `.ai/handoffs/grok/` and prints the absolute path
-
-   Useful variants:
-
-   ```bash
-   # Fail if no Claude Code session is found
-   grok-handoff --source claude --require-session
-
-   # Git-only (no transcript)
-   grok-handoff --source claude --no-session
-
-   # Attach your own continuation notes (recommended if you can write them)
-   grok-handoff --source claude --summary /tmp/agent-summary.md
-   ```
-
-3. Open Grok Build in the **same repository**.
-
-4. In Grok Build:
-
-   ```text
-   /takeover
-   ```
-
-### Any agent → OpenCode
-
-#### When the source agent is still responsive
-
-1. In the source agent, invoke the skill (it should write an agent summary, then run the exporter):
-
-   ```text
-   /opencode-handoff
-   ```
-
-   In Codex:
-
-   ```text
-   $opencode-handoff
-   ```
-
-2. Open OpenCode in the **same repository**.
-
-3. In OpenCode:
-
-   ```text
-   /takeover
-   ```
-
-#### When Claude Code (or another source agent) has hit a rate / usage / context limit
-
-You cannot run `/opencode-handoff` inside the blocked agent. Export from the terminal instead:
-
-1. Make sure shell helpers are installed (see [One-time setup](#one-time-setup-shell-helpers)).
-
-2. From the project repo:
-
-   ```bash
-   cd /path/to/project
-   opencode-handoff --source claude
-   ```
-
-   By default this:
-
-   - Snapshots git status, diffs, log, and untracked files
-   - Auto-attaches the latest Claude Code session for the repo when one exists
-   - Writes a bundle under `.ai/handoffs/opencode/` and prints the absolute path
-
-   Useful variants:
-
-   ```bash
-   # Fail if no Claude Code session is found
-   opencode-handoff --source claude --require-session
-
-   # Git-only (no transcript)
-   opencode-handoff --source claude --no-session
-
-   # Attach your own continuation notes (recommended if you can write them)
-   opencode-handoff --source claude --summary /tmp/agent-summary.md
-   ```
-
-3. Open OpenCode in the **same repository**.
-
-4. In OpenCode:
-
-   ```text
-   /takeover
-   ```
-
-### After takeover
-
-In the receiving agent, `$takeover` / `/takeover`:
-
-1. Locates the newest pending (or in-progress) handoff under `.ai/handoffs/`
-2. Reads `TAKEOVER.md`, optional `agent-summary.md`, git snapshot, and optional session tail
-3. Summarizes prior work and risks before editing
-4. Marks the handoff in progress, continues the task, and marks it done only after the work is complete and verified
-
-## Antigravity Install
+### Antigravity
 
 Clone the repo into your project or add it as a submodule — skills are discovered automatically from `.agent/skills/`:
 
@@ -564,23 +188,109 @@ For user-global Antigravity skills from a full cktk checkout, run:
 bash /absolute/path/to/cktk/scripts/install-all-agent-skills.sh
 ```
 
+### OpenCode
+
+OpenCode discovers the repo-local `.agents/skills/` tree automatically. `scripts/install-all-agent-skills.sh` also links the canonical skills under OpenCode's global config directory, where repo-local `.agents/skills/` definitions take precedence.
+
+## Usage
+
+All commands below use Claude Code's `/name` syntax. In **Codex**, invoke the same skill as `$name` with identical arguments (e.g. `/implement-ticket 003 worktree` → `$implement-ticket 003 worktree`). In **OpenCode**, skills load through the skill mechanism rather than slash commands — name the skill in the request, e.g. "Use clarify-ticket for TICKET-007." or "Use quiz-ticket-linear for ENG-42." In **Antigravity**, skills are discovered from `.agent/skills/` and matched by description.
+
+### Ticket lifecycle
+
+```text
+/create-tickets PRD:docs/PRD.md              # Generate tickets from a PRD
+/create-tickets PRD:docs/PRD.md DESIGN:docs/DESIGN.md UX:docs/UX.md
+/create-tickets PRD:docs/PRD.md DESIGN:https://api.anthropic.com/v1/design/h/abc123   # Claude Design URL; also accepts folders, PDFs, PPTX
+/create-tickets FEATURES:docs/FEATURES.md    # Append new features to an existing project
+/create-tickets PLAN                         # Break the current Plan Mode plan into tickets (or PLAN:<path> for a saved plan file)
+/create-tickets                              # Auto-detects the PRD
+
+/clarify-ticket 007                          # Read ticket, analyze vs. code, discuss risks (read-only)
+/clarify-ticket-linear ENG-42                # Same for a Linear issue (requires Linear MCP)
+
+/implement-ticket 003                        # Implement a ticket (also accepts TICKET-003)
+/implement-ticket 003 worktree               # Implement inside .worktrees/003-slug off origin/main
+/implement-ticket 003 worktree dev           # Same, based on origin/dev (worktree variants also work for implement-ticket-linear)
+/implement-ticket-linear ENG-42              # Implement a Linear issue (requires Linear MCP)
+
+/review-ticket                               # Auto-detect: uncommitted changes or branch diff
+/review-ticket main                          # Compare HEAD against main
+/review-ticket --pr 42                       # Review a pull request
+/review-ticket 42                            # Review against ticket #42
+
+/update-ticket TICKET-003 done               # Mark done; checks .worktrees/003-slug if present
+/update-ticket-linear ENG-42                 # Auto-eval acceptance criteria; mark Done when safe
+/update-ticket-linear ENG-42 in-progress     # Move a Linear issue to In Progress
+
+/quiz-ticket 007                             # Quiz your understanding of an implemented ticket (read-only)
+/quiz-ticket 007 explain                     # Stakeholder explainer instead of a quiz
+/quiz-ticket-linear ENG-42                   # Same for a Linear issue; `explain` works here too
+```
+
+### Git and worktrees
+
+```text
+/commit-ticket                     # Commit current changes
+/commit-push-pr                    # Commit, push, and open a PR
+/create-worktree 7                 # Worktree for ticket 007 off origin/main
+/create-worktree 7 8 9 dev         # Several tickets at once, based on origin/dev
+/merge-worktree 7                  # Merge ticket 007 back, remove worktree, delete branch (same multi-ticket and base args)
+```
+
+### Agent handoff
+
+```text
+/codex-handoff                     # Prepare a local bundle for Codex takeover ($codex-handoff explains this is unnecessary inside Codex)
+/grok-handoff                      # Prepare a local bundle for Grok Build takeover (in Codex: $grok-handoff)
+/opencode-handoff                  # Prepare a local bundle for OpenCode takeover (in Codex: $opencode-handoff)
+/takeover                          # Continue a pending handoff from another agent (in Codex: $takeover)
+```
+
+### Docs and maintenance
+
+```text
+/feature-catalog                   # Generate a feature catalog for the current project
+/readme-builder                    # Generate or refresh README.md from codebase facts + screenshots
+/readme-builder no-screenshots     # Same, but skip Playwright screenshot capture
+/cktk-upgrade                      # Upgrade cktk to the latest version from GitHub
+```
+
+### Design and UX
+
+```text
+/design-system-extractor                  # Extract tokens from UI screenshots
+/design-system-web-applier tokens.json    # Generate web theme files from tokens
+/design-system-mobile-applier tokens.json # Generate mobile theme files from tokens
+/wcag-accessibility-checker               # Run WCAG accessibility audit
+/ux-design                                # Generate UX spec from PRD
+/ux-redesign                              # Audit and redesign UX spec
+/cinematic-design-system                  # Film-driven design system bundle (4 docs + 2 HTML previews)
+```
+
+### Image generation
+
+```text
+/gen-image-codex a hero banner for a fintech landing page   # PNG into ./images/ via gpt-image-2
+/gen-image-agy a photorealistic red apple on a wooden table # PNG into ./images/ via Nano Banana (agy, AI Pro)
+```
+
+Two notes on host behavior:
+
+- **Codex triggering policy:** `review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching; every other skill (the write-heavy, handoff, and external-service workflows) is explicit-only in its `agents/openai.yaml` policy.
+- The clarification and quiz skills use host-neutral questions and follow-up wording. They do not assume Claude's `/skill` syntax, Codex's `$skill` syntax, or a particular structured-choice tool.
+
+## Agent Handoff
+
+Handoff bundles let one coding agent continue work left by another without hunting for local transcript files. `/codex-handoff` (Claude Code → Codex), `/grok-handoff` (any agent → Grok Build), and `/opencode-handoff` (any agent → OpenCode) export the current git state — plus a Claude Code transcript when one exists — into a local bundle. The receiving agent runs `/takeover` to locate the newest pending bundle, summarize prior work and risks, and continue safely. In Codex the same skills are `$takeover`, `$grok-handoff`, and `$opencode-handoff`.
+
+Bundles are written beneath `.ai/handoffs/` and stay entirely local. They may contain transcripts, command output, and git diffs — including secrets accidentally printed during the source session — so add `.ai/handoffs/` to every participating project's `.gitignore` and never commit or upload them.
+
+Installing the shell helpers via `scripts/install-all-agent-skills.sh` lets you export from the terminal even when the source agent is rate-limited or out of context. Full walkthroughs, terminal-export commands, and exporter flags: **[docs/agent-handoff.md](docs/agent-handoff.md)**.
+
 ## Supported Platforms
 
-### Web (via design-system-web-applier)
-
-- CSS custom properties
-- SCSS variables
-- Tailwind CSS config
-- React (styled-components, Emotion, Chakra UI)
-- CSS Modules + TypeScript
-- Vue 3 composables
-
-### Mobile (via design-system-mobile-applier)
-
-- iOS — SwiftUI extensions, UIKit constants
-- Android — Jetpack Compose (MaterialTheme), XML resources
-- Flutter — ThemeData
-- React Native — theme.ts
+`design-system-web-applier` targets CSS custom properties, SCSS variables, Tailwind CSS config, React (styled-components, Emotion, Chakra UI), CSS Modules + TypeScript, and Vue 3 composables. `design-system-mobile-applier` targets iOS (SwiftUI extensions, UIKit constants), Android (Jetpack Compose MaterialTheme, XML resources), Flutter (ThemeData), and React Native (theme.ts).
 
 ## Token Schema
 
@@ -631,7 +341,7 @@ A PRD template is available at `templates/PRD.md`.
 
 ## Contributing
 
-See [`AGENTS.md`](AGENTS.md) for the three-tree maintenance rules: every skill in `skills/` must have a matching folder under `.agents/skills/` and a symlink under `.agent/skills/`. After adding or renaming a skill, update all three trees plus `catalog.json` and `README.md`, then run the validation script.
+See [`AGENTS.md`](AGENTS.md) for the three-tree maintenance rules: every skill in `skills/` must have a matching folder under `.agents/skills/` and a symlink under `.agent/skills/`. After adding or renaming a skill, update all three trees plus `catalog.json` and `README.md`, then run the validation script. Handoff workflow documentation lives in [`docs/agent-handoff.md`](docs/agent-handoff.md) — update it alongside this README when changing the handoff skills, and note that `scripts/test-handoff-tools.sh` asserts specific strings in `README.md`.
 
 ## Validation
 
