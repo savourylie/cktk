@@ -1,6 +1,6 @@
 ---
 name: clarify-ticket
-description: "Fetch a ticket from docs/tickets/ and interactively clarify its details and risks against the codebase before implementation — strictly read-only, never edits tickets, INDEX.md, or git. Produces a codebase-grounded briefing, a guided discussion, and a readiness summary. The markdown-ticket twin of clarify-ticket-linear. Triggers on: /clarify-ticket, /clarify-ticket 007, /clarify-ticket TICKET-007, clarify ticket 7, de-risk ticket before implementing, discuss ticket details and risks"
+description: "Read a ticket from docs/tickets/ and interactively clarify its details and risks against the codebase before implementation — strictly read-only, never edits tickets, INDEX.md, or git. Produces a codebase-grounded briefing, a guided discussion, and a readiness summary. The markdown-ticket twin of clarify-ticket-linear. Triggers on: /clarify-ticket, /clarify-ticket 007, /clarify-ticket TICKET-007, clarify ticket 7, de-risk ticket before implementing, discuss ticket details and risks"
 user-invocable: true
 ---
 
