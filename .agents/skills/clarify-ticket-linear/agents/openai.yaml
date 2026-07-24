@@ -1,7 +1,7 @@
 interface:
   display_name: "Clarify Ticket (Linear)"
-  short_description: "Fetch a Linear issue and clarify its details and risks before implementation (read-only)"
-  default_prompt: "Fetch the Linear issue via MCP, analyze it against the codebase, surface details to confirm and code-grounded risks, discuss the open items interactively, and end with a readiness summary. Strictly read-only — never modify Linear or git."
+  short_description: "Clarify a Linear issue against relevant code"
+  default_prompt: "Use $clarify-ticket-linear to fetch one Linear issue with read-only tools, analyze it against relevant code when available, discuss ambiguities and risks, and produce a readiness summary."
 
 policy:
   allow_implicit_invocation: false

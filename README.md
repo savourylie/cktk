@@ -1,18 +1,18 @@
 # cktk
 
-Software development and UI design workflow skills for OpenAI Codex, Claude Code, and Antigravity.
+Software development and UI design workflow skills for OpenAI Codex, Claude Code, Antigravity, and OpenCode.
 
-cktk ships these workflows as **skills** — Markdown files with frontmatter that the host agent (Claude Code, Codex, or Antigravity) loads on demand. There is no runtime, no build step, and no dependency to install: cloning or installing the plugin makes the skill set discoverable to your agent of choice.
+cktk ships these workflows as **skills** — Markdown files with frontmatter that the host agent loads on demand. There is no runtime or build step: cloning or installing the skill set makes it discoverable to your agent of choice.
 
 ## Compatibility Layout
 
 This repo intentionally carries three skill trees:
 
 - `skills/` is the Claude-facing tree (canonical).
-- `.agents/skills/` is the Codex-facing tree.
+- `.agents/skills/` is the Codex-facing tree and the repo-local OpenCode-compatible tree.
 - `.agent/skills/` is the Antigravity-facing tree.
 
-The Claude and Codex trees share support files where possible, but they do not share `SKILL.md` files. The Codex skills are rewritten to match Codex conventions and metadata. The Antigravity tree uses symlinks directly to `skills/`.
+The Claude and Codex trees share support files where possible, but they do not share `SKILL.md` files. The Codex skills are rewritten to match Codex conventions and use host-neutral workflow language so OpenCode can load them from `.agents/skills/`. The Antigravity tree uses symlinks directly to `skills/`. The all-agent installer also links the canonical skills under OpenCode's global config directory, where repo-local `.agents/skills/` definitions take precedence.
 
 ## Skills
 
@@ -288,6 +288,17 @@ $gen-image-agy a photorealistic red apple on a wooden table
 /gen-image-codex a hero banner for a fintech landing page   # PNG into ./images/ via gpt-image-2
 /gen-image-agy a photorealistic red apple on a wooden table # PNG into ./images/ via Nano Banana (agy, AI Pro)
 ```
+
+## OpenCode Usage
+
+OpenCode discovers the repo-local `.agents/skills/` tree and the global skills installed by `scripts/install-all-agent-skills.sh`. Skills are loaded through OpenCode's skill mechanism rather than becoming custom slash commands, so name the intended skill in the request:
+
+```text
+Use clarify-ticket for TICKET-007.
+Use clarify-ticket-linear for ENG-42.
+```
+
+The clarification skills use host-neutral questions and follow-up wording. They do not assume Claude's `/skill` syntax, Codex's `$skill` syntax, or a particular structured-choice tool.
 
 ## Agent Handoff
 
@@ -607,7 +618,7 @@ See [`AGENTS.md`](AGENTS.md) for the three-tree maintenance rules: every skill i
 
 ## Validation
 
-Run the Codex-tree validation script after changing the skill layout:
+Run the cross-agent skill validation script after changing skill content or layout. It checks Claude/Codex parity, exact Antigravity symlinks, OpenAI metadata, and the portable clarification contracts:
 
 ```sh
 ./scripts/check-codex-skills.sh

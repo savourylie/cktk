@@ -1,84 +1,106 @@
 ---
 name: "clarify-ticket-linear"
-description: "Use when the user explicitly asks to clarify or de-risk a Linear issue before implementing it (not docs/tickets markdown) — fetch the issue, analyze it against the codebase, surface details and risks, discuss interactively, and end with a readiness summary. Strictly read-only: never modifies Linear or git. Prefer explicit invocation with $clarify-ticket-linear. Requires Linear MCP (read-only)."
+description: "Use only when the user explicitly asks to clarify or de-risk a Linear issue, supplies a TEAM-NUMBER id or linear.app issue URL, or invokes clarify-ticket-linear. Do not use for docs/tickets/ or TICKET-NNN markdown tickets. Fetch through read-only Linear MCP tools, analyze against relevant code when available, discuss ambiguities and risks, and produce a readiness summary. Never modify Linear, repo files, or git."
 ---
 
 # Clarify a Linear Issue (advisory, read-only)
 
-Fetch a Linear issue and interactively clarify its details and risks against the codebase before implementation. Produce a codebase-grounded briefing, discuss the open items with the user, and end with a readiness summary. **Never** modify Linear or git — this skill is strictly advisory.
+Fetch one Linear issue, analyze its requirements and risks against relevant code when available, discuss unresolved details, and end with a readiness summary. Never modify Linear, files, or git. Do not use `docs/tickets/`.
 
-**This skill does not use `docs/tickets/`.** Linear is the source of truth.
+Resolve the issue reference from explicit skill arguments when the host provides them; otherwise use the surrounding request. Empty input means branch/worktree auto-detection.
 
-If the user included an issue id or URL after `$clarify-ticket-linear`, use that issue. Empty args mean auto-detect from branch / worktree only.
+## Portable interaction
+
+When selection or confirmation is needed:
+
+1. Show every candidate with a stable issue id and distinguishing path/label.
+2. Use the host's structured choice mechanism only when available and suitable; otherwise ask a concise numbered prose question.
+3. Never assume an option limit or implicit “Other” choice.
+4. Accept an unambiguous issue id or path.
+
+Refer to follow-up skills by name. Use host-native invocation syntax when known; otherwise show the plain skill name and arguments.
 
 ## Prerequisites
 
-1. Linear MCP must be available and authenticated (official: `https://mcp.linear.app/mcp` — https://linear.app/docs/mcp).
-2. Read-only tools suffice (get/search issue, list relations, get comments). No write tools are needed.
-3. If Linear MCP tools are missing, stop with a short setup hint. Do not invent API-key or CLI fallbacks.
-4. Use the host's real Linear MCP tool names; discover schemas rather than inventing fields. Team workflow states are not listed or mapped — the readiness verdict is this skill's own.
+Require authenticated Linear MCP read tools; discover actual host schemas. Missing tools → stop with a setup hint. Never use HTTP, API-key, CLI, or browser fallbacks.
 
-## Argument grammar
+Accept one optional Linear id (`ENG-42`) or issue URL. Reject extra/status/write tokens, title-only search, and multi-issue batches.
 
-| Invocation | Meaning |
-| --- | --- |
-| `<issue>` | Clarify that issue. |
-| (empty) | Auto-detect the issue from branch / worktree, then clarify. |
+## Phase 1: Resolve Issue Reference
 
-`<issue>` is a Linear identifier (`ENG-42`) or a Linear issue URL. Uppercase team keys. No status token; extra tokens → stop.
+1. Parse and normalize the issue ref before requiring git (`TEAM-NUMBER` uppercase; URL must contain a complete id).
+2. Probe git:
+   - Success → set `REPO_AVAILABLE=true`, compute `MAIN_ROOT` from absolute git-common-dir and `CURRENT_ROOT` from show-toplevel.
+   - Failure → set `REPO_AVAILABLE=false` and run no more git commands.
+3. If no issue ref:
+   - No repo → stop and request an id/URL.
+   - Otherwise inspect the current branch, then registered `$MAIN_ROOT/.worktrees/`, for `linear-TEAM-NUMBER-*`.
+   - Use one candidate, ask portably among multiple, or stop if none.
 
-## Phase 1: Parse & Resolve
+## Phase 2: Fetch Linear Issue
 
-1. Resolve:
-   ```
-   MAIN_ROOT=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
-   CURRENT_ROOT=$(git rev-parse --show-toplevel)
-   ```
-2. Parse args into `issue_ref` (optional).
-3. If no `issue_ref`, auto-detect:
-   - Current branch `^linear-([A-Za-z]+-\d+)-` → issue id; `WORK_DIR=$CURRENT_ROOT`
-   - Else a registered `$MAIN_ROOT/.worktrees/*` whose branch matches `^linear-([A-Za-z]+-\d+)-`
-   - 1 candidate → use it; 2+ → ask; 0 → stop and request an id
-4. Normalize to `issue_id` (TEAM-NUM uppercase, or extract from URL). Unknown extra tokens → stop.
+1. Fetch the exact normalized id through Linear MCP read tools; stop if missing/ambiguous.
+2. If an old id resolves to a new canonical id, use and disclose the canonical id.
+3. Capture title, URL, full description, state name/type, team metadata, relations, comments, acceptance criteria, and repo/path/project clues.
+4. Fetch blocker state type separately when needed and possible.
+5. Blocker satisfaction:
+   - `completed` type → satisfied
+   - Any other known type → unsatisfied while the blocked-by relation exists
+   - Missing/unknown type → unresolved and blocking until confirmed
+6. Derive a lowercase kebab slug from the title, about 40 characters; fallback `issue`.
 
-## Phase 2: Fetch Linear Issue (read-only)
+## Phase 3: Resolve and Validate Code Context
 
-1. Fetch by `issue_id` via Linear MCP. Exact match only; stop if missing or ambiguous.
-2. Capture title, description, current state (context only), team, labels/project/priority, relations (blocks / blocked-by + states), comments, and checklist acceptance criteria.
-3. Derive `slug` (lowercase, non-alphanumerics → `-`, collapse, trim, ~40 chars; fallback `issue`).
-4. Worktree handles: `$MAIN_ROOT/.worktrees/<issue_id>-<slug>`, branch `linear-<issue_id>-<slug>`.
+No repo → `ANALYSIS_MODE=text-only`.
 
-## Phase 3: Code Context
+With a repo:
 
-1. Prefer `$CURRENT_ROOT` when its branch is `linear-<issue_id>-*`.
-2. Else a registered worktree at `$MAIN_ROOT/.worktrees/<issue_id>-*`.
-3. Else `WORK_DIR=$CURRENT_ROOT`. No usable repo → text-only mode (flag it).
+1. Prefer an auto-selected worktree, current `linear-<issue_id>-*` checkout, exact issue worktree, unique registered `.worktrees/<issue_id>-*`, then current checkout.
+2. Compare issue repo clues with origin URL, repo basename, manifests, referenced paths, and project guidance.
+3. Clear match → code mode.
+4. Clear mismatch or no useful clue → disclose it and ask whether to confirm this repo, provide another repo, or continue text-only. Make no code-grounded claims before confirmation.
+5. Record mode as confirmed code, user-confirmed code, or text-only.
 
-## Phase 4: Codebase-Grounded Analysis
+## Phase 4: Read Project Context
 
-Read-only exploration only (grep/glob/read + safe read-only commands). Produce four buckets + a verdict:
-- **Details to confirm** — ambiguities, underspecified requirements, missing/untestable acceptance criteria.
-- **Risks** — files/modules touched, conflicting patterns, missing prerequisites, migration/breaking-change/blast-radius, acceptance-criteria feasibility. Tag each with severity (`high`/`medium`/`low`) + evidence (`path:line`).
-- **Dependencies** — Linear relations (+ states) and code prerequisites.
-- **Open questions** — what neither the ticket nor the code answers.
-- **Verdict** — `ready` / `needs-clarification` / `blocked`.
+Skip in text-only mode. In `WORK_DIR`, read applicable root/scoped repository guidance (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or equivalent), then `docs/PRD.md` and the relevant design source when present (`docs/DESIGN.md` → `docs/design/DESIGN.md` → relevant `design-system/` files).
 
-## Phase 5: Briefing
+## Phase 5: Analyze
 
-Present the four buckets + verdict + code-context source on screen.
+Use read-only tools and safe read-only shell commands. Produce:
 
-## Phase 6: Guided Discussion
+- **Details to confirm** — ambiguity, missing/untestable criteria, inconsistent comments/fields, and requirement/context conflicts.
+- **Risks** — severity plus evidence:
+  - Code mode: `path:line` for modules, patterns, prerequisites, migrations/compatibility, blast radius, and AC feasibility.
+  - Text-only: no code claims; cite `issue description`, a numbered criterion, a dated/attributed comment, or a relation id.
+- **Dependencies** — blocked-by relations with state name/type/satisfaction, issues blocked, and code prerequisites in code mode.
+- **Open questions** — unanswered by the sources available in the selected mode.
+- **Verdict**:
+  - `ready` — well specified, risks understood, no unsatisfied/unknown blockers
+  - `needs-clarification` — requirements/criteria prevent a confident start
+  - `blocked` — unsatisfied/unknown blocker or hard prerequisite
 
-Walk open items one topic at a time (AskUserQuestion / prose). Record each as resolved-here or still-open-for-author. Batch trivial confirmations.
+Text-only mode may be specification-ready, but must state that code feasibility was not assessed.
 
-## Phase 7: Readiness Summary (on-screen only)
+## Phase 6: Briefing and Discussion
 
-Verdict, resolved decisions, open questions for the author, key risks to watch, and a suggested next step (`$implement-ticket-linear <issue>` or resolve blockers first). No writes anywhere.
+Present a `Clarification Briefing — <ISSUE-ID>` with readiness, analysis mode, four analysis buckets, severity, and source-specific evidence. Then walk substantive open items one at a time using portable interaction; batch trivial confirmations. Record outcomes as **resolved here** or **still open**. Skip discussion if nothing is open.
 
-## Safety Rules
+## Phase 7: Readiness Summary
 
-- Require Linear MCP (read); fail closed. Missing/unresolvable issue → stop.
-- Strictly read-only: never modify Linear (state/comment/description/AC), never edit files, never commit, never run mutating/destructive commands.
-- Do not use `docs/tickets/` as the source.
-- Do not call `$implement-ticket-linear`, `$update-ticket-linear`, `$commit-ticket`, or `$commit-push-pr` — only suggest them.
-- Prefer matching linear worktrees for code context when present.
+Present on screen only:
+
+- Verdict (`ready to implement`, `needs author input`, or `blocked by …`)
+- Analysis mode
+- Resolved decisions
+- Open questions for the author
+- Key risks
+- Suggested next step: use `implement-ticket-linear <ISSUE-ID>`, or resolve blockers first
+
+## Safety rules
+
+- Linear read operations only: never update state, description, comments, criteria, assignee, labels, project, or other fields.
+- Repository read-only: never edit files or git, commit, or run mutating/destructive commands.
+- Do not use `docs/tickets/`.
+- Do not call implementation, update, commit, or PR skills; only suggest them.
+- Never guess missing tools, ambiguous issues, repo relevance, or blocker state.

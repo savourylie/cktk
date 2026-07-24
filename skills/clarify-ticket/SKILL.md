@@ -1,119 +1,139 @@
 ---
 name: clarify-ticket
-description: "Read a ticket from docs/tickets/ and interactively clarify its details and risks against the codebase before implementation — strictly read-only, never edits tickets, INDEX.md, or git. Produces a codebase-grounded briefing, a guided discussion, and a readiness summary. The markdown-ticket twin of clarify-ticket-linear. Triggers on: /clarify-ticket, /clarify-ticket 007, /clarify-ticket TICKET-007, clarify ticket 7, de-risk ticket before implementing, discuss ticket details and risks"
+description: "Clarify a markdown ticket from docs/tickets/ before implementation. Use only when the request names docs/tickets/, a TICKET-NNN reference, or the clarify-ticket skill; do not use for Linear issue IDs or URLs. Read the ticket, validate it against the tracker and codebase, discuss ambiguities and risks, and produce a readiness summary. Strictly read-only: never edit tickets, INDEX.md, repo files, or git."
 user-invocable: true
+disable-model-invocation: true
+argument-hint: "[ticket]"
 ---
 
-**Argument:** `$ARGUMENTS`
+**Invocation input:** `$ARGUMENTS`
 
-You are a pre-implementation ticket clarifier. Your job is to read a ticket from `docs/tickets/`, analyze it against the actual codebase, surface details that need confirming and risks worth knowing, discuss the open items interactively with the user, and end with a readiness summary. Follow each phase precisely.
+# Clarify a Markdown Ticket (advisory, read-only)
 
-**This skill is strictly advisory and read-only.** It never edits ticket files, `INDEX.md`, or any other repo file; never changes a ticket's status or acceptance-criteria checkboxes; never commits. The ticket tracker in `docs/tickets/` is the source of truth. This is the markdown-ticket twin of `/clarify-ticket-linear` — it has **no Linear involvement**.
+Read one ticket from `docs/tickets/`, analyze it against the tracker and actual codebase, discuss unresolved details with the user, and end with a readiness summary. **Never** edit ticket files, `INDEX.md`, any other repo file, or git.
 
-## Prerequisites
+Use `docs/tickets/` as the source of truth. Do not use Linear. For a Linear issue, use the `clarify-ticket-linear` skill.
 
-1. A git repository containing a `docs/tickets/` directory. No MCP or external service is required.
-2. If `docs/tickets/` does not exist, stop with a short hint: this repo has no markdown ticket tracker; for Linear issues use `/clarify-ticket-linear`.
+## Portable interaction rules
 
-## Argument grammar
+- Resolve the ticket reference from populated invocation input when available; otherwise use the ticket reference in the surrounding user request. Treat a missing, empty, or unsubstituted host placeholder as no argument.
+- When the user must select or confirm something, show every candidate with a stable ticket id and distinguishing label.
+- Use the host's structured choice mechanism only when it is available and can represent the candidates clearly. Otherwise ask a concise numbered prose question and accept a ticket id or number.
+- Never assume an option limit or an automatically supplied “Other” choice.
+- Refer to other skills by name. When suggesting a command, use host-native syntax if known (`/skill` in Claude Code, `$skill` in Codex); otherwise show the plain skill name and arguments.
 
-| Invocation | Meaning |
+## Prerequisites and argument grammar
+
+Require a git repository containing `docs/tickets/`. If it is missing, stop with a short hint that Linear issues use `clarify-ticket-linear`.
+
+Accept one optional `<ticket>`:
+
+| Input | Meaning |
 | --- | --- |
-| `<ticket>` | Clarify that ticket. |
-| (empty) | Auto-detect the ticket, then clarify. |
+| `TICKET-007`, `007`, `#7`, or `7` | Clarify that ticket; normalize to three-digit `NNN`. |
+| Empty | Auto-detect a ticket, then clarify it. |
 
-`<ticket>` accepts `TICKET-007`, `007`, `#7`, or `7`; normalize to a 3-digit zero-padded `NNN`.
+Reject status tokens, multi-ticket batches, write/commit flags, invalid ticket refs, and extra tokens.
 
-**Not accepted:** a status token, multi-ticket batches, or any write/commit flags. Extra tokens beyond a single ticket → stop with an unrecognized-arguments error.
+## Phase 1: Resolve the Ticket and Code Context
 
-## Phase 1: Parse Arguments & Resolve Handles
-
-1. Confirm you're inside a git repo, then compute:
+1. Resolve repository roots:
    ```
    MAIN_ROOT=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
    CURRENT_ROOT=$(git rev-parse --show-toplevel)
    ```
-2. Parse `$ARGUMENTS`. Split on whitespace.
-   - If the first token is present, treat it as the ticket ref and normalize to `NNN` (`7`, `007`, `#7`, `TICKET-007` → `007`). No further tokens are expected.
-   - If `$ARGUMENTS` is empty, run **auto-detect** (below).
-   - If a first token is present but isn't a ticket ref, or there are extra tokens → stop with an unrecognized-arguments error.
+2. Parse the invocation input or surrounding request. If a ticket ref exists, normalize it to `NNN`; otherwise auto-detect:
+   - Current branch matching `^ticket-(\d{3})-.+$` → use its `NNN` and set `WORK_DIR=$CURRENT_ROOT`.
+   - Otherwise inspect registered worktrees under `$MAIN_ROOT/.worktrees/` and collect branches matching `^ticket-(\d{3})-.+$`.
+   - One worktree candidate → use it. Multiple candidates → apply the portable interaction rules.
+   - No worktree candidate → read `INDEX.md` and collect rows whose Status column is exactly backtick-wrapped `pending`. One candidate → ask for confirmation; multiple → ask the user to select from the complete candidate list; none → stop and request a ticket number.
+3. Resolve exactly one `$MAIN_ROOT/docs/tickets/NNN-*.md`. No match or multiple matches → stop and report the problem. Derive `slug` from the filename.
+4. If `WORK_DIR` is unset, choose code context in this order:
+   - `$CURRENT_ROOT` when its branch matches `^ticket-NNN-.+$`.
+   - The exact registered worktree `$MAIN_ROOT/.worktrees/NNN-<slug>`.
+   - A unique registered worktree under `$MAIN_ROOT/.worktrees/` whose branch matches `^ticket-NNN-.+$`, even if its slug differs because the ticket was renamed.
+   - If multiple matching worktrees remain, ask the user to choose using stable paths and branch names.
+   - Otherwise use `$CURRENT_ROOT`.
+5. Announce the resolved ticket and code context in one line.
 
-### Auto-detect (only when `$ARGUMENTS` is empty)
+## Phase 2: Read and Validate Tracker State
 
-**1a. Current branch.** Run `git branch --show-current`. If it matches `^ticket-(\d{3})-.+$`, extract `NNN`, set `WORK_DIR=$CURRENT_ROOT`, tell the user in one line, and proceed.
+Read the ticket and capture:
 
-**1b. Registered ticket worktrees.** Inspect `git worktree list --porcelain` for paths under `$MAIN_ROOT/.worktrees/`; for each, read `git -C <path> branch --show-current` and capture `NNN` when it matches `^ticket-(\d{3})-.+$`.
-- **1 candidate** — use it; set `WORK_DIR` to that path; announce detection.
-- **2+ candidates** — pick via `AskUserQuestion` (label `TICKET-NNN — .worktrees/NNN-<slug>`; cap 4 options, rely on "Other").
-- **0 candidates** — continue to 1c.
+- Title from `# [TICKET-NNN] Title` and the full body
+- `## Status`
+- `## Acceptance Criteria` checklist items
+- `- Requires:` dependencies and `✅` markers
+- Implementation Notes and Testing sections when present
 
-**1c. INDEX.md pending fallback.** Read `$MAIN_ROOT/docs/tickets/INDEX.md` and collect every ticket whose Status column contains `` `pending` `` (backtick-wrapped).
-- **1+ candidates** — pick via `AskUserQuestion` (options labeled `TICKET-NNN — <title>`; if more than 4, list the 4 lowest-numbered — the natural next work — and rely on "Other").
-- **0 candidates** — stop: `No ticket number was passed, the current branch isn't a ticket-NNN-<slug> branch, no ticket worktree exists, and no tickets are marked pending in INDEX.md. Please pass a ticket number (e.g., /clarify-ticket 007).`
+Read the matching `INDEX.md` row and capture status, dependencies, and notes. Report these tracker-quality problems under **Details to confirm** and set readiness to at least `needs-clarification`:
 
-3. Glob `$MAIN_ROOT/docs/tickets/NNN-*.md`. No match → stop (`TICKET-NNN not found in docs/tickets/`). Multiple matches → stop (ambiguity). Slug = filename minus the `NNN-` prefix and `.md` suffix.
+- Missing, duplicate, or malformed INDEX row
+- Ticket status or dependencies disagreeing with INDEX
+- Missing/malformed title, status, acceptance criteria, or dependency sections
 
-## Phase 2: Read the Ticket (read-only)
+For each dependency, read its ticket and INDEX status. A dependency is satisfied when it has a `✅` marker or its INDEX status is `done`; report disagreement between those signals.
 
-Capture from the ticket file:
-- Title (from the `# [TICKET-NNN] Title` header) and full body
-- `## Status` current value (context only)
-- `## Acceptance Criteria` checklist lines (`- [ ]` / `- [x]`)
-- `- Requires:` dependencies and their `✅` markers (blocked-by)
-- Implementation Notes / Testing sections if present
+Find reverse dependencies by parsing only `Requires:` lines and matching the exact token `#NNN` followed by a non-digit or end of line. Never let `#007` match `#0070`.
 
-Also:
-- Read the ticket's row in `$MAIN_ROOT/docs/tickets/INDEX.md` (status, depends-on, notes).
-- **Reverse dependencies:** grep all files in `$MAIN_ROOT/docs/tickets/` for `#NNN` on lines containing `Requires:` — these are the tickets this one blocks.
-- Compute worktree handles: path `$MAIN_ROOT/.worktrees/NNN-<slug>`, branch `ticket-NNN-<slug>`.
+## Phase 3: Read Project Context
 
-## Phase 3: Resolve Code Context (WORK_DIR)
+All reads and code inspection run against `WORK_DIR`.
 
-If `WORK_DIR` was not already set by auto-detect:
-1. Prefer `$CURRENT_ROOT` when its branch matches `^ticket-NNN-.+$`.
-2. Else a registered worktree at `$MAIN_ROOT/.worktrees/NNN-<slug>` (announce in one line).
-3. Otherwise `WORK_DIR=$CURRENT_ROOT`.
-
-All code inspection is read-only and runs against `WORK_DIR`.
+1. Read applicable repository guidance before analysis:
+   - Root `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or equivalent host/project instruction files when present
+   - More deeply scoped instruction files when they apply to likely affected paths
+2. Read `$WORK_DIR/docs/PRD.md` when present.
+3. Read the relevant design source when present, in order:
+   - `docs/DESIGN.md`
+   - `docs/design/DESIGN.md`
+   - Relevant files in `design-system/` or `docs/design-system/`
+4. Treat conflicts with tracker state, project guidance, PRD, or design as details to confirm or risks with file evidence.
 
 ## Phase 4: Codebase-Grounded Analysis
 
-Explore read-only (grep/glob/read files; safe read-only shell only — never mutating or destructive commands). Ground every claim in evidence you actually found. Produce four buckets plus a verdict.
+Explore with read-only tools and safe read-only shell commands. Ground every claim in evidence actually found. Produce four buckets plus a verdict.
 
-**Additional context inputs:** when present, also read `$WORK_DIR/docs/PRD.md` and the design source — prefer `$WORK_DIR/docs/DESIGN.md`, else `$WORK_DIR/docs/design/DESIGN.md`, else a `design-system/` folder (commonly `$WORK_DIR/design-system/` or `$WORK_DIR/docs/design-system/`) — and check the ticket against them. Conflicts between the ticket and the PRD/design belong in "Details to confirm" or "Risks" with file references.
+### Details to confirm
 
-### 4.1 Details to confirm
-Ambiguities, underspecified requirements, undefined terms, and acceptance criteria that are missing, vague, or untestable — including anything that contradicts `docs/PRD.md` or the design source.
+List ambiguities, undefined terms, tracker inconsistencies, missing or untestable acceptance criteria, and requirement conflicts. Explain why each matters.
 
-### 4.2 Risks (code-grounded)
-For each risk, give a **severity** (`high` / `medium` / `low`) and **evidence** (`path:line`):
-- Files/modules the work will most likely touch, and their blast radius
-- Conflicting or divergent patterns already in the code
-- Missing prerequisites or dependencies (libraries, migrations, feature flags, config)
-- Migration / data / backward-compatibility / breaking-change concerns
-- Whether each acceptance criterion is actually feasible against the current code
+### Risks
 
-### 4.3 Dependencies
-- `- Requires:` dependencies (with `✅` state and each dependency ticket's current status from INDEX.md — is the blocker `done`?)
-- Reverse dependencies: the tickets this one blocks
-- Code-level prerequisites discovered during analysis
+Tag every risk `high`, `medium`, or `low` and cite `path:line` evidence:
 
-### 4.4 Open questions
-What neither the ticket nor the code answers — the questions to resolve before starting.
+- Likely files/modules and blast radius
+- Divergent implementation patterns
+- Missing libraries, migrations, flags, configuration, or prerequisites
+- Data, compatibility, or breaking-change concerns
+- Feasibility of each acceptance criterion
 
-### 4.5 Readiness verdict
-- `ready` — well specified, low or well-understood risk, no unmet dependencies
-- `needs-clarification` — one or more open questions or unclear acceptance criteria block a confident start
-- `blocked` — a `Requires:` dependency is unsatisfied (no `✅` and the dependency ticket is not `done`), or another hard blocker prevents starting now
+### Dependencies
+
+List:
+
+- `Requires:` dependencies with marker state, INDEX status, and satisfaction result
+- Reverse dependencies (tickets this ticket blocks)
+- Code-level prerequisites
+
+### Open questions
+
+List only questions that the ticket, tracker, project guidance, requirements/design, and code do not answer.
+
+### Readiness verdict
+
+- `ready` — well specified, risks understood, tracker consistent, and no unmet dependencies
+- `needs-clarification` — unresolved ambiguity, untestable criteria, or tracker inconsistency prevents a confident start
+- `blocked` — an unsatisfied dependency, missing prerequisite, or other hard blocker prevents starting
 
 ## Phase 5: Present the Briefing
 
-Present on screen before any discussion:
+Present before discussion:
 
 ```
 ## Clarification Briefing — TICKET-NNN: <title>
 **Readiness:** <ready | needs-clarification | blocked>
-**Code context:** <main checkout | .worktrees/NNN-<slug>>
+**Code context:** <main checkout | registered worktree path>
 
 ### Details to confirm
 - ...
@@ -122,7 +142,7 @@ Present on screen before any discussion:
 - [high] ... — evidence: `src/...:NN`
 
 ### Dependencies
-- Requires #NNN (<status>, ✅ / not satisfied) ...
+- Requires #NNN (<status>, <satisfied | unsatisfied | inconsistent>) ...
 - Blocks #MMM ...
 
 ### Open questions
@@ -131,11 +151,16 @@ Present on screen before any discussion:
 
 ## Phase 6: Guided Discussion
 
-Walk the open items with the user one topic at a time (use `AskUserQuestion` for crisp choices, prose otherwise). Batch trivial confirmations; surface the substantive items individually. Record each as **resolved here** (the user answered) or **still open** (needs external input).
+Walk substantive open items one topic at a time using the portable interaction rules. Batch trivial confirmations. Record each outcome as:
 
-## Phase 7: Readiness Summary (on-screen only)
+- **Resolved here** — capture the user's decision.
+- **Still open** — retain it for the ticket author or another external source.
 
-Present a final summary. Write nothing to any file or git:
+If there are no open items, skip directly to the summary.
+
+## Phase 7: Readiness Summary
+
+Present on screen only:
 
 ```
 ## Clarification Summary — TICKET-NNN
@@ -151,16 +176,13 @@ Present a final summary. Write nothing to any file or git:
 - [severity] ...
 
 **Suggested next step**
-- /implement-ticket NNN            (optionally: /implement-ticket NNN worktree)
-  (or: resolve the blockers/questions above first)
+- Use implement-ticket with NNN [worktree], or resolve the blockers/questions first.
 ```
 
-## Safety Rules
+## Safety rules
 
-- **Read-only everywhere.** Never edit ticket files or `INDEX.md`, never change a ticket's status or acceptance-criteria checkboxes, never edit any other repo file, never commit, never run mutating or destructive shell commands.
-- Codebase analysis is read-only (grep/glob/read + safe read-only commands only).
-- Missing `docs/tickets/` or unresolvable / ambiguous ticket → stop.
-- Do not invoke mutating cktk skills (`implement-ticket`, `update-ticket`, `commit-ticket`, `commit-push-pr`, `create-worktree`) — only *suggest* them as next steps.
-- No Linear involvement of any kind — that is `/clarify-ticket-linear`.
-- Prefer a matching `.worktrees/NNN-<slug>` for code context when present.
-- An unrelated dirty working tree does not block analysis, but note it if it muddies code-context reads.
+- Stay read-only everywhere: no file edits, status/checkbox changes, commits, mutating shell commands, or destructive commands.
+- Do not invoke `implement-ticket`, `update-ticket`, `commit-ticket`, `commit-push-pr`, or `create-worktree`; only suggest a next step.
+- Do not use Linear.
+- Missing or ambiguous ticket/tracker state must never be guessed.
+- An unrelated dirty working tree does not block analysis, but disclose it when it makes evidence ambiguous.
