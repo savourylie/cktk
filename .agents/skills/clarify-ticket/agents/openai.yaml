@@ -1,0 +1,7 @@
+interface:
+  display_name: "Clarify Ticket"
+  short_description: "Read a docs/tickets/ ticket and clarify its details and risks before implementation (read-only)"
+  default_prompt: "Read the ticket from docs/tickets/, analyze it against the codebase (and PRD/design source when present), surface details to confirm and code-grounded risks, discuss the open items interactively, and end with a readiness summary. Strictly read-only — never edit tickets, INDEX.md, or git."
+
+policy:
+  allow_implicit_invocation: false
