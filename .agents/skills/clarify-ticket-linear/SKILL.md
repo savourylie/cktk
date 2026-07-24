@@ -67,12 +67,15 @@ Skip in text-only mode. In `WORK_DIR`, read applicable root/scoped repository gu
 
 ## Phase 5: Analyze
 
+Frame the analysis with the four types of unknowns: known knowns (verify against code when available), known unknowns (turn into open questions), unknown knowns (elicit in discussion), unknown unknowns (hunt as blind spots).
+
 Use read-only tools and safe read-only shell commands. Produce:
 
 - **Details to confirm** — ambiguity, missing/untestable criteria, inconsistent comments/fields, and requirement/context conflicts.
 - **Risks** — severity plus evidence:
   - Code mode: `path:line` for modules, patterns, prerequisites, migrations/compatibility, blast radius, and AC feasibility.
   - Text-only: no code claims; cite `issue description`, a numbered criterion, a dated/attributed comment, or a relation id.
+- **Blind spots** — what the issue does not mention. Code mode: adjacent callers/dependents, ignored error and edge paths, migration/backfill/rollback implications, implicit conventions, and test surface, cited as `path:line`. Text-only mode: gaps in the issue text only (unspecified error handling, missing rollout/migration mention, undefined edge cases), citing Linear sources. Record "No blind spots found" when nothing surfaces.
 - **Dependencies** — blocked-by relations with state name/type/satisfaction, issues blocked, and code prerequisites in code mode.
 - **Open questions** — unanswered by the sources available in the selected mode.
 - **Verdict**:
@@ -84,7 +87,7 @@ Text-only mode may be specification-ready, but must state that code feasibility 
 
 ## Phase 6: Briefing and Discussion
 
-Present a `Clarification Briefing — <ISSUE-ID>` with readiness, analysis mode, four analysis buckets, severity, and source-specific evidence. Then walk substantive open items one at a time using portable interaction; batch trivial confirmations. Record outcomes as **resolved here** or **still open**. Skip discussion if nothing is open.
+Present a `Clarification Briefing — <ISSUE-ID>` with readiness, analysis mode, five analysis buckets, severity, and source-specific evidence. Open the discussion with two calibration questions, one at a time: what is obvious to the user but not written down (unknown knowns), and how familiar they are with the code or systems this issue touches (scale explanation depth to the answer). Then walk substantive open items one at a time using portable interaction; batch trivial confirmations. Record outcomes as **resolved here** or **still open**. Skip the open-item walk if nothing is open beyond the calibration questions.
 
 ## Phase 7: Readiness Summary
 

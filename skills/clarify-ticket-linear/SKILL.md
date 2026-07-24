@@ -113,7 +113,14 @@ Within `WORK_DIR`:
 
 ## Phase 5: Analyze Details and Risks
 
-Use read-only tools and safe read-only shell commands. Produce four buckets plus a verdict.
+Use read-only tools and safe read-only shell commands. Produce five buckets plus a verdict.
+
+Frame the analysis with the four types of unknowns:
+
+- **Known knowns** — what the issue states; verify these against the code when available.
+- **Known unknowns** — gaps the issue admits; turn each into an open question.
+- **Unknown knowns** — details obvious to the user but unwritten; elicit these in the guided discussion.
+- **Unknown unknowns** — factors nobody has considered; hunt these in the Blind spots bucket.
 
 ### Details to confirm
 
@@ -125,6 +132,15 @@ Tag each risk `high`, `medium`, or `low`.
 
 - In code mode, cite `path:line` evidence for likely files/modules, divergent patterns, missing prerequisites, migration/compatibility concerns, and acceptance-criteria feasibility.
 - In text-only mode, make no codebase claims. Cite precise sources such as `issue description`, `Acceptance Criterion 2`, `comment by <name/date>`, or `blocked-by relation <ID>`.
+
+### Blind spots
+
+Deliberately hunt what the issue does not mention.
+
+- In code mode, check each category against the actual code and cite `path:line`: adjacent code paths that depend on the areas this issue changes, ignored error and edge paths, data-shape changes with migration/backfill/rollback implications, implicit conventions from project guidance or dominant patterns, and test surface.
+- In text-only mode, make no codebase claims. Limit blind spots to gaps in the issue text itself — unspecified error handling, missing rollout or migration mention, undefined edge cases — citing Linear sources such as `issue description` or `Acceptance Criterion 2`.
+
+If no category produces a finding, record "No blind spots found" — never silently omit the bucket.
 
 ### Dependencies
 
@@ -161,6 +177,9 @@ Present before discussion:
 ### Risks
 - [high] ... — evidence: `<path:line | Linear source>`
 
+### Blind spots
+- <category>: ... — evidence: `<path:line | Linear source>` (or "No blind spots found")
+
 ### Dependencies
 - blocked by <ISSUE> (<state name>, <state type>, <satisfied | unsatisfied | unknown>) ...
 
@@ -170,12 +189,17 @@ Present before discussion:
 
 ## Phase 7: Guided Discussion
 
-Walk substantive open items one topic at a time using the portable interaction rules. Batch trivial confirmations. Record each outcome as:
+Open with two calibration questions, asked one at a time before the open items:
+
+1. **Unknown knowns** — "What's obvious to you about this issue that isn't written down?" Fold answers into resolved details, risks, or blind spots.
+2. **Experience calibration** — "How familiar are you with the code or systems this issue touches?" Scale later explanations to the answer: more background when familiarity is low, terser confirmation when high.
+
+Then walk substantive open items one topic at a time using the portable interaction rules. Batch trivial confirmations. Record each outcome as:
 
 - **Resolved here** — capture the user's decision.
 - **Still open** — retain it for the issue author or another external source.
 
-If there are no open items, skip directly to the summary.
+If there are no open items beyond the two calibration questions, proceed directly to the summary after asking them.
 
 ## Phase 8: Readiness Summary
 
