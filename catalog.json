@@ -45,6 +45,16 @@
       "description": "Update a Linear issue status after AC evaluation, checking matching linear worktrees (requires Linear MCP; Linear twin of update-ticket)"
     },
     {
+      "name": "quiz-ticket",
+      "path": ".agent/skills/quiz-ticket",
+      "description": "Quiz your understanding of an implemented docs/tickets/ ticket from its diff, or generate a stakeholder explainer with `explain` — read-only (docs/tickets twin of quiz-ticket-linear)"
+    },
+    {
+      "name": "quiz-ticket-linear",
+      "path": ".agent/skills/quiz-ticket-linear",
+      "description": "Quiz your understanding of an implemented Linear issue from its local diff, or generate a stakeholder explainer with `explain` — read-only (requires Linear MCP; Linear twin of quiz-ticket)"
+    },
+    {
       "name": "commit-ticket",
       "path": ".agent/skills/commit-ticket",
       "description": "Create a single git commit from current changes"

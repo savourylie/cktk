@@ -94,11 +94,11 @@ validate_openai_yaml() {
     implicit = policy["allow_implicit_invocation"]
     abort("policy.allow_implicit_invocation must be boolean") unless [true, false].include?(implicit)
 
-    if %w[clarify-ticket clarify-ticket-linear].include?(skill)
+    if %w[clarify-ticket clarify-ticket-linear quiz-ticket quiz-ticket-linear].include?(skill)
       short = interface["short_description"]
       abort("short_description must be 25-64 characters") unless (25..64).cover?(short.length)
       abort("default_prompt must mention $#{skill}") unless interface["default_prompt"].include?("$#{skill}")
-      abort("clarify skills must be explicit-only") unless implicit == false
+      abort("interactive skills must be explicit-only") unless implicit == false
     end
   ' "$openai_yaml" "$skill" 2>&1)"; then
     fail "invalid openai.yaml contract in $openai_yaml: $error"
@@ -129,7 +129,7 @@ validate_clarify_contract() {
   local codex_skill_md
   local metadata_error
 
-  for skill in clarify-ticket clarify-ticket-linear; do
+  for skill in clarify-ticket clarify-ticket-linear quiz-ticket quiz-ticket-linear; do
     claude_skill_md="$claude_root/$skill/SKILL.md"
     codex_skill_md="$codex_root/$skill/SKILL.md"
 
@@ -175,6 +175,27 @@ validate_clarify_contract() {
     require_literal "$skill_md" "ANALYSIS_MODE=text-only"
     require_literal "$skill_md" "state type"
     require_literal "$skill_md" "text-only"
+  done
+
+  for skill_md in \
+    "$claude_root/quiz-ticket/SKILL.md" \
+    "$codex_root/quiz-ticket/SKILL.md" \
+    "$claude_root/quiz-ticket-linear/SKILL.md" \
+    "$codex_root/quiz-ticket-linear/SKILL.md"; do
+    require_literal "$skill_md" "one at a time"
+    require_literal "$skill_md" "explain"
+  done
+
+  for skill_md in \
+    "$claude_root/quiz-ticket/SKILL.md" \
+    "$codex_root/quiz-ticket/SKILL.md"; do
+    require_literal "$skill_md" "As-Built Notes"
+  done
+
+  for skill_md in \
+    "$claude_root/quiz-ticket-linear/SKILL.md" \
+    "$codex_root/quiz-ticket-linear/SKILL.md"; do
+    require_literal "$skill_md" "as-built comment"
   done
 }
 

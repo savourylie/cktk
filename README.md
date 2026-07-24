@@ -26,6 +26,8 @@ The Claude and Codex trees share support files where possible, but they do not s
 - `review-ticket` — review uncommitted changes, branch diffs, PR diffs, or ticket implementations for bugs and scope gaps
 - `update-ticket` — change a ticket status, check matching `.worktrees/` implementations, cascade dependency markers, refresh `docs/tickets/INDEX.md`, and commit the doc updates (the `docs/tickets/` twin of `update-ticket-linear`)
 - `update-ticket-linear` — change a Linear issue status (via Linear MCP) after acceptance-criteria evaluation, check matching linear worktrees, cascade blocked relations when safe; does not use `docs/tickets/` and does not create a git commit (the Linear twin of `update-ticket`)
+- `quiz-ticket` — quiz your understanding of an implemented `docs/tickets/` ticket from its implementation diff, or generate a stakeholder explainer with `explain`; read-only (the `docs/tickets/` twin of `quiz-ticket-linear`)
+- `quiz-ticket-linear` — quiz your understanding of an implemented Linear issue (via Linear MCP) from its local implementation diff, or generate a stakeholder explainer with `explain`; read-only against Linear and the repo (the Linear twin of `quiz-ticket`)
 - `commit-ticket` — create a single git commit from the intended repo changes
 - `commit-push-pr` — create one commit, push the branch, and open a pull request
 - `create-worktree` — create git worktrees for one or more tickets under `.worktrees/NNN-slug/`, each on its own branch off a chosen base
@@ -99,7 +101,7 @@ After any installer-based install, restart Codex if the new skills do not appear
 
 #### Install all skills
 
-Use one installer request with all twenty-four installer-compatible skill paths:
+Use one installer request with all twenty-six installer-compatible skill paths:
 
 ```text
 $skill-installer install from https://github.com/savourylie/cktk with these paths:
@@ -116,6 +118,8 @@ $skill-installer install from https://github.com/savourylie/cktk with these path
 .agents/skills/review-ticket
 .agents/skills/update-ticket
 .agents/skills/update-ticket-linear
+.agents/skills/quiz-ticket
+.agents/skills/quiz-ticket-linear
 .agents/skills/cktk-upgrade
 .agents/skills/readme-builder
 .agents/skills/design-system-extractor
@@ -147,6 +151,8 @@ $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/sk
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/review-ticket
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/update-ticket
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/update-ticket-linear
+$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/quiz-ticket
+$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/quiz-ticket-linear
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/cktk-upgrade
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/readme-builder
 $skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/design-system-extractor
@@ -186,6 +192,10 @@ $update-ticket TICKET-003 done
 $update-ticket-linear ENG-42
 $update-ticket-linear ENG-42 done
 $update-ticket-linear ENG-42 in-progress
+$quiz-ticket 007
+$quiz-ticket 007 explain
+$quiz-ticket-linear ENG-42
+$quiz-ticket-linear ENG-42 explain
 $commit-ticket
 $commit-push-pr
 $create-worktree 7
@@ -211,7 +221,7 @@ $gen-image-codex a dark-mode dashboard banner
 $gen-image-agy a photorealistic red apple on a wooden table
 ```
 
-`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy, handoff, and external-service workflows (`create-tickets`, `implement-ticket`, `clarify-ticket`, `clarify-ticket-linear`, `implement-ticket-linear`, `update-ticket`, `update-ticket-linear`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `codex-handoff`, `grok-handoff`, `opencode-handoff`, `takeover`, `ux-design`, `ux-redesign`, `readme-builder`, `gen-image-codex`, `gen-image-agy`) remain explicit-only in their `agents/openai.yaml` policy.
+`review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching. The write-heavy, handoff, and external-service workflows (`create-tickets`, `implement-ticket`, `clarify-ticket`, `clarify-ticket-linear`, `quiz-ticket`, `quiz-ticket-linear`, `implement-ticket-linear`, `update-ticket`, `update-ticket-linear`, `commit-ticket`, `commit-push-pr`, `create-worktree`, `merge-worktree`, `codex-handoff`, `grok-handoff`, `opencode-handoff`, `takeover`, `ux-design`, `ux-redesign`, `readme-builder`, `gen-image-codex`, `gen-image-agy`) remain explicit-only in their `agents/openai.yaml` policy.
 
 ## Claude Code Install
 
@@ -256,6 +266,11 @@ $gen-image-agy a photorealistic red apple on a wooden table
 /update-ticket-linear ENG-42 done         # Explicit Done; checks linear worktree if present
 /update-ticket-linear ENG-42 in-progress  # Move Linear issue to In Progress
 
+/quiz-ticket 007                          # Quiz your understanding of an implemented ticket (read-only)
+/quiz-ticket 007 explain                  # Stakeholder explainer instead of a quiz
+/quiz-ticket-linear ENG-42                # Same for a Linear issue (requires Linear MCP)
+/quiz-ticket-linear ENG-42 explain        # Stakeholder explainer for a Linear issue
+
 /commit-ticket                     # Commit current changes
 /commit-push-pr                    # Commit, push, and open a PR
 
@@ -296,9 +311,11 @@ OpenCode discovers the repo-local `.agents/skills/` tree and the global skills i
 ```text
 Use clarify-ticket for TICKET-007.
 Use clarify-ticket-linear for ENG-42.
+Use quiz-ticket for TICKET-007.
+Use quiz-ticket-linear for ENG-42.
 ```
 
-The clarification skills use host-neutral questions and follow-up wording. They do not assume Claude's `/skill` syntax, Codex's `$skill` syntax, or a particular structured-choice tool.
+The clarification and quiz skills use host-neutral questions and follow-up wording. They do not assume Claude's `/skill` syntax, Codex's `$skill` syntax, or a particular structured-choice tool.
 
 ## Agent Handoff
 
@@ -535,7 +552,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
+for s in create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills
