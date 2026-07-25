@@ -62,7 +62,18 @@ This phase runs whether or not worktree mode is requested, because both modes ne
 5. **Resolve `base`** — the branch Phase 7 will offer to merge into:
    - Worktree mode: `base_token` if present, otherwise `main`.
    - Current checkout with a `base_token`: that token.
-   - Current checkout without one: the current branch, from `git rev-parse --abbrev-ref HEAD`. If that returns `HEAD` (detached), stop and ask the user to pass an explicit base branch — there is no merge target to record.
+   - Current checkout without one, when the current branch is **not** `ticket-NNN-<slug>`: the current branch, from `git rev-parse --abbrev-ref HEAD`. If that returns `HEAD` (detached), stop and ask the user to pass an explicit base branch — there is no merge target to record.
+   - Current checkout without one, when the current branch already **is** `ticket-NNN-<slug>` (you are resuming): a branch cannot be its own base, and nothing on disk records what it forked from. Ask once, following the portable interaction rules, offering the plausible bases that actually exist locally or on `origin` (check `main`, `master`, `dev`, `develop`):
+
+     ```
+     Resuming on ticket-NNN-<slug>. I can't tell which branch it forked from.
+     Which branch should Phase 7 offer to merge into?
+       1  main
+       2  dev
+       3  other (name it)
+     ```
+
+     Use the answer as `base`. If the user declines to answer, record no base and mark Phase 7's option 1 unavailable rather than guessing — options 2, 3, and 4 need no base. Without this branch of the rule, `base` would be the ticket branch itself and option 1 would merge it into itself: git reports "Already up to date" and exits 0, so the skill would claim a successful land while nothing reached the real base.
 6. **If `use_worktree` is true:**
    - If the worktree path is already registered (check `git worktree list --porcelain`), reuse it. If `git -C <worktree-path> status --porcelain` is non-empty, that's fine — the user is resuming work — but note "reused existing worktree (with uncommitted changes)" in the final summary so they're not surprised.
    - Otherwise invoke `/create-worktree` via the `Skill` tool. This is the same Skill-tool pattern this skill already uses to invoke `/review-ticket` later, so it's not a new mechanism:
@@ -255,7 +266,7 @@ Leave the changes uncommitted. Report the branch name and how to land later: `/c
 
 ## Safety Rules
 
-- No commit, merge, push, or branch deletion happens before Phase 7, and then only per the user's explicit choice. Never force-push and never touch a remote branch.
+- No commit, merge, push, or branch deletion happens before Phase 7, and then only per the user's explicit choice. Never force-push, and never delete or overwrite a remote branch.
 - Appending `## As-Built Notes` to the ticket file (Phase 6) is the one ticket-file edit this skill makes on its own. `## Status` and acceptance-criteria checkboxes are only ever changed by `/update-ticket`, and only when the user opts into the status follow-up.
 - In worktree mode, do not switch the user's main checkout branch yourself and do not delete the worktree — option 1 delegates both to `/merge-worktree`.
 - If unrelated dirty changes conflict with the ticket, stop and ask instead of overwriting.
