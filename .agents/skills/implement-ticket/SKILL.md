@@ -42,7 +42,7 @@ Run this whether or not worktree mode is requested — both modes need the same 
    ```
    MAIN_ROOT=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
    ```
-3. If a single ticket id was provided:
+3. Once a ticket is known — from the argument, or in backlog-loop mode from Phase 3's selection on this iteration:
    - Normalize to a 3-digit zero-padded `NNN`.
    - Glob `$MAIN_ROOT/docs/tickets/NNN-*.md`. No match → report and stop. Multiple matches → report and stop.
    - Slug = the filename minus the `NNN-` prefix and `.md` suffix.
@@ -137,7 +137,7 @@ Perform the ticket status update yourself instead of delegating to another skill
 
 ## Phase 8: Loop, then Land
 
-**Loop first.** If the user named a specific ticket, go straight to the landing prompt below. Otherwise continue with the next pending ticket — back to Phase 3 — until all tickets are done or you hit a real blocker, giving each ticket its own branch forked from the current HEAD (Phase 1 step 8). Track every branch you create during the run. The backlog loop only runs in the non-worktree path; looping across worktrees is out of scope for one invocation.
+**Loop first.** If the user named a specific ticket, go straight to the landing prompt below. Otherwise continue with the next pending ticket by re-entering the workflow in this order: **Phase 3** to pick it, then **Phase 1 step 3** to resolve its `NNN`, slug, and branch name, then **Phase 1 step 8** to create `ticket-NNN-<slug>` from the current HEAD — which is the previous ticket's branch, so the work stacks and dependent tickets still compile — and only then **Phase 4** onward. Repeat until all tickets are done or you hit a real blocker. Track every branch you create during the run. The backlog loop only runs in the non-worktree path; looping across worktrees is out of scope for one invocation.
 
 **Then land, once per run.** Phases 6 and 7 already committed the code and the ticket status, so this prompt is only about where those commits go. Ask exactly once, following the portable interaction rules.
 
