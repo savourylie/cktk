@@ -102,7 +102,7 @@ Not accepted: title-only search, status flags, commit flags, multi-issue batches
    - Treat Linear title + description + AC as the requirements
 4. Fix findings and re-check until build is clean and no P0/P1 remain.
 
-## Phase 7: Summary (no commit; Linear write only by opt-in)
+## Phase 7: Summary (nothing committed yet; Linear write only by opt-in)
 
 Stop after a clear summary:
 
