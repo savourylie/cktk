@@ -1,6 +1,6 @@
 ---
 name: implement-ticket-linear
-description: "Implement a Linear issue end to end with code review. Source of truth is Linear (not docs/tickets/). Optional `worktree` keyword runs inside an isolated git worktree. Triggers on: /implement-ticket-linear ENG-42, /implement-ticket-linear https://linear.app/.../issue/ENG-42/..., implement Linear issue ENG-42, implement Linear ticket worktree"
+description: "Implement a Linear issue end to end on its own branch with code review, then offer to merge it, open a PR, commit only, or leave it. Source of truth is Linear (not docs/tickets/). Optional `worktree` keyword runs inside an isolated git worktree. Triggers on: /implement-ticket-linear ENG-42, /implement-ticket-linear ENG-42 dev, /implement-ticket-linear https://linear.app/.../issue/ENG-42/..., implement Linear issue ENG-42, implement Linear ticket worktree"
 user-invocable: true
 ---
 
@@ -12,6 +12,16 @@ This skill is the Linear counterpart of `/implement-ticket`. It does **not** rea
 
 A Linear issue id or URL is required (e.g. `ENG-42` or a `linear.app` issue URL). If no argument is provided, inform the user and stop.
 
+## Portable interaction rules
+
+This skill prompts the user three times — once if the working tree is dirty (Phase 3), once to offer the as-built comment (Phase 8), and once to land the work (Phase 9). All three follow these rules:
+
+- Show every option with a stable number and a one-line description of what it does.
+- Use the host's structured choice mechanism only when it is available and can represent the options clearly. Otherwise ask a concise numbered prose question and accept the number or the option name.
+- Never assume an option limit or an automatically supplied "Other" choice.
+- Treat an unanswered or ambiguous response as the documented default; never re-ask and never escalate.
+- Refer to other skills by name. When suggesting a command, use host-native syntax if known (`/skill` in Claude Code, `$skill` in Codex); otherwise show the plain skill name and arguments.
+
 ## Prerequisites
 
 1. **Linear MCP** must be available and authenticated in the host agent (official server: `https://mcp.linear.app/mcp`, documented at https://linear.app/docs/mcp).
@@ -20,18 +30,28 @@ A Linear issue id or URL is required (e.g. `ENG-42` or a `linear.app` issue URL)
 
 ## Argument grammar
 
+Every invocation implements on a branch. The optional tokens choose where that branch lives and what it forks from:
+
 | Invocation | Meaning |
 | --- | --- |
-| `<issue>` | Implement in the current checkout (default). |
-| `<issue> worktree` | Implement inside an isolated worktree off `origin/main`. |
-| `<issue> worktree <base>` | Implement inside a worktree off `origin/<base>` (e.g. `dev`). |
+| `<issue>` | New branch off the current HEAD, in the current checkout. |
+| `<issue> <base>` | New branch off `origin/<base>` (e.g. `dev`), in the current checkout. |
+| `<issue> worktree` | New branch off `origin/main`, inside an isolated worktree. |
+| `<issue> worktree <base>` | New branch off `origin/<base>`, inside an isolated worktree. |
 
 `<issue>` is either:
 
 - A Linear identifier `TEAM-NUMBER` (e.g. `ENG-42`, `CKTK-7`) — case-insensitive; normalize the team key to uppercase.
 - A Linear issue URL containing that identifier (e.g. `https://linear.app/acme/issue/ENG-42/add-export`).
 
-The `worktree` keyword is case-insensitive; only this exact word triggers worktree mode (not `wt`, not `--worktree`). A second token that is *not* `worktree` is a typo — stop and tell the user "unrecognized argument; pass `worktree` to use a worktree."
+The `worktree` keyword is case-insensitive; only this exact word triggers worktree mode (not `wt`, not `--worktree`). Any other trailing token is read as a base branch and **must resolve** — check `git rev-parse --verify --quiet origin/<token>` then `git rev-parse --verify --quiet <token>`. If neither resolves, stop with:
+
+```
+unrecognized argument '<token>' — did you mean 'worktree'?
+(no branch named '<token>' found locally or on origin)
+```
+
+That resolution check is what protects against typos like `worktre` now that the base slot is open. In the unlikely case that a repository has a real branch named `worktree`, the keyword wins.
 
 **Not accepted:** free-text titles alone, status flags, commit flags, multi-issue lists, empty args meaning “next assigned.”
 
@@ -39,11 +59,11 @@ The `worktree` keyword is case-insensitive; only this exact word triggers worktr
 
 1. **Parse `$ARGUMENTS`.** Split on whitespace. Capture:
    - `issue_ref` (first token — required)
-   - `use_worktree` (true iff the second token is `worktree`)
-   - `base` (third token if present, otherwise `main` when `use_worktree` is true)
+   - `use_worktree` (true iff a token is exactly `worktree`, case-insensitive)
+   - `base_token` (the trailing non-`worktree` token after the issue ref, if any)
 2. If there is no first token, stop: "A Linear issue id or URL is required (e.g. `ENG-42`)."
 3. If a fourth token exists, stop with an unrecognized-arguments error.
-4. If a second token exists and is not `worktree`, stop as described above.
+4. If `base_token` is present, validate that it resolves as a branch, as described in the argument grammar above. If it does not, stop with the "did you mean 'worktree'?" error.
 5. **Normalize the issue id:**
    - If `issue_ref` matches `^[A-Za-z]+-\d+$`, uppercase the team key (`eng-42` → `ENG-42`). Set `issue_id` to that value.
    - Else if it looks like a URL (`http://` or `https://`), extract the first path segment matching `TEAM-NUM` (regex `[A-Za-z]+-\d+`). Uppercase the team key. If none found, stop: "Could not extract a Linear issue id from the URL."
@@ -78,8 +98,12 @@ The `worktree` keyword is case-insensitive; only this exact word triggers worktr
    - Branch name: `linear-<issue_id>-<slug>` (e.g. `linear-ENG-42-add-export`)
 8. If the Linear state is clearly terminal (e.g. Done, Completed, Canceled, Cancelled, Duplicate), inform the user of the status and **stop** unless they explicitly asked to re-implement — in that case ask once before continuing. Still do not write to Linear.
 
-## Phase 3: Set Up the Working Directory
+## Phase 3: Set Up the Working Directory and Branch
 
+0. **Resolve `base`** — the branch Phase 9 will offer to merge into:
+   - Worktree mode: `base_token` if present, otherwise `main`.
+   - Current checkout with a `base_token`: that token.
+   - Current checkout without one: the current branch, from `git rev-parse --abbrev-ref HEAD`. If that returns `HEAD` (detached), stop and ask the user to pass an explicit base branch — there is no merge target to record.
 1. **If `use_worktree` is true:**
    - If the worktree path is already registered (`git worktree list --porcelain`), reuse it. Uncommitted changes are fine (resume) — note "reused existing worktree (with uncommitted changes)" in the final summary if dirty.
    - Otherwise create it inline (do **not** call `/create-worktree` — that skill requires `docs/tickets/`):
@@ -88,12 +112,31 @@ The `worktree` keyword is case-insensitive; only this exact word triggers worktr
      c. Ensure `$MAIN_ROOT/.gitignore` ignores `.worktrees/` (create or append the line if missing).
      d. If branch `linear-<issue_id>-<slug>` already exists locally, `git worktree add <path> <branch>`.
      e. Else `git worktree add <path> -b <branch> <base-ref>`.
-   - Set `WORK_DIR = <worktree-path>`.
+   - Set `WORK_DIR = <worktree-path>`. The branch already exists on it — skip step 4.
 2. **If `use_worktree` is false:** set `WORK_DIR = $MAIN_ROOT` (or the user's current `git rev-parse --show-toplevel` if they already invoked the skill from a worktree on purpose).
 3. `cd "$WORK_DIR"` once via Bash so later shell commands (including those inside `/review-ticket`) run against `WORK_DIR`. For Read/Edit/Write tools that need absolute paths, prefix with `$WORK_DIR`.
-4. Tell the user in one sentence where work is happening, e.g.:
+4. **Create or reuse the issue branch** (current-checkout mode only — worktree mode got its branch in step 1). Never implement onto whatever branch happened to be checked out:
+   - Already on `linear-<issue_id>-<slug>` → reuse it and report "resuming on `linear-<issue_id>-<slug>`".
+   - The branch exists but is not checked out (`git rev-parse --verify --quiet linear-<issue_id>-<slug>` succeeds) → `git switch linear-<issue_id>-<slug>` and report "reusing existing branch". Do not rebase it onto anything.
+   - Otherwise:
+     a. Run `git status --porcelain`. If it is non-empty, list the files and ask once, defaulting to no:
+
+        ```
+        Working tree has N uncommitted file(s):
+          <porcelain lines>
+
+        These will be carried onto linear-<issue_id>-<slug> and may land in the issue commit.
+
+        Continue? [y/N]
+        ```
+
+        Anything other than an explicit yes stops the skill before any branch is created.
+     b. With a `base_token`: `git fetch origin <base>` (on failure, warn and continue), then `git switch -c linear-<issue_id>-<slug> origin/<base>`, falling back to local `<base>` if `origin/<base>` does not exist. If neither exists, stop.
+     c. Without one: `git switch -c linear-<issue_id>-<slug>`.
+     d. If the `git switch -c` fails because local changes would be overwritten, report git's error and stop. Do not force, stash, or discard.
+5. Tell the user in one sentence where work is happening, e.g.:
    - "Implementing ENG-42 in `.worktrees/ENG-42-add-export` (branch `linear-ENG-42-add-export`, base `dev`)."
-   - "Implementing ENG-42 in the current checkout."
+   - "Implementing ENG-42 on branch `linear-ENG-42-add-export` (base `dev`)."
 
 ## Phase 4: Understand Project Context (soft)
 
@@ -163,8 +206,8 @@ Present:
 2. What was built — key files, decisions
 3. Deviations from the issue or design sources, and why
 4. Remaining concerns or follow-ups
-5. Reminder that **Linear status was not changed** and **nothing was committed** (the only possible Linear write is the opt-in as-built comment below)
-6. **Next step for Linear status:** when the user is ready to mark the issue done (or move it to another state), run `/update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear; this skill never changes Linear status (its only Linear write is the opt-in as-built comment).
+5. Reminder that **Linear status was not changed** (the only possible Linear write is the opt-in as-built comment below), and that nothing is committed until the user picks an option in Phase 9
+6. **Next step for Linear status:** when the user is ready to mark the issue done (or move it to another state), run `/update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear; this skill never changes Linear status (its only Linear write is the opt-in as-built comment). This skill does **not** offer to do it as part of landing — unlike the ticket file that `/implement-ticket` can update in-branch, Linear state is an external write and stays a separate, deliberate step.
 
 ### As-Built Comment (opt-in Linear write)
 
@@ -178,27 +221,61 @@ After presenting the summary, ask exactly once, as its own question: "Post this 
 
 - **Worktree:** `.worktrees/<issue_id>-<slug>/` (branch `linear-<issue_id>-<slug>`, base `<base>`)
 - **Inspect:** `cd .worktrees/<issue_id>-<slug>`
-- **Land:** `$merge-worktree` is for markdown `TICKET-NNN` worktrees and will **not** work for Linear branches. Land manually, for example:
+- **Land:** Phase 9 below offers to do this for you. Note that `/merge-worktree` is for markdown `TICKET-NNN` worktrees and will **not** work for Linear branches, so Phase 9 performs the merge inline.
 
-```bash
-# From MAIN_ROOT, after reviewing the branch:
-git checkout <base>
-git merge linear-<issue_id>-<slug>
-# or: push the branch and open a PR
-git -C .worktrees/<issue_id>-<slug> push -u origin HEAD
-```
-
-Then remove the worktree when done: `git worktree remove .worktrees/<issue_id>-<slug>` (and delete the local branch if desired).
+If the worktree was reused with pre-existing uncommitted changes, mention that here too.
 
 ### Manual Testing Instructions
 
 Step-by-step verification: prerequisites, commands, URLs, inputs, expected results, edge cases. If purely internal, say manual testing is N/A and what automated tests cover.
 
+## Phase 9: Land the Work
+
+Ask exactly once, after the Phase 8 summary and manual testing instructions, so the user decides with the full picture in front of them. Follow the portable interaction rules.
+
+Before asking, check whether option 2 is available: both `git remote get-url origin` and `gh auth status` must succeed. If either fails, still show option 2 but mark it unavailable with the reason, and do not accept it.
+
+````
+<issue_id> implemented on linear-<issue_id>-<slug> (base: <base>).
+How do you want to land it?
+
+  1  Merge into <base> locally  (commit → merge --no-ff → delete branch)
+  2  Open a PR                  (invokes /commit-push-pr)
+  3  Commit only                (stay on the branch, decide later)
+  4  Nothing                    (leave changes uncommitted)  [default]
+````
+
+An ambiguous, empty, or unanswered response is option 4. Never re-ask. None of these options writes to Linear.
+
+### Option 1 — merge into `<base>`
+
+`/merge-worktree` only understands markdown `TICKET-NNN` worktrees, so both modes merge inline:
+
+a. Invoke `/commit-ticket` via the `Skill` tool. In worktree mode this runs in the pinned worktree cwd, so it commits on the issue branch.
+b. From `$MAIN_ROOT`, switch to the base — it may exist only on the remote: `git -C "$MAIN_ROOT" switch <base>` if it exists locally, otherwise `git -C "$MAIN_ROOT" switch -c <base> origin/<base>`.
+c. `git -C "$MAIN_ROOT" merge --no-ff -m "Merge linear-<issue_id>-<slug> into <base>" linear-<issue_id>-<slug>`.
+d. On conflict: `git -C "$MAIN_ROOT" merge --abort`, report which files conflicted, leave the branch and worktree intact, and stop. Do not attempt resolution.
+e. On success, in worktree mode only: `git -C "$MAIN_ROOT" worktree remove .worktrees/<issue_id>-<slug>`.
+f. On success: `git -C "$MAIN_ROOT" branch -d linear-<issue_id>-<slug>`. Use `-d`, not `-D` — after a `--no-ff` merge the safe delete always succeeds, so a refusal is information worth surfacing rather than overriding.
+g. **Never push.** Close the report with `git push` as the explicit next step.
+
+### Option 2 — open a PR
+
+Invoke `/commit-push-pr` via the `Skill` tool. It commits, pushes the issue branch, and opens the PR. Stay on the branch afterward; leave the worktree in place.
+
+### Option 3 — commit only
+
+Invoke `/commit-ticket` via the `Skill` tool and stay on the branch.
+
+### Option 4 — nothing
+
+Leave the changes uncommitted. Report the branch name and that `/commit-push-pr` or a manual merge can land it later.
+
 ## Safety Rules
 
-- **Never** change Linear status, assignee, labels, or any other field. The single permitted write is the opt-in as-built comment in Phase 8, and only after explicit user confirmation.
-- **Never** commit, and do not invoke `/commit-ticket`, `/commit-push-pr`, `/update-ticket`, or `/update-ticket-linear` (status updates belong in a separate `/update-ticket-linear` invocation after implementation).
+- **Never** change Linear status, assignee, labels, or any other field. The single permitted write is the opt-in as-built comment in Phase 8, and only after explicit user confirmation. Nothing in Phase 9 writes to Linear.
+- No commit, merge, push, or branch deletion happens before Phase 9, and then only per the user's explicit choice. Never force-push and never touch a remote branch. Never invoke `/update-ticket` or `/update-ticket-linear` — Linear status stays a separate, deliberate step.
 - Do not read or write `docs/tickets/` as the ticket source (optional project context elsewhere is fine).
 - If unrelated dirty changes in `WORK_DIR` conflict with the issue, stop and ask instead of overwriting.
-- In worktree mode, do not switch the user's main checkout branch and do not delete the worktree at the end.
+- In worktree mode, do not switch the user's main checkout branch or remove the worktree except as part of an explicitly chosen Phase 9 option 1.
 - If Linear MCP is missing or the issue cannot be resolved uniquely, stop — do not invent requirements.
