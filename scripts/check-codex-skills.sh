@@ -332,8 +332,27 @@ validate_interact_contract() {
   done
 }
 
+validate_implement_contract() {
+  local skill
+  local skill_md
+
+  # The implement twins gained user-facing prompts (the dirty-tree confirm and
+  # the landing menu), so they follow the portable-interaction contract. Unlike
+  # the clarify/quiz entry points they must stay model-invocable — their
+  # "Triggers on:" lists are the point — so no explicit-only or
+  # disable-model-invocation requirements here.
+  for skill in implement-ticket implement-ticket-linear; do
+    for skill_md in "$claude_root/$skill/SKILL.md" "$codex_root/$skill/SKILL.md"; do
+      require_literal "$skill_md" "Portable interaction"
+      require_literal "$skill_md" "Never assume an option limit"
+      forbid_literal "$skill_md" "AskUserQuestion"
+    done
+  done
+}
+
 validate_clarify_contract
 validate_interact_contract
+validate_implement_contract
 
 if [[ "$failed" -ne 0 ]]; then
   exit 1
