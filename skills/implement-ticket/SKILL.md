@@ -171,7 +171,7 @@ Before presenting the summary, append an `## As-Built Notes` section to `$WORK_D
 - <deferred item or concern> (or "None")
 ```
 
-This is the only ticket-file edit this skill makes — never change `## Status`, acceptance-criteria checkboxes, or `INDEX.md`. Leave the edit uncommitted alongside the code changes so it lands in the same commit the user makes later. In worktree mode the append happens in the worktree's copy of `docs/tickets/` and merges back via `/merge-worktree`.
+This is the only ticket-file edit this skill makes on its own — never change `## Status`, acceptance-criteria checkboxes, or `INDEX.md` directly. Those are changed only by `/update-ticket`, and only when the user opts into the status follow-up in Phase 7. Leave the as-built edit uncommitted alongside the code changes so it lands in whichever commit Phase 7 produces. In worktree mode the append happens in the worktree's copy of `docs/tickets/` and merges back via `/merge-worktree`.
 
 Present the following to the user:
 
