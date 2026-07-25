@@ -1,7 +1,17 @@
 # Design: Always-Branch and Landing Step for the Implement Twins
 
 **Date:** 2026-07-25
-**Status:** Approved
+**Status:** Approved, partially superseded
+
+> **Superseded 2026-07-25 (same day, later change):** the Linear twin's
+> "no Linear status writes" guarantee no longer holds. `implement-ticket-linear`
+> now moves an `unstarted` ("Todo") issue to In Progress before implementing, and
+> reports the current status before doing anything when the issue is in any other
+> non-terminal state. This affects Decision 4 below, the closing sentence of §6,
+> and the "Writing Linear status" bullet under Out of scope. The skill still never
+> sets a *completion* status — that remains `update-ticket-linear`'s job — so the
+> asymmetry Decision 4 describes survives in narrowed form: the docs twin can
+> finish a ticket, the Linear twin can only start one.
 
 ## Context
 
@@ -350,7 +360,9 @@ instead would leave dependent tickets unable to see their predecessors' code.
   it gets a parenthetical, not a rewrite.
 - Adding a backlog loop to the Claude copy of `implement-ticket`.
 - Pushing on option 1, or any remote-branch operation.
-- Writing Linear status from `implement-ticket-linear`.
+- ~~Writing Linear status from `implement-ticket-linear`.~~ Superseded — see the
+  note at the top of this document. The skill now writes a *start* transition
+  (Todo → In Progress); a completion status is still out of scope for it.
 - Automatic conflict resolution during a landing merge.
 
 ## Known follow-ups

@@ -27,7 +27,7 @@
     {
       "name": "implement-ticket-linear",
       "path": ".agent/skills/implement-ticket-linear",
-      "description": "Implement a Linear issue on its own branch with code review, then offer to merge, open a PR, commit only, or leave it; optionally in an isolated worktree (requires Linear MCP; Linear twin of implement-ticket)"
+      "description": "Implement a Linear issue on its own branch with code review, then offer to merge, open a PR, commit only, or leave it; moves a Todo issue to In Progress first and reports any other status before starting; optionally in an isolated worktree (requires Linear MCP; Linear twin of implement-ticket)"
     },
     {
       "name": "review-ticket",

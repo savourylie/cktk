@@ -123,6 +123,17 @@ forbid_literal() {
   fi
 }
 
+# Same mechanism as forbid_literal, different reason: the text is not
+# host-specific, it is a superseded guarantee that must not creep back in.
+forbid_stale_claim() {
+  local file="$1"
+  local text="$2"
+
+  if grep -Fq -- "$text" "$file"; then
+    fail "$file contains a claim that is no longer true: $text"
+  fi
+}
+
 validate_clarify_contract() {
   local skill
   local claude_skill_md
@@ -353,6 +364,25 @@ validate_implement_contract() {
       require_literal "$skill_md" "How do you want to land it?"
       forbid_literal "$skill_md" "branch -D"
     done
+  done
+
+  # Linear twin only: it moves an unstarted ("Todo") issue to In Progress before
+  # implementing, and reports the current status before doing anything when the
+  # issue is in any other non-terminal state. Both halves are easy to drop in a
+  # rewrite, and the superseded "no Linear status writes" guarantee is easy to
+  # reintroduce by copying from the sibling docs that still describe the old
+  # contract — so assert the behavior and forbid the stale wording.
+  for skill_md in "$claude_root/implement-ticket-linear/SKILL.md" "$codex_root/implement-ticket-linear/SKILL.md"; do
+    require_literal "$skill_md" "Todo → In Progress"
+    require_literal "$skill_md" "(not Todo)"
+    # Type-based classification, not a literal name match: "Todo" and
+    # "In Progress" are only Linear's default names for the unstarted/started
+    # state types, and a renamed workflow would silently skip the transition.
+    require_literal "$skill_md" "list_issue_statuses"
+    require_literal "$skill_md" "unstarted"
+    forbid_stale_claim "$skill_md" "Linear status was not changed"
+    forbid_stale_claim "$skill_md" "never changes Linear status"
+    forbid_stale_claim "$skill_md" "only permitted write"
   done
 }
 
