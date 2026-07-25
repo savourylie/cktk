@@ -1399,7 +1399,7 @@ Find (line 15):
 Replace with:
 
 ```
-      "description": "Implement a specific ticket on its own branch with code review, then offer to merge, open a PR, or leave it; optionally in an isolated worktree (docs/tickets twin of implement-ticket-linear)"
+      "description": "Implement a specific ticket on its own branch with code review, then offer to merge, open a PR, commit only, or leave it; optionally in an isolated worktree (docs/tickets twin of implement-ticket-linear)"
 ```
 
 Find (line 30):
@@ -1411,7 +1411,7 @@ Find (line 30):
 Replace with:
 
 ```
-      "description": "Implement a Linear issue on its own branch with code review, then offer to merge, open a PR, or leave it; optionally in an isolated worktree (requires Linear MCP; Linear twin of implement-ticket)"
+      "description": "Implement a Linear issue on its own branch with code review, then offer to merge, open a PR, commit only, or leave it; optionally in an isolated worktree (requires Linear MCP; Linear twin of implement-ticket)"
 ```
 
 - [ ] **Step 4: Verify**
