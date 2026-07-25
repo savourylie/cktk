@@ -1419,7 +1419,7 @@ Replace with:
 ```bash
 cd /Users/calvinku/FunProjects/cktk
 python3 -c "import json; json.load(open('catalog.json')); print('catalog.json parses')"
-grep -c "on its own branch" README.md catalog.json   # expect 1 and 2
+grep -c "on its own branch" README.md catalog.json   # expect 2 and 3 — the create-worktree entries (README.md:48, catalog.json:70) already used this phrase before the change
 ./scripts/check-codex-skills.sh; echo "exit=$?"      # expect exit=0
 ```
 
