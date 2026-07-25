@@ -38,7 +38,7 @@ Every invocation implements on a branch:
 | `<issue> worktree` | New branch off `origin/main`, inside an isolated worktree. |
 | `<issue> worktree <base>` | New branch off `origin/<base>`, inside an isolated worktree. |
 
-`<issue>` is a Linear identifier (`ENG-42`) or a Linear issue URL. Normalize team keys to uppercase. The `worktree` keyword is case-insensitive; only that exact word triggers worktree mode. Any other trailing token is read as a base branch and must resolve — check `git rev-parse --verify --quiet origin/<token>` then `git rev-parse --verify --quiet <token>`. If neither resolves, stop with "unrecognized argument '<token>' — did you mean 'worktree'? (no branch named '<token>' found locally or on origin)".
+`<issue>` is a Linear identifier (`ENG-42`) or a Linear issue URL. Normalize team keys to uppercase. The `worktree` keyword is case-insensitive; only that exact word triggers worktree mode. Any other trailing token is read as a base branch and must resolve — check `git rev-parse --verify --quiet origin/<token>` then `git rev-parse --verify --quiet <token>`. If neither resolves, stop with "unrecognized argument '<token>' — did you mean 'worktree'? (no branch named '<token>' found locally or on origin)". A fourth token is an error.
 
 Not accepted: title-only search, status flags, commit flags, multi-issue batches, empty “next assigned” mode.
 
@@ -116,7 +116,11 @@ Stop after a clear summary:
 
 ## Phase 8: Land the Work
 
-Ask exactly once, after the Phase 7 summary, following the portable interaction rules. Before asking, check whether option 2 is available: both `git remote get-url origin` and `gh auth status` must succeed. If either fails, show option 2 as unavailable with the reason and do not accept it. If no base was recorded — a resume where the user declined to name one — show option 1 as unavailable for that reason and do not accept it; options 2 and 3 (and 4 where present) need no base.
+Ask exactly once, after the Phase 7 summary, following the portable interaction rules.
+
+**Before any repo-level git operation in this phase, run `cd "$MAIN_ROOT"`.** The Bash cwd has been pinned to `$WORK_DIR` since the setup phase, and every option below acts on the repository as a whole — merging into the base, delegating to another skill, or removing the very worktree the cwd points at. Operating from inside a worktree here causes silent wrong answers, not loud errors.
+
+Before asking, check whether option 2 is available: both `git remote get-url origin` and `gh auth status` must succeed. If either fails, show option 2 as unavailable with the reason and do not accept it. If no base was recorded — a resume where the user declined to name one — show option 1 as unavailable for that reason and do not accept it; options 2 and 3 (and 4 where present) need no base.
 
 ````
 <issue_id> implemented on linear-<issue_id>-<slug> (base: <base>).
@@ -133,13 +137,13 @@ An ambiguous, empty, or unanswered response is option 4. Never re-ask. None of t
 **Option 1 — merge into `<base>`.** Both modes merge inline, since `$merge-worktree` only understands markdown tickets:
 
 - Invoke `$commit-ticket` (in worktree mode the pinned cwd puts the commit on the issue branch).
-- From `$MAIN_ROOT`: `git switch <base>` if the base exists locally, otherwise `git switch -c <base> origin/<base>`.
-- `git merge --no-ff -m "Merge linear-<issue_id>-<slug> into <base>" linear-<issue_id>-<slug>`.
-- On conflict: `git merge --abort`, report the conflicted files, leave branch and worktree intact, stop.
-- On success: in worktree mode `git worktree remove .worktrees/<issue_id>-<slug>`, then `git branch -d linear-<issue_id>-<slug>`. Use `-d`, not `-D`.
+- From `$MAIN_ROOT`: `git -C "$MAIN_ROOT" switch <base>` if the base exists locally, otherwise `git -C "$MAIN_ROOT" switch -c <base> origin/<base>`.
+- `git -C "$MAIN_ROOT" merge --no-ff -m "Merge linear-<issue_id>-<slug> into <base>" linear-<issue_id>-<slug>`.
+- On conflict: `git -C "$MAIN_ROOT" merge --abort`, report the conflicted files, leave branch and worktree intact, stop.
+- On success: in worktree mode `git -C "$MAIN_ROOT" worktree remove .worktrees/<issue_id>-<slug>` — safe now that the cwd already returned to `$MAIN_ROOT` above; removing it beforehand would leave every later command failing with `fatal: Unable to read current working directory`. Then `git -C "$MAIN_ROOT" branch -d linear-<issue_id>-<slug>`. Use `-d`, not `-D` — after a `--no-ff` merge the safe delete succeeds unless the branch is checked out elsewhere; if the delete is refused, report the refusal rather than escalating to `-D`.
 - Never push. Close with `git push` as the next step.
 
-**Option 2 — open a PR:** invoke `$commit-push-pr`; stay on the branch and leave the worktree in place.
+**Option 2 — open a PR:** invoke `$commit-push-pr`; stay on the branch and leave the worktree in place. Note that `$commit-push-pr` opens the PR against the repository's default branch; if `<base>` is not that branch, retarget the PR afterwards or use option 1 instead.
 
 **Option 3 — commit only:** invoke `$commit-ticket`; stay on the branch.
 

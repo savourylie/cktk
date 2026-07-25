@@ -31,7 +31,7 @@ Every invocation implements on a branch. The optional tokens choose where that b
 | `<ticket> worktree <base>` | New branch off `origin/<base>`, inside an isolated worktree. |
 | (no args) | Loop through the pending backlog, one branch per ticket (see Phase 8). |
 
-The `worktree` keyword is case-insensitive; only this exact word triggers worktree mode. Any other trailing token is read as a base branch and must resolve — check `git rev-parse --verify --quiet origin/<token>` then `git rev-parse --verify --quiet <token>`. If neither resolves, stop with "unrecognized argument '<token>' — did you mean 'worktree'? (no branch named '<token>' found locally or on origin)". Worktree mode only makes sense for a single named ticket; if the user provided no ticket id, ignore the `worktree` keyword (it has no ticket to attach to) and report that.
+The `worktree` keyword is case-insensitive; only this exact word triggers worktree mode. Any other trailing token is read as a base branch and must resolve — check `git rev-parse --verify --quiet origin/<token>` then `git rev-parse --verify --quiet <token>`. If neither resolves, stop with "unrecognized argument '<token>' — did you mean 'worktree'? (no branch named '<token>' found locally or on origin)". Worktree mode only makes sense for a single named ticket; if the user provided no ticket id, ignore the `worktree` keyword (it has no ticket to attach to) and report that. A fourth token is an error.
 
 ## Phase 1: Set Up the Working Directory
 
@@ -50,8 +50,8 @@ Run this whether or not worktree mode is requested — both modes need the same 
 4. Resolve `base` — the branch Phase 8 will offer to merge into:
    - Worktree mode: `base_token` if present, otherwise `main`.
    - Current checkout with a `base_token`: that token.
-   - Current checkout without one, when the current branch is **not** a `ticket-NNN-<slug>` branch: the current branch, from `git rev-parse --abbrev-ref HEAD`. If that returns `HEAD` (detached), stop and ask for an explicit base branch.
-   - Current checkout without one, when the current branch already **is** the `ticket-NNN-<slug>` branch for this ticket (you are resuming): a branch cannot be its own base, and nothing on disk records what it forked from. Ask once, following the portable interaction rules, offering the plausible bases that actually exist locally or on `origin` (check `main`, `master`, `dev`, `develop`). Use the answer as `base`; if the user declines, record no base and mark Phase 8's option 1 unavailable rather than guessing. Without this rule, option 1 would merge the branch into itself — git reports "Already up to date" and exits 0, so the skill would claim a successful land while nothing reached the real base.
+   - Current checkout without one, when the current branch is **not** `ticket-NNN-<slug>`: the current branch, from `git rev-parse --abbrev-ref HEAD`. If that returns `HEAD` (detached), stop and ask for an explicit base branch.
+   - Current checkout without one, when the current branch already **is** `ticket-NNN-<slug>` (you are resuming): a branch cannot be its own base, and nothing on disk records what it forked from. Ask once, following the portable interaction rules, offering the plausible bases that actually exist locally or on `origin` (check `main`, `master`, `dev`, `develop`). Use the answer as `base`; if the user declines, record no base and mark Phase 8's option 1 unavailable rather than guessing. Without this rule, option 1 would merge the branch into itself — git reports "Already up to date" and exits 0, so the skill would claim a successful land while nothing reached the real base.
    - In backlog-loop mode, resolve `base` once at the start of the run and keep it for every ticket.
 5. If `use_worktree` is true:
    - If the worktree path is registered in `git worktree list --porcelain`, reuse it. Allow uncommitted state inside (resuming work) but note it in the final summary.
@@ -87,6 +87,7 @@ Run this whether or not worktree mode is requested — both modes need the same 
 3. Otherwise pick the next ticket that is not done, respecting ordering and dependencies.
 4. Read the full ticket file before you start coding.
 5. If the selected ticket is already done, report that and stop.
+6. In backlog-loop mode, run Phase 1 step 3 (resolve `NNN`, slug, and branch name) and Phase 1 step 8 (create `ticket-NNN-<slug>` from the current HEAD) for the ticket you just selected, before continuing to Phase 4. This applies to the first ticket of the run as well as to every later one.
 
 ## Phase 4: Implement
 
@@ -134,12 +135,20 @@ Perform the ticket status update yourself instead of delegating to another skill
    - refresh any existing dependency graph markers already present in the file
    - update the "Last updated" date
 4. Verify the index is internally consistent before you finish.
+5. Commit the status and index changes, separately from Phase 6's code commit:
+   ```
+   git add docs/tickets/
+   git commit -m "docs: mark TICKET-NNN as <status>"
+   ```
+   Use `docs: mark TICKET-NNN as done, unblock TICKET-XXX` when the update cascaded to other tickets. This keeps the ticket metadata in its own commit and leaves the tree clean for Phase 8.
 
 ## Phase 8: Loop, then Land
 
 **Loop first.** If the user named a specific ticket, go straight to the landing prompt below. Otherwise continue with the next pending ticket by re-entering the workflow in this order: **Phase 3** to pick it, then **Phase 1 step 3** to resolve its `NNN`, slug, and branch name, then **Phase 1 step 8** to create `ticket-NNN-<slug>` from the current HEAD — which is the previous ticket's branch, so the work stacks and dependent tickets still compile — and only then **Phase 4** onward. Repeat until all tickets are done or you hit a real blocker. Track every branch you create during the run. The backlog loop only runs in the non-worktree path; looping across worktrees is out of scope for one invocation.
 
 **Then land, once per run.** Phases 6 and 7 already committed the code and the ticket status, so this prompt is only about where those commits go. Ask exactly once, following the portable interaction rules.
+
+**Before any repo-level git operation in this phase, run `cd "$MAIN_ROOT"`.** The Bash cwd has been pinned to `$WORK_DIR` since the setup phase, and every option below acts on the repository as a whole — merging into the base, delegating to another skill, or removing the very worktree the cwd points at. Operating from inside a worktree here causes silent wrong answers, not loud errors.
 
 Before asking, check whether option 2 is available: both `git remote get-url origin` and `gh auth status` must succeed. If either fails, still show option 2 but mark it unavailable with the reason, and do not accept it. If no base was recorded — a resume where the user declined to name one — show option 1 as unavailable for that reason and do not accept it; options 2 and 3 (and 4 where present) need no base.
 
@@ -156,14 +165,14 @@ In backlog-loop mode, name every ticket and branch from the run in the prompt in
 
 **Option 1 — merge into `<base>`:**
 
-- Worktree mode: invoke `$merge-worktree` with `<NNN> <base>`. It merges, removes the worktree, and deletes the local branch.
+- Worktree mode: `cd "$MAIN_ROOT"` first — `$merge-worktree` refuses to run when the cwd is inside a target worktree. Then invoke `$merge-worktree` with `<NNN> <base>`. It merges, removes the worktree, and deletes the local branch. It also requires the main checkout to be clean and will refuse otherwise; if it does, report its refusal verbatim rather than working around it.
 - Current checkout: `git switch <base>` if the base exists locally, otherwise `git switch -c <base> origin/<base>`. Then `git merge --no-ff -m "Merge ticket-NNN-<slug> into <base>" ticket-NNN-<slug>`.
 - In backlog-loop mode, merge only the **last** branch of the run. Because each ticket forked from the previous HEAD, that branch already contains every earlier ticket's commits. Then delete every branch created during the run, oldest first.
 - On conflict: `git merge --abort`, report which files conflicted, leave the branches intact, and stop. Do not attempt resolution.
-- On success: `git branch -d <branch>` for each branch to delete. Use `-d`, not `-D` — after a `--no-ff` merge the safe delete always succeeds, so a refusal is worth surfacing.
+- On success: `git branch -d <branch>` for each branch to delete. Use `-d`, not `-D` — after a `--no-ff` merge the safe delete succeeds unless the branch is checked out elsewhere — if the delete is refused, report the refusal rather than escalating to `-D`.
 - Never push. Close the report with `git push` as the explicit next step.
 
-**Option 2 — open a PR:** invoke `$commit-push-pr`. It pushes the branch and opens the PR. Stay on the branch. In backlog-loop mode this opens one PR for the final stacked branch.
+**Option 2 — open a PR:** invoke `$commit-push-pr`. It pushes the branch and opens the PR. Stay on the branch. In backlog-loop mode this opens one PR for the final stacked branch. Note that `$commit-push-pr` opens the PR against the repository's default branch; if `<base>` is not that branch, retarget the PR afterwards or use option 1 instead.
 
 **Option 3 — stay on the branch:** report each branch name, the base, and that `$commit-push-pr` or `$merge-worktree NNN [base]` can land the work later.
 

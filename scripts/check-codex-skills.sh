@@ -346,6 +346,14 @@ validate_implement_contract() {
       require_literal "$skill_md" "Portable interaction"
       require_literal "$skill_md" "Never assume an option limit"
       forbid_literal "$skill_md" "AskUserQuestion"
+      # "Land the Work" verbatim would false-fail implement-ticket's Codex twin,
+      # whose landing phase is deliberately titled "Loop, then Land" (backlog
+      # loop merged with landing, see Task 3 / Amendment Task 4b) rather than a
+      # dedicated "Land the Work" phase like the other three documents. "Land"
+      # is the substring the header wording actually shares across all four;
+      # it still guards against a landing phase being deleted wholesale.
+      require_literal "$skill_md" "Land"
+      forbid_literal "$skill_md" "branch -D"
     done
   done
 }

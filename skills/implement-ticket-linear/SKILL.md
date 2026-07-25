@@ -244,6 +244,8 @@ Step-by-step verification: prerequisites, commands, URLs, inputs, expected resul
 
 Ask exactly once, after the Phase 8 summary and manual testing instructions, so the user decides with the full picture in front of them. Follow the portable interaction rules.
 
+**Before any repo-level git operation in this phase, run `cd "$MAIN_ROOT"`.** The Bash cwd has been pinned to `$WORK_DIR` since the setup phase, and every option below acts on the repository as a whole — merging into the base, delegating to another skill, or removing the very worktree the cwd points at. Operating from inside a worktree here causes silent wrong answers, not loud errors.
+
 Before asking, check whether option 2 is available: both `git remote get-url origin` and `gh auth status` must succeed. If either fails, still show option 2 but mark it unavailable with the reason, and do not accept it. If no base was recorded — a resume where the user declined to name one — show option 1 as unavailable for that reason and do not accept it; options 2 and 3 (and 4 where present) need no base.
 
 ````
@@ -266,13 +268,13 @@ a. Invoke `/commit-ticket` via the `Skill` tool. In worktree mode this runs in t
 b. From `$MAIN_ROOT`, switch to the base — it may exist only on the remote: `git -C "$MAIN_ROOT" switch <base>` if it exists locally, otherwise `git -C "$MAIN_ROOT" switch -c <base> origin/<base>`.
 c. `git -C "$MAIN_ROOT" merge --no-ff -m "Merge linear-<issue_id>-<slug> into <base>" linear-<issue_id>-<slug>`.
 d. On conflict: `git -C "$MAIN_ROOT" merge --abort`, report which files conflicted, leave the branch and worktree intact, and stop. Do not attempt resolution.
-e. On success, in worktree mode only: `git -C "$MAIN_ROOT" worktree remove .worktrees/<issue_id>-<slug>`.
-f. On success: `git -C "$MAIN_ROOT" branch -d linear-<issue_id>-<slug>`. Use `-d`, not `-D` — after a `--no-ff` merge the safe delete always succeeds, so a refusal is information worth surfacing rather than overriding.
+e. On success, in worktree mode only: `git -C "$MAIN_ROOT" worktree remove .worktrees/<issue_id>-<slug>` — safe to run now that this phase's opening `cd "$MAIN_ROOT"` already moved the shell out of it; removing it while it was still the cwd would leave every later command failing with `fatal: Unable to read current working directory`.
+f. On success: `git -C "$MAIN_ROOT" branch -d linear-<issue_id>-<slug>`. Use `-d`, not `-D` — after a `--no-ff` merge the safe delete succeeds unless the branch is checked out elsewhere — if the delete is refused, report the refusal rather than escalating to `-D`.
 g. **Never push.** Close the report with `git push` as the explicit next step.
 
 ### Option 2 — open a PR
 
-Invoke `/commit-push-pr` via the `Skill` tool. It commits, pushes the issue branch, and opens the PR. Stay on the branch afterward; leave the worktree in place.
+Invoke `/commit-push-pr` via the `Skill` tool. It commits, pushes the issue branch, and opens the PR. Stay on the branch afterward; leave the worktree in place. Note that `/commit-push-pr` opens the PR against the repository's default branch; if `<base>` is not that branch, retarget the PR afterwards or use option 1 instead.
 
 ### Option 3 — commit only
 

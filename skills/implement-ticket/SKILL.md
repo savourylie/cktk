@@ -217,6 +217,8 @@ If the implementation is purely internal (e.g., a refactor with no user-facing c
 
 Ask exactly once, after the summary and manual testing instructions above, so the user decides with the full picture in front of them. Follow the portable interaction rules.
 
+**Before any repo-level git operation in this phase, run `cd "$MAIN_ROOT"`.** The Bash cwd has been pinned to `$WORK_DIR` since the setup phase, and every option below acts on the repository as a whole — merging into the base, delegating to another skill, or removing the very worktree the cwd points at. Operating from inside a worktree here causes silent wrong answers, not loud errors.
+
 Before asking, check whether option 2 is available: both `git remote get-url origin` and `gh auth status` must succeed. If either fails, still show option 2 but mark it unavailable with the reason, and do not accept it. If no base was recorded — a resume where the user declined to name one — show option 1 as unavailable for that reason and do not accept it; options 2 and 3 (and 4 where present) need no base.
 
 ````
@@ -243,18 +245,18 @@ On an explicit yes, invoke `/update-ticket` via the `Skill` tool with args `NNN 
 
 ### Option 1 — merge into `<base>`
 
-- **Worktree mode:** invoke `/merge-worktree` via the `Skill` tool with args `NNN <base>`. It auto-commits the implementation, merges, removes the worktree, and deletes the local branch — no separate commit step is needed here.
+- **Worktree mode:** `cd "$MAIN_ROOT"` first — `/merge-worktree` refuses to run when the cwd is inside a target worktree. Then invoke `/merge-worktree` via the `Skill` tool with args `NNN <base>`. It auto-commits the implementation, merges, removes the worktree, and deletes the local branch. It also requires the main checkout to be clean and will refuse otherwise; if it does, report its refusal verbatim rather than working around it.
 - **Current checkout:**
   a. Invoke `/commit-ticket` via the `Skill` tool.
   b. Switch to the base — it may exist only on the remote: `git switch <base>` if it exists locally, otherwise `git switch -c <base> origin/<base>`.
   c. `git merge --no-ff -m "Merge ticket-NNN-<slug> into <base>" ticket-NNN-<slug>`.
   d. On conflict: `git merge --abort`, report which files conflicted, leave the branch intact, and stop. Do not attempt resolution.
-  e. On success: `git branch -d ticket-NNN-<slug>`. Use `-d`, not `-D` — after a `--no-ff` merge the safe delete always succeeds, so a refusal is information worth surfacing rather than overriding.
+  e. On success: `git branch -d ticket-NNN-<slug>`. Use `-d`, not `-D` — after a `--no-ff` merge the safe delete succeeds unless the branch is checked out elsewhere — if the delete is refused, report the refusal rather than escalating to `-D`.
 - **Never push.** Close the report with `git push` as the explicit next step.
 
 ### Option 2 — open a PR
 
-Invoke `/commit-push-pr` via the `Skill` tool. It commits, pushes the ticket branch, and opens the PR. Stay on the branch afterward. In worktree mode it runs in the pinned worktree cwd, so it pushes the worktree's branch; a later `/merge-worktree NNN` will detect the already-merged branch and only clean up.
+Invoke `/commit-push-pr` via the `Skill` tool. It commits, pushes the ticket branch, and opens the PR. Stay on the branch afterward. In worktree mode it runs in the pinned worktree cwd, so it pushes the worktree's branch; a later `/merge-worktree NNN` will detect the already-merged branch and only clean up. Note that `/commit-push-pr` opens the PR against the repository's default branch; if `<base>` is not that branch, retarget the PR afterwards or use option 1 instead.
 
 ### Option 3 — commit only
 
