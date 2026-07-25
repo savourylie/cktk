@@ -183,14 +183,14 @@ Make the following updates:
      ```
 
      These are the tickets you can pick up in parallel via `/create-worktree`.
-   - **Next step for this ticket** (only when the target status was `done` AND `WORK_DIR` is the matching `.worktrees/NNN-<slug>` checkout or `git -C "$WORK_DIR" branch --show-current` returns `ticket-NNN-<slug>`): tell the user the next step is `/merge-worktree NNN` (append the non-default base branch if one is known; otherwise omit it and let `/merge-worktree` default to `main`). Explicitly note that `/merge-worktree` will auto-commit any remaining uncommitted implementation code in the worktree before merging, so the user does NOT need to run `/commit-ticket` or `git commit` first. Format:
+   - **Next step for this ticket** (only when the target status was `done` AND the worktree `$MAIN_ROOT/.worktrees/NNN-<slug>` actually exists on disk): tell the user the next step is `/merge-worktree NNN` (append the non-default base branch if one is known; otherwise omit it and let `/merge-worktree` default to `main`). Explicitly note that `/merge-worktree` will auto-commit any remaining uncommitted implementation code in the worktree before merging, so the user does NOT need to run `/commit-ticket` or `git commit` first. Format:
 
      ```
      ## Next step
      Run `/merge-worktree NNN` to land this ticket. It will auto-commit any uncommitted implementation code in the worktree before merging into <base> — you do not need to commit first.
      ```
 
-     Skip this bullet entirely if `WORK_DIR` is not the matching ticket worktree/branch, or if the target status wasn't `done`.
+     Skip this bullet entirely if that worktree does not exist, or if the target status wasn't `done`. **Being on branch `ticket-NNN-<slug>` is not sufficient on its own.** `/implement-ticket` now creates that branch on every invocation, including in the main checkout where there is no worktree to merge — suggesting `/merge-worktree` there would send the user at a worktree that does not exist, and would contradict `/implement-ticket`'s own landing phase, which offers to land the work itself.
    - Summary of current status counts.
 
 ## Phase 7: Commit

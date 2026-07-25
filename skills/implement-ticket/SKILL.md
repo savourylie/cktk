@@ -148,7 +148,10 @@ This step is mandatory — do not skip it. Invoke the `/review-ticket` skill usi
 
 ```
 skill: "review-ticket"
+args: "NNN"
 ```
+
+**Pass the ticket number.** `/review-ticket` picks its mode from its argument, and with no argument it falls into generic auto-detect: it reviews the uncommitted diff on its own merits and never opens `docs/tickets/NNN-*.md`. Ticket mode is what reads the ticket's requirements and acceptance criteria, and what treats deviations recorded in `## As-Built Notes` as intentional rather than as scope drift — and it is selected only by passing the bare number.
 
 `/review-ticket` reads the diff via `git status` / `git diff`, which run in the pinned Bash cwd, so it sees the worktree's changes (or the main checkout's, when not in worktree mode).
 
@@ -245,7 +248,22 @@ On an explicit yes, invoke `/update-ticket` via the `Skill` tool with args `NNN 
 
 ### Option 1 — merge into `<base>`
 
-- **Worktree mode:** `cd "$MAIN_ROOT"` first — `/merge-worktree` refuses to run when the cwd is inside a target worktree. Then invoke `/merge-worktree` via the `Skill` tool with args `NNN <base>`. It auto-commits the implementation, merges, removes the worktree, and deletes the local branch. It also requires the main checkout to be clean and will refuse otherwise; if it does, report its refusal verbatim rather than working around it.
+- **Worktree mode:** `cd "$MAIN_ROOT"` first — `/merge-worktree` refuses to run when the cwd is inside a target worktree.
+
+  Then clear its second refusal before delegating, because this skill is usually what caused it. `/merge-worktree` also requires the main checkout to be clean, and `/create-worktree` — which Phase 1 invoked — appends `.worktrees/` to `$MAIN_ROOT/.gitignore` without committing it. On the first worktree run in a repo that had not already ignored `.worktrees/`, that lone uncommitted line is enough to make the merge refuse.
+
+  Run `git -C "$MAIN_ROOT" status --porcelain`. If it is non-empty, list the files and ask once, defaulting to yes (matching `/merge-worktree`'s own auto-commit convention for the same situation):
+
+  ```
+  The main checkout has N uncommitted file(s), which will make /merge-worktree refuse:
+    <porcelain lines>
+
+  Commit them first? [Y/n]
+  ```
+
+  On yes, commit exactly those files — use `chore: ignore .worktrees/` when the `.gitignore` line is all there is, otherwise a message describing what changed. On no, report that `/merge-worktree` will refuse and stop without delegating.
+
+  Then invoke `/merge-worktree` via the `Skill` tool with args `NNN <base>`. It auto-commits the implementation, merges, removes the worktree, and deletes the local branch. If it still refuses, report its refusal verbatim rather than working around it.
 - **Current checkout:**
   a. Invoke `/commit-ticket` via the `Skill` tool.
   b. Switch to the base — it may exist only on the remote: `git switch <base>` if it exists locally, otherwise `git switch -c <base> origin/<base>`.
