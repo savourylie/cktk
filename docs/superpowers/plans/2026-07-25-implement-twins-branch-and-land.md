@@ -1461,3 +1461,56 @@ git log --oneline -6
 ```
 
 Expected: `exit=0`, four `1` counts, no output from the two negative greps, six new commits.
+
+---
+
+## Amendment: Task 4b — consolidated cross-document cleanup
+
+Added after Tasks 1-4 shipped. Three defects surfaced across the task reviews that are **identical in all four documents** and live in the same two blocks, so they are corrected in one pass rather than four. Two originate in the resume-base correction made partway through this plan; the third predates it.
+
+**Files:** all four implement documents —
+`skills/implement-ticket/SKILL.md`, `skills/implement-ticket-linear/SKILL.md`,
+`.agents/skills/implement-ticket/SKILL.md`, `.agents/skills/implement-ticket-linear/SKILL.md`
+
+### 4b-1: Drop the hard prompt count from the portable-interaction intro
+
+Each document's `## Portable interaction rules` intro opens with a literal count ("prompts the user twice" / "three times") and enumerates the occasions. The resume-base correction added a further prompt that explicitly follows these rules, so every count is now an undercount, and in the Linear documents the dirty-tree occasion is also mis-described — Phase 3 can now prompt for two distinct reasons. Replace the count with an occasion list that cannot go stale:
+
+| Document | Replacement intro sentence |
+| --- | --- |
+| `skills/implement-ticket` | This skill prompts the user at several points — when the working tree is dirty, when resuming without a discoverable base, when choosing whether to mark the ticket done, and when landing the work. All of them follow these rules: |
+| `skills/implement-ticket-linear` | This skill prompts the user at several points — when the working tree is dirty, when resuming without a discoverable base, when offering the as-built comment, and when landing the work. All of them follow these rules: |
+| `.agents/skills/implement-ticket` | This skill prompts the user at several points — when the working tree is dirty, when resuming without a discoverable base, and when landing the work. All of them follow these rules: |
+| `.agents/skills/implement-ticket-linear` | This skill prompts the user at several points — when the working tree is dirty, when resuming without a discoverable base, when offering the as-built comment, and when landing the work. All of them follow these rules: |
+
+### 4b-2: Admit the yes/no confirmation as a degenerate case
+
+Rule 1 of the same block demands "Show every option with a stable number and a one-line description of what it does", while the dirty-tree confirm (and, in the Claude docs twin, the status follow-up) are plain `[y/N]` prompts. Append one sentence to rule 1, identically in all four documents:
+
+> A yes/no confirmation is the degenerate case: state the default explicitly (`[y/N]`) and treat anything but an explicit yes as that default.
+
+### 4b-3: Operationalize the "option 1 unavailable" state
+
+The base-resolution rule instructs the skill to "record no base and mark option 1 unavailable rather than guessing" when a resume yields no base, but no landing phase ever describes that state — its menu renders `(base: <base>)` and its merge commands consume `<base>` with no branch for the unset case. Each landing phase already has exactly this pattern for option 2; give option 1 the parallel clause. Append to each landing phase's existing option-2 availability paragraph:
+
+> If no base was recorded — a resume where the user declined to name one — show option 1 as unavailable for that reason and do not accept it; options 2 and 3 (and 4 where present) need no base.
+
+Landing phase per document: `skills/implement-ticket` Phase 7, `skills/implement-ticket-linear` Phase 9, `.agents/skills/implement-ticket` Phase 8, `.agents/skills/implement-ticket-linear` Phase 8.
+
+### Verification
+
+```bash
+cd /Users/calvinku/FunProjects/cktk
+# no stale counts remain
+grep -c "prompts the user twice\|prompts the user three times" \
+  skills/implement-ticket/SKILL.md skills/implement-ticket-linear/SKILL.md \
+  .agents/skills/implement-ticket/SKILL.md .agents/skills/implement-ticket-linear/SKILL.md   # expect 0 each
+# all three corrections present in all four
+grep -c "at several points" skills/implement-ticket/SKILL.md skills/implement-ticket-linear/SKILL.md \
+  .agents/skills/implement-ticket/SKILL.md .agents/skills/implement-ticket-linear/SKILL.md   # expect 1 each
+grep -c "degenerate case" skills/implement-ticket/SKILL.md skills/implement-ticket-linear/SKILL.md \
+  .agents/skills/implement-ticket/SKILL.md .agents/skills/implement-ticket-linear/SKILL.md   # expect 1 each
+grep -c "no base was recorded" skills/implement-ticket/SKILL.md skills/implement-ticket-linear/SKILL.md \
+  .agents/skills/implement-ticket/SKILL.md .agents/skills/implement-ticket-linear/SKILL.md   # expect 1 each
+./scripts/check-codex-skills.sh   # exit 0
+```

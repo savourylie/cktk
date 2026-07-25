@@ -164,6 +164,13 @@ How do you want to land it?
 fails, option 2 is listed as unavailable with the reason rather than offered and
 then failing mid-flight.
 
+**Option 1 is pre-flighted the same way.** The resume rule can deliberately leave
+`base` unrecorded when the user declines to name one, and the landing prompt must
+honor that rather than proceeding with an empty `<base>` — so it lists option 1 as
+unavailable for that reason and does not accept it. Options 2, 3, and 4 need no
+base and stay selectable. Without this, one phase promises a state the other never
+implements.
+
 Behavior per option and mode:
 
 | | in-place | worktree |
@@ -223,6 +230,16 @@ quiz twins and by `interact-html`:
   re-ask, never escalate.
 - Refer to other skills by name; use host-native syntax when known (`/skill` in
   Claude Code, `$skill` in Codex), otherwise the plain skill name and arguments.
+
+Two consequences of the resume-base rule above, both corrected after the first
+implementation pass:
+
+- The intro to this block must **not** state a hard count of prompts. The resume
+  question is itself a prompt that follows these rules, so any count goes stale
+  the moment the prompt set changes. Enumerate the occasions instead.
+- Rule 1 asks for numbered options, but the dirty-tree confirm and the status
+  follow-up are `[y/N]`. Rule 1 admits the yes/no confirmation explicitly as the
+  degenerate case rather than being contradicted by two of the prompts it governs.
 
 These skills are **not** added to `validate_clarify_contract`, because that
 function also requires `disable-model-invocation: true`, which would break the
