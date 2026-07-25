@@ -202,26 +202,28 @@ install_project_ignore() {
   local project_root="${PROJECT_ROOT:-}"
   local git_root
   local gitignore
+  local entry
+  local added=0
 
   [[ -n "$project_root" ]] || return 0
   git_root="$(git -C "$project_root" rev-parse --show-toplevel 2>/dev/null || true)"
   [[ -n "$git_root" ]] || return 0
 
-  if git -C "$git_root" check-ignore -q .ai/handoffs/ 2>/dev/null; then
-    printf '\nProject ignore:\n'
-    printf '  .ai/handoffs/ is already ignored in %s\n' "$git_root"
-    return 0
-  fi
-
   gitignore="$git_root/.gitignore"
-  mkdir -p "$(dirname "$gitignore")"
-  if [[ -s "$gitignore" ]] && [[ "$(tail -c 1 "$gitignore")" != "" ]]; then
-    printf '\n' >>"$gitignore"
-  fi
-  printf '.ai/handoffs/\n' >>"$gitignore"
-
   printf '\nProject ignore:\n'
-  printf '  added .ai/handoffs/ to %s\n' "$gitignore"
+  for entry in .ai/handoffs/ .ai/interactions/; do
+    if git -C "$git_root" check-ignore -q "$entry" 2>/dev/null; then
+      printf '  %s is already ignored in %s\n' "$entry" "$git_root"
+      continue
+    fi
+    mkdir -p "$(dirname "$gitignore")"
+    if [[ -s "$gitignore" ]] && [[ "$(tail -c 1 "$gitignore")" != "" ]]; then
+      printf '\n' >>"$gitignore"
+    fi
+    printf '%s\n' "$entry" >>"$gitignore"
+    printf '  added %s to %s\n' "$entry" "$gitignore"
+    added=1
+  done
 }
 
 command -v python3 >/dev/null 2>&1 || die "Python 3 is required"

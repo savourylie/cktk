@@ -39,7 +39,7 @@ Pull the latest cktk skills from GitHub, then automatically reconcile local inst
    - installs or updates handoff shell helpers under `~/.local/bin`;
    - installs or updates Codex global skill links under `${CODEX_HOME:-$HOME/.codex}/skills`;
    - installs or updates Antigravity global skill links under `${AGENT_HOME:-$HOME/.agent}/skills`;
-   - adds `.ai/handoffs/` to the invoking project's `.gitignore` when `PROJECT_ROOT` is a git repository and the path is not already ignored.
+   - adds `.ai/handoffs/` and `.ai/interactions/` to the invoking project's `.gitignore` when `PROJECT_ROOT` is a git repository and each path is not already ignored.
 
 7. Show the user what changed:
    - Previous commit vs new commit (short hashes)

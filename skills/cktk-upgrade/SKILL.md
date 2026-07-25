@@ -86,7 +86,7 @@ This script automatically:
 - installs or updates Codex global skill links under `${CODEX_HOME:-$HOME/.codex}/skills`;
 - installs or updates Antigravity global skill links under `${AGENT_HOME:-$HOME/.agent}/skills`;
 - installs or updates OpenCode global skill links under `${OPENCODE_HOME:-$HOME/.config/opencode}/skills`;
-- adds `.ai/handoffs/` to the invoking project's `.gitignore` when **PROJECT_ROOT** is a git repository and the path is not already ignored.
+- adds `.ai/handoffs/` and `.ai/interactions/` to the invoking project's `.gitignore` when **PROJECT_ROOT** is a git repository and each path is not already ignored.
 
 If the script reports that `~/.local/bin` is not in `PATH`, include that guidance in the final response.
 
