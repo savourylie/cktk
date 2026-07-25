@@ -126,6 +126,18 @@ If `git switch -c <branch> origin/<base>` fails because local changes conflict
 with the target base, report git's error and stop — do not force, stash, or
 discard.
 
+**Resuming needs its own base rule.** Base resolution reads the current branch,
+but on the reuse path the current branch *is* the ticket branch, so a naive read
+records the branch as its own base. Landing option 1 would then merge the branch
+into itself — git reports "Already up to date" and exits 0, so the skill would
+report a successful land while nothing reached the real base, and the follow-up
+`git branch -d` would fail because the branch is checked out. Nothing on disk
+records what a branch forked from, so when the current branch already is the
+ticket branch and no base token was passed, **ask once** (following the portable
+interaction rules), listing the plausible bases that actually exist locally or on
+`origin`. If the user declines to answer, mark landing option 1 unavailable
+rather than guessing — options 2, 3, and 4 need no base.
+
 Worktree mode is untouched except that it records `base` the same way, so the
 landing step has a target in both modes.
 
@@ -226,8 +238,13 @@ omits the explicit-only metadata requirements for `interact-html`.
 The blanket prohibition in both Claude copies is replaced by a scoped one:
 
 > No commit, merge, push, or branch deletion happens before the landing prompt,
-> and then only per the user's explicit choice. Never force-push and never touch
-> a remote branch.
+> and then only per the user's explicit choice. Never force-push, and never
+> delete or overwrite a remote branch.
+
+The second sentence originally read "never touch a remote branch," which
+contradicted landing option 2 — `commit-push-pr` pushes the ticket branch, which
+is touching a remote branch. The intent was always to forbid *destructive* remote
+operations, not the ordinary push the user explicitly asked for.
 
 Everything else stands: do not switch the user's main checkout in worktree mode,
 do not delete the worktree, stop rather than overwrite when unrelated dirty
