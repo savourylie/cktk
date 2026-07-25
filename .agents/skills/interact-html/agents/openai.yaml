@@ -1,0 +1,7 @@
+interface:
+  display_name: "Interact via HTML"
+  short_description: "Render agent-user interactions as a local HTML page"
+  default_prompt: "Use $interact-html to render the pending questions, option picks, or briefing as a self-contained local HTML page, collect the user's answers via the one-shot server or paste-back fallback, confirm them, then archive the resolved page."
+
+policy:
+  allow_implicit_invocation: true

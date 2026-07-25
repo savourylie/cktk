@@ -57,6 +57,12 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 | `opencode-handoff` | Export the current task (git state, optional Claude session, agent summary) so OpenCode can take over from any coding agent | See [Agent Handoff](#agent-handoff) |
 | `takeover` | Find a pending local handoff, summarize the previous agent's state, and continue the task safely | Run in the receiving agent |
 
+### Agent interaction
+
+| Skill(s) | What it does | Notes |
+| --- | --- | --- |
+| `interact-html` | Render clarifying questions, option picks, and decision briefings as a local interactive HTML page, collect answers via a one-shot localhost server or paste-back, and archive the resolved page as a decision record | Pages live under `.ai/interactions/` (gitignored, local-only) |
+
 ### Docs and maintenance
 
 | Skill(s) | What it does | Notes |
@@ -141,6 +147,7 @@ $skill-installer install from https://github.com/savourylie/cktk with these path
 .agents/skills/update-ticket-linear
 .agents/skills/quiz-ticket
 .agents/skills/quiz-ticket-linear
+.agents/skills/interact-html
 .agents/skills/cktk-upgrade
 .agents/skills/readme-builder
 .agents/skills/design-system-extractor
@@ -176,7 +183,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
+for s in create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover interact-html readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills
@@ -249,6 +256,13 @@ All commands below use Claude Code's `/name` syntax. In **Codex**, invoke the sa
 /takeover                          # Continue a pending handoff from another agent (in Codex: $takeover)
 ```
 
+### Agent interaction
+
+```text
+/interact-html which caching strategy should we use — 3 options with trade-offs
+/interact-html                     # Render the pending questions from the current conversation as a page
+```
+
 ### Docs and maintenance
 
 ```text
@@ -279,7 +293,7 @@ All commands below use Claude Code's `/name` syntax. In **Codex**, invoke the sa
 
 Two notes on host behavior:
 
-- **Codex triggering policy:** `review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, and `wcag-accessibility-checker` also include descriptions suitable for Codex's implicit skill matching; every other skill (the write-heavy, handoff, and external-service workflows) is explicit-only in its `agents/openai.yaml` policy.
+- **Codex triggering policy:** `review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, `wcag-accessibility-checker`, and `interact-html` also include descriptions suitable for Codex's implicit skill matching; every other skill (the write-heavy, handoff, and external-service workflows) is explicit-only in its `agents/openai.yaml` policy.
 - The clarification and quiz skills use host-neutral questions and follow-up wording. They do not assume Claude's `/skill` syntax, Codex's `$skill` syntax, or a particular structured-choice tool.
 
 ## Agent Handoff

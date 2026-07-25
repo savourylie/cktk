@@ -1,0 +1,365 @@
+<!doctype html>
+<!--
+  interact-html interaction page template.
+
+  Placeholders: each name below appears in the template body prefixed with the
+  at-sign character. Replace every prefixed occurrence when rendering. This
+  documentation deliberately omits the prefix so a global search-and-replace
+  never rewrites this comment (a replacement value that contains an HTML
+  comment closer would otherwise terminate this header early).
+    INTERACTION-TITLE    Page title + hero H1.
+    INTERACTION-SLUG     Interaction slug; baked into the JS payload.
+    GENERATED-AT         ISO-8601 timestamp shown in the header meta line.
+    SERVER-PORT          One-shot server port number, or 0 for paste-only mode.
+    BODY-CLASS           Empty when active; "resolved" in the archived rewrite.
+    INTERACTION-CONTEXT  Briefing HTML placed inside .context-card.
+    QUESTION-CARDS       Composed .question-card blocks (see class contract).
+    RESOLVED-BANNER      Active render: replace with an HTML comment whose text
+                         is exactly RESOLVED-BANNER-SLOT.
+    RESOLVED-ANSWERS     Active render: replace with an HTML comment whose text
+                         is exactly RESOLVED-ANSWERS-SLOT. The archive pass
+                         replaces those slot comments with the RESOLVED banner
+                         div and the baked "Decisions" section.
+
+  Class contract (canonical — do not rename):
+    .context-card, .question-card[data-qid][data-qtype][data-optional?],
+    .option-tile[data-oid] > .option-label + .option-desc, .text-input,
+    .compare-grid > .compare-item[data-oid], .answer-bar, .fallback-panel,
+    .resolved-banner.
+
+  Deliberate departure from FILM_TEMPLATE: system font stack, no Google Fonts —
+  this page must make zero external requests. Its only network call is the
+  answers POST to 127.0.0.1:@SERVER-PORT (skipped entirely in paste-only mode).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@INTERACTION-TITLE</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-2: #eef0f4;
+    --text: #1b1e24;
+    --text-muted: #5b6472;
+    --border: #d7dbe2;
+    --accent: #3b5bdb;
+    --accent-soft: #e7ecfb;
+    --success: #2b8a3e;
+    --success-soft: #e6f4ea;
+    --shadow: 0 1px 3px rgba(15, 20, 30, 0.08), 0 8px 24px rgba(15, 20, 30, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --surface: #1e2128;
+      --surface-2: #262a33;
+      --text: #e7eaf0;
+      --text-muted: #9aa3b2;
+      --border: #343a46;
+      --accent: #748ffc;
+      --accent-soft: #232c4a;
+      --success: #69db7c;
+      --success-soft: #1d3324;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+  }
+  main { max-width: 780px; margin: 0 auto; padding: 32px 20px 140px; }
+  header.page-header { margin-bottom: 24px; }
+  header.page-header h1 { margin: 0 0 6px; font-size: 1.6rem; letter-spacing: -0.01em; }
+  .page-meta { color: var(--text-muted); font-size: 0.85rem; }
+  .page-meta code { background: var(--surface-2); padding: 1px 6px; border-radius: 4px; }
+
+  .resolved-banner {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--success-soft); border: 1px solid var(--success);
+    color: var(--success); font-weight: 600;
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;
+  }
+
+  .context-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px; margin-bottom: 24px;
+    box-shadow: var(--shadow);
+  }
+  .context-card p:first-child { margin-top: 0; }
+  .context-card p:last-child { margin-bottom: 0; }
+
+  .question-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px; margin-bottom: 18px;
+    box-shadow: var(--shadow);
+  }
+  .question-card .q-prompt { font-weight: 600; margin: 0 0 12px; }
+  .question-card .q-kind {
+    color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;
+    letter-spacing: 0.06em; margin-bottom: 4px;
+  }
+  .question-card.unanswered-flash { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .option-tile {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: var(--surface-2); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; margin: 8px 0;
+    color: var(--text); font: inherit;
+  }
+  .option-tile:hover { border-color: var(--accent); }
+  .option-tile.selected {
+    border-color: var(--accent); background: var(--accent-soft);
+  }
+  .option-tile .option-label { font-weight: 600; display: block; }
+  .option-tile .option-desc { color: var(--text-muted); font-size: 0.9rem; display: block; margin-top: 2px; }
+
+  .text-input {
+    width: 100%; min-height: 64px; resize: vertical;
+    background: var(--surface-2); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; margin-top: 8px;
+    color: var(--text); font: inherit;
+  }
+  .text-input:focus { outline: none; border-color: var(--accent); }
+  .text-label { color: var(--text-muted); font-size: 0.85rem; display: block; margin-top: 10px; }
+
+  .compare-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px; margin: 12px 0;
+  }
+  .compare-item {
+    border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden;
+    cursor: pointer; background: var(--surface-2);
+  }
+  .compare-item.selected { border-color: var(--accent); }
+  .compare-item .compare-caption { padding: 8px 10px; font-size: 0.85rem; color: var(--text-muted); }
+
+  .decisions-section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px; margin: 24px 0;
+    box-shadow: var(--shadow);
+  }
+  .decisions-section h2 { margin-top: 0; font-size: 1.1rem; }
+  .decisions-section dt { font-weight: 600; margin-top: 10px; }
+  .decisions-section dd { margin: 2px 0 0 0; color: var(--text-muted); }
+
+  .answer-bar {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 14px 20px; display: flex; align-items: center; gap: 16px;
+    justify-content: center; box-shadow: 0 -4px 16px rgba(15, 20, 30, 0.08);
+  }
+  .answer-bar .progress { color: var(--text-muted); font-size: 0.9rem; }
+  .answer-bar button {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 10px 22px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .answer-bar button:disabled { opacity: 0.55; cursor: default; }
+  .answer-bar.success { background: var(--success-soft); border-top-color: var(--success); }
+  .answer-bar.success .status { color: var(--success); font-weight: 600; }
+
+  .fallback-panel {
+    display: none;
+    background: var(--surface); border: 1.5px solid var(--accent);
+    border-radius: 12px; padding: 18px 20px; margin: 24px 0 90px;
+  }
+  .fallback-panel.visible { display: block; }
+  .fallback-panel h2 { margin-top: 0; font-size: 1.05rem; }
+  .fallback-panel textarea {
+    width: 100%; min-height: 120px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem; background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px;
+  }
+  .fallback-panel .copy-btn {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 8px 18px; font: inherit; font-weight: 600; cursor: pointer; margin-top: 8px;
+  }
+
+  body.resolved .answer-bar { display: none; }
+  body.resolved .fallback-panel { display: none; }
+  body.resolved .option-tile { pointer-events: none; }
+  body.resolved .compare-item { pointer-events: none; }
+  body.resolved .text-input { pointer-events: none; }
+</style>
+</head>
+<body class="@BODY-CLASS">
+<main>
+  <header class="page-header">
+    <h1>@INTERACTION-TITLE</h1>
+    <div class="page-meta">interaction <code>@INTERACTION-SLUG</code> · generated @GENERATED-AT</div>
+  </header>
+
+  @RESOLVED-BANNER
+
+  <section class="context-card">
+    @INTERACTION-CONTEXT
+  </section>
+
+  @QUESTION-CARDS
+
+  @RESOLVED-ANSWERS
+
+  <section class="fallback-panel" id="fallback">
+    <h2>Answer channel unavailable — paste instead</h2>
+    <p>The local collector could not be reached. Copy the block below and paste it into the agent chat.</p>
+    <textarea id="fallback-json" readonly></textarea>
+    <button type="button" class="copy-btn" id="copy-btn">Copy answers</button>
+    <span id="copy-status" class="page-meta"></span>
+  </section>
+</main>
+
+<div class="answer-bar" id="answer-bar">
+  <span class="progress" id="progress">0 answered</span>
+  <button type="button" id="submit-btn">Submit answers</button>
+  <span class="status" id="bar-status"></span>
+</div>
+
+<script>
+  var SLUG = "@INTERACTION-SLUG";
+  var PORT = @SERVER-PORT;
+
+  function cards() {
+    return Array.prototype.slice.call(document.querySelectorAll(".question-card"));
+  }
+
+  function cardAnswered(card) {
+    var type = card.getAttribute("data-qtype");
+    if (type === "text") {
+      var t = card.querySelector(".text-input");
+      return !!(t && t.value.trim());
+    }
+    if (card.querySelector(".option-tile.selected")) return true;
+    var free = card.querySelector(".text-input");
+    return !!(free && free.value.trim());
+  }
+
+  function updateProgress() {
+    var required = cards().filter(function (c) { return !c.hasAttribute("data-optional"); });
+    var done = required.filter(cardAnswered).length;
+    document.getElementById("progress").textContent = done + " of " + required.length + " answered";
+  }
+
+  function selectTile(tile) {
+    var card = tile.closest(".question-card");
+    if (card.getAttribute("data-qtype") === "single") {
+      card.querySelectorAll(".option-tile.selected, .compare-item.selected").forEach(function (el) {
+        el.classList.remove("selected");
+      });
+      tile.classList.add("selected");
+    } else {
+      tile.classList.toggle("selected");
+    }
+    var oid = tile.getAttribute("data-oid");
+    card.querySelectorAll('.compare-item[data-oid="' + oid + '"]').forEach(function (el) {
+      el.classList.toggle("selected", tile.classList.contains("selected"));
+    });
+    updateProgress();
+  }
+
+  document.addEventListener("click", function (ev) {
+    var tile = ev.target.closest(".option-tile");
+    if (tile) { selectTile(tile); return; }
+    var item = ev.target.closest(".compare-item");
+    if (item) {
+      var card = item.closest(".question-card");
+      var linked = card && card.querySelector('.option-tile[data-oid="' + item.getAttribute("data-oid") + '"]');
+      if (linked) selectTile(linked);
+    }
+  });
+  document.addEventListener("input", function (ev) {
+    if (ev.target.classList.contains("text-input")) updateProgress();
+  });
+
+  function collectAnswers(channel) {
+    var answers = cards().map(function (card) {
+      var selected = [];
+      var labels = [];
+      card.querySelectorAll(".option-tile.selected").forEach(function (tile) {
+        selected.push(tile.getAttribute("data-oid"));
+        var l = tile.querySelector(".option-label");
+        labels.push(l ? l.textContent.trim() : tile.getAttribute("data-oid"));
+      });
+      var t = card.querySelector(".text-input");
+      var promptEl = card.querySelector(".q-prompt");
+      return {
+        id: card.getAttribute("data-qid"),
+        question: promptEl ? promptEl.textContent.trim() : "",
+        type: card.getAttribute("data-qtype"),
+        selected: selected,
+        selected_labels: labels,
+        text: t ? t.value.trim() : ""
+      };
+    });
+    return {
+      interaction: SLUG,
+      submitted_at: new Date().toISOString(),
+      channel: channel,
+      answers: answers,
+      notes: ""
+    };
+  }
+
+  function firstUnanswered() {
+    return cards().filter(function (c) { return !c.hasAttribute("data-optional"); })
+                  .find(function (c) { return !cardAnswered(c); });
+  }
+
+  function showFallback() {
+    var payload = collectAnswers("paste");
+    document.getElementById("fallback-json").value = JSON.stringify(payload, null, 2);
+    var panel = document.getElementById("fallback");
+    panel.classList.add("visible");
+    panel.scrollIntoView({ behavior: "smooth" });
+    document.getElementById("bar-status").textContent = "Use the paste panel above.";
+  }
+
+  document.getElementById("copy-btn").addEventListener("click", function () {
+    var ta = document.getElementById("fallback-json");
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    if (!ok && navigator.clipboard) {
+      navigator.clipboard.writeText(ta.value).then(function () {
+        document.getElementById("copy-status").textContent = " copied";
+      });
+      return;
+    }
+    document.getElementById("copy-status").textContent = ok ? " copied" : " select + copy manually";
+  });
+
+  function markSuccess() {
+    var bar = document.getElementById("answer-bar");
+    bar.classList.add("success");
+    document.getElementById("submit-btn").disabled = true;
+    document.getElementById("bar-status").textContent = "Answers sent — return to your terminal.";
+  }
+
+  document.getElementById("submit-btn").addEventListener("click", function () {
+    var missing = firstUnanswered();
+    if (missing) {
+      missing.classList.add("unanswered-flash");
+      missing.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(function () { missing.classList.remove("unanswered-flash"); }, 1600);
+      return;
+    }
+    if (!PORT) { showFallback(); return; }
+    var payload = collectAnswers("server");
+    fetch("http://127.0.0.1:" + PORT + "/answers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(4000)
+    }).then(function (res) {
+      if (res.ok) { markSuccess(); } else { showFallback(); }
+    }).catch(function () { showFallback(); });
+  });
+
+  updateProgress();
+</script>
+</body>
+</html>

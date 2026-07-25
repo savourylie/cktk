@@ -105,6 +105,11 @@
       "description": "Find and continue a pending handoff bundle left by another coding agent"
     },
     {
+      "name": "interact-html",
+      "path": ".agent/skills/interact-html",
+      "description": "Render agent-user interactions (questions, option picks, briefings) as a local interactive HTML page, collect answers via a one-shot localhost server or paste-back, and archive the resolved page as a decision record"
+    },
+    {
       "name": "design-system-extractor",
       "path": ".agent/skills/design-system-extractor",
       "description": "Extract design tokens from UI screenshots into structured JSON"
