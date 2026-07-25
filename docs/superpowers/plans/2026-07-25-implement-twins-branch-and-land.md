@@ -712,7 +712,7 @@ grep -c "Never assume an option limit" skills/implement-ticket-linear/SKILL.md #
 grep -c "Phase 9: Land the Work" skills/implement-ticket-linear/SKILL.md       # expect 1
 grep -c "AskUserQuestion" skills/implement-ticket-linear/SKILL.md              # expect 0
 grep -c "branch -D" skills/implement-ticket-linear/SKILL.md                    # expect 0
-grep -c "update-ticket-linear" skills/implement-ticket-linear/SKILL.md         # expect 3 or more (all reminders, no invocations)
+grep -c "update-ticket-linear" skills/implement-ticket-linear/SKILL.md         # expect 2 — grep -c counts lines, not occurrences; both are reminders/prohibitions, never an invocation
 ./scripts/check-codex-skills.sh
 ```
 
