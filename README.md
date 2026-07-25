@@ -34,7 +34,7 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 |---|---|---|
 | `create-tickets` | Generate dev tickets into `docs/tickets/` from a PRD, a features catalog, or a Plan Mode plan (plus optional design/UX/reference documents), with dependency ordering and an INDEX.md tracker | |
 | `clarify-ticket` · `clarify-ticket-linear` | Interactively clarify a ticket's details, blind spots, and risks against the codebase before implementation | Read-only: never edits tickets, INDEX.md, Linear, or git |
-| `implement-ticket` · `implement-ticket-linear` | Implement a ticket end to end with code review and manual testing instructions; optional `worktree` keyword for isolated parallel work | docs twin appends as-built notes to the ticket file; the Linear twin's only Linear write is an opt-in as-built comment posted after explicit confirmation |
+| `implement-ticket` · `implement-ticket-linear` | Implement a ticket end to end on its own branch with code review and manual testing instructions, then offer to merge it, open a PR, commit only, or leave it; optional `worktree` keyword for isolated parallel work | docs twin appends as-built notes to the ticket file and can run `update-ticket` as part of landing; the Linear twin's only Linear write is an opt-in as-built comment posted after explicit confirmation |
 | `review-ticket` | Review uncommitted changes, branch diffs, PR diffs, single commits, or ticket/Linear-issue implementations for bugs and scope gaps | Linear issue mode requires Linear MCP |
 | `update-ticket` · `update-ticket-linear` | Change a ticket/issue status, check matching worktree implementations, and cascade dependency/blocked markers | docs twin refreshes INDEX.md and commits the doc update; Linear twin evaluates acceptance criteria first and creates no git commit |
 | `quiz-ticket` · `quiz-ticket-linear` | Quiz your understanding of an implemented ticket from its implementation diff, or produce a stakeholder explainer with `explain` | Read-only against the repo and Linear |
@@ -216,9 +216,10 @@ All commands below use Claude Code's `/name` syntax. In **Codex**, invoke the sa
 /clarify-ticket 007                          # Read ticket, analyze vs. code, discuss risks (read-only)
 /clarify-ticket-linear ENG-42                # Same for a Linear issue (requires Linear MCP)
 
-/implement-ticket 003                        # Implement a ticket (also accepts TICKET-003)
+/implement-ticket 003                        # Implement on branch ticket-003-slug off the current HEAD
+/implement-ticket 003 dev                    # Same, but branch off origin/dev
 /implement-ticket 003 worktree               # Implement inside .worktrees/003-slug off origin/main
-/implement-ticket 003 worktree dev           # Same, based on origin/dev (worktree variants also work for implement-ticket-linear)
+/implement-ticket 003 worktree dev           # Same, based on origin/dev (all variants also work for implement-ticket-linear)
 /implement-ticket-linear ENG-42              # Implement a Linear issue (requires Linear MCP)
 
 /review-ticket                               # Auto-detect: uncommitted changes or branch diff
