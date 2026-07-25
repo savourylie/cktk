@@ -180,6 +180,24 @@ Behavior per option and mode:
 | **3 Commit** | `commit-ticket`; stay on the branch | same |
 | **4 Nothing** | today's behavior; report the branch name and how to land later | unchanged |
 
+**The landing step must return to the main repo root first.** Every option here
+acts on the repository as a whole, while the Bash cwd has been pinned to
+`$WORK_DIR` since setup. Three separate defects came from ignoring this, all
+found by the whole-branch review: `merge-worktree` refuses outright when the cwd
+is inside a target worktree (`skills/merge-worktree/SKILL.md:51`), so delegating
+to it from the pinned cwd could never work; an unscoped `git merge` run from
+inside the worktree merges the branch into itself and exits 0; and
+`git worktree remove` deletes the directory the cwd points at, leaving every
+later command failing on a dangling cwd. The landing phase therefore opens by
+returning to `$MAIN_ROOT`, and the Linear twins' inline merge scopes every
+command with `git -C "$MAIN_ROOT"`.
+
+**Option 2 does not honor `<base>`.** `commit-push-pr` runs a bare
+`gh pr create`, so the PR targets the repository default branch even when the
+menu printed a different base. Changing that skill is out of scope, so each
+document says so at the point of use rather than letting the menu imply
+otherwise.
+
 Rules that apply to option 1:
 
 - **The base may not exist locally.** When the run forked from `origin/<base>`,
@@ -275,6 +293,15 @@ Both Codex documents get the same grammar (§1) and branch phase (§2).
 The landing menu differs because the Codex copy already commits and updates
 status: option 3 is redundant and the status follow-up is automatic, so its menu
 is **merge / PR / stay on branch (default)**.
+
+That justification was originally half-wrong, and the whole-branch review caught
+it: the Codex copy updates status but never *commits* it — its Phase 6 commits
+the code and explicitly defers status to Phase 7, which then has no commit step.
+Because Phase 6 commits As-Built Notes into the ticket file, that file
+necessarily differs between branch and base, so the landing step's
+`git switch <base>` aborts rather than merging. Phase 7 therefore gains a commit
+step of its own, mirroring what `update-ticket` does for the Claude twin. The
+three-option menu is correct only once that invariant actually holds.
 
 The no-argument backlog loop branches per ticket **forked from HEAD**, so each
 ticket's work stacks on the previous one and dependent tickets still compile.

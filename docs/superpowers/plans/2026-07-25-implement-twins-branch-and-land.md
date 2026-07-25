@@ -1497,7 +1497,7 @@ The base-resolution rule instructs the skill to "record no base and mark option 
 
 Landing phase per document: `skills/implement-ticket` Phase 7, `skills/implement-ticket-linear` Phase 9, `.agents/skills/implement-ticket` Phase 8, `.agents/skills/implement-ticket-linear` Phase 8.
 
-### Verification
+### Verification (Task 4b)
 
 ```bash
 cd /Users/calvinku/FunProjects/cktk
@@ -1513,4 +1513,89 @@ grep -c "degenerate case" skills/implement-ticket/SKILL.md skills/implement-tick
 grep -c "no base was recorded" skills/implement-ticket/SKILL.md skills/implement-ticket-linear/SKILL.md \
   .agents/skills/implement-ticket/SKILL.md .agents/skills/implement-ticket-linear/SKILL.md   # expect 1 each
 ./scripts/check-codex-skills.sh   # exit 0
+```
+
+---
+
+## Amendment 2: final-review fixes
+
+Found by the whole-branch review. Three landing paths could not succeed as written. **C1 and C3 are defects in this plan and the spec, not implementation slips** — the plan prescribed the broken delegation and the spec asserted a commit that never happens.
+
+**Root cause shared by C1, C2, and I1:** the landing phase performs repo-level git operations while the Bash cwd is still pinned to `$WORK_DIR` — a worktree the phase is about to merge, remove, or delegate away.
+
+### A2-1 (fixes C1, C2, I1): cwd discipline in every landing phase
+
+Add this as the **first** paragraph of each landing phase, immediately before the option-availability paragraph:
+
+> **Before any repo-level git operation in this phase, run `cd "$MAIN_ROOT"`.** The Bash cwd has been pinned to `$WORK_DIR` since the setup phase, and every option below acts on the repository as a whole — merging into the base, delegating to another skill, or removing the very worktree the cwd points at. Operating from inside a worktree here causes silent wrong answers, not loud errors.
+
+Landing phase per document: `skills/implement-ticket` Phase 7, `skills/implement-ticket-linear` Phase 9, `.agents/skills/implement-ticket` Phase 8, `.agents/skills/implement-ticket-linear` Phase 8.
+
+Then, per document:
+
+- **`skills/implement-ticket` and `.agents/skills/implement-ticket`, option 1 worktree branch (C1).** These delegate to `merge-worktree`, which has two hard pre-flight refusals (`skills/merge-worktree/SKILL.md:51-53`): it refuses when the cwd is inside a target worktree, and it refuses when the main checkout is dirty. The first is guaranteed to trip without the `cd` above. Amend the worktree bullet to read (adapting `/merge-worktree` → `$merge-worktree` for the Codex copy):
+
+  > **Worktree mode:** `cd "$MAIN_ROOT"` first — `/merge-worktree` refuses to run when the cwd is inside a target worktree. Then invoke `/merge-worktree` via the `Skill` tool with args `NNN <base>`. It auto-commits the implementation, merges, removes the worktree, and deletes the local branch. It also requires the main checkout to be clean and will refuse otherwise; if it does, report its refusal verbatim rather than working around it.
+
+- **`.agents/skills/implement-ticket-linear`, option 1 (C2).** Only one bullet is scoped "From `$MAIN_ROOT`:"; the merge, worktree removal, and branch delete carry no scoping, so a literal reading runs the merge *inside* the worktree where the issue branch is HEAD — "Already up to date", exit 0, a falsely reported successful land. Mirror the Claude twin (`skills/implement-ticket-linear`) by prefixing **every** git command in that block with `git -C "$MAIN_ROOT"`.
+
+- **Both Linear twins, option 1 (I1).** `git worktree remove` targets the directory the cwd points at, leaving the session with a dangling cwd and every later command failing `fatal: Unable to read current working directory`. The A2-1 `cd` fixes this; state it explicitly in the removal step: remove the worktree **after** returning to `$MAIN_ROOT`.
+
+### A2-2 (fixes C3): give Codex `implement-ticket` Phase 7 a commit step
+
+`.agents/skills/implement-ticket` Phase 8 asserts "Phases 6 and 7 already committed the code and the ticket status", but Phase 7 edits the ticket file and `INDEX.md` and never commits. Consequences: option 1 aborts (`git switch <base>` fails on the modified ticket file, which necessarily differs between branch and base because Phase 6 committed As-Built Notes into it); the default option leaves a dirty tree the document claims is clean; and in the backlog loop one ticket's pending `INDEX.md` edits can be swept into the next ticket's commit, violating Phase 6's "Do not mix unrelated changes into the ticket commit".
+
+Add as Phase 7 step 5, mirroring `skills/update-ticket/SKILL.md:195-207`:
+
+> 5. Commit the status and index changes, separately from Phase 6's code commit:
+>    ```
+>    git add docs/tickets/
+>    git commit -m "docs: mark TICKET-NNN as <status>"
+>    ```
+>    Use `docs: mark TICKET-NNN as done, unblock TICKET-XXX` when the update cascaded to other tickets. This keeps the ticket metadata in its own commit and leaves the tree clean for Phase 8.
+
+### A2-3 (fixes I2): note that the PR option ignores the recorded base
+
+`skills/commit-push-pr/SKILL.md:21` runs a bare `gh pr create` with no `--base`, so option 2 targets the repository's default branch even when the landing menu printed `(base: dev)` directly above it. Changing `commit-push-pr` is out of scope. Append to each document's option-2 paragraph:
+
+> Note that `/commit-push-pr` opens the PR against the repository's default branch; if `<base>` is not that branch, retarget the PR afterwards or use option 1 instead.
+
+Use `$commit-push-pr` in the two Codex copies.
+
+### A2-4 (fixes I3): bootstrap the first ticket of a backlog run
+
+In `.agents/skills/implement-ticket`, Phase 1 steps 3 and 8 are gated on a known ticket, the ticket only becomes known in Phase 3, and the sole re-entry instruction (Phase 8) is scoped to "the next pending ticket" — so on a no-args run the *first* ticket is never branched. Add as a final numbered step of Phase 3:
+
+> 6. In backlog-loop mode, run Phase 1 step 3 (resolve `NNN`, slug, and branch name) and Phase 1 step 8 (create `ticket-NNN-<slug>` from the current HEAD) for the ticket you just selected, before continuing to Phase 4. This applies to the first ticket of the run as well as to every later one.
+
+### A2-5: correctness touch-ups in the same paragraphs
+
+- **`git branch -d` overclaim, all four documents.** "After a `--no-ff` merge the safe delete always succeeds" is false when the branch is checked out in another worktree (`error: cannot delete branch … used by worktree at …`), reachable when the skill runs from a purposeful worktree in non-worktree mode. Replace "always succeeds" with "succeeds unless the branch is checked out elsewhere — if the delete is refused, report the refusal rather than escalating to `-D`".
+- **Fourth-token rule, both Codex documents.** `spec:87` requires it and both Claude documents state it; neither Codex copy does. Add to each argument-grammar section: "A fourth token is an error."
+- **`.agents/skills/implement-ticket` base bullets.** Bullet 3 tests "not a `ticket-NNN-<slug>` branch" generically while bullet 4 tests the branch *for this ticket*, so sitting on `ticket-003-foo` while implementing 007 matches neither and leaves `base` undefined. Scope both bullets to this ticket, matching `skills/implement-ticket`.
+
+### A2-6: convert one-shot plan checks into standing guards
+
+Move the negative assertions from this plan's final verification block into `validate_implement_contract`, so they run on every future validation instead of once. Add to the existing per-file loop:
+
+```bash
+      require_literal "$skill_md" "Land the Work"
+      forbid_literal "$skill_md" "branch -D"
+```
+
+Leave the existing three assertions as they are.
+
+### Verification (Amendment 2)
+
+```bash
+cd /Users/calvinku/FunProjects/cktk
+D="skills/implement-ticket/SKILL.md skills/implement-ticket-linear/SKILL.md .agents/skills/implement-ticket/SKILL.md .agents/skills/implement-ticket-linear/SKILL.md"
+grep -c 'cd "$MAIN_ROOT"' $D                    # >= 1 each (landing-phase cwd rule)
+grep -c "repository's default branch" $D        # expect 1 each (A2-3)
+grep -c "always succeeds" $D                    # expect 0 each (A2-5)
+grep -c "A fourth token is an error" .agents/skills/implement-ticket/SKILL.md \
+                                     .agents/skills/implement-ticket-linear/SKILL.md   # expect 1 each
+grep -c "docs: mark TICKET-NNN as" .agents/skills/implement-ticket/SKILL.md            # expect >= 1 (A2-2)
+grep -c "In backlog-loop mode, run Phase 1 step 3" .agents/skills/implement-ticket/SKILL.md  # expect 1 (A2-4)
+./scripts/check-codex-skills.sh                 # exit 0 — now also enforcing "Land the Work" and no "branch -D"
 ```
