@@ -11,9 +11,9 @@ If the user included a ticket identifier after `$implement-ticket`, implement on
 
 ## Portable interaction rules
 
-This skill prompts the user twice — once if the working tree is dirty (Phase 1), and once to land the work (Phase 8). Both follow these rules:
+This skill prompts the user at several points — when the working tree is dirty, when resuming without a discoverable base, and when landing the work. All of them follow these rules:
 
-- Show every option with a stable number and a one-line description of what it does.
+- Show every option with a stable number and a one-line description of what it does. A yes/no confirmation is the degenerate case: state the default explicitly (`[y/N]`) and treat anything but an explicit yes as that default.
 - Use the host's structured choice mechanism only when it is available and can represent the options clearly. Otherwise ask a concise numbered prose question and accept the number or the option name.
 - Never assume an option limit or an automatically supplied "Other" choice.
 - Treat an unanswered or ambiguous response as the documented default; never re-ask and never escalate.
@@ -141,7 +141,7 @@ Perform the ticket status update yourself instead of delegating to another skill
 
 **Then land, once per run.** Phases 6 and 7 already committed the code and the ticket status, so this prompt is only about where those commits go. Ask exactly once, following the portable interaction rules.
 
-Before asking, check whether option 2 is available: both `git remote get-url origin` and `gh auth status` must succeed. If either fails, still show option 2 but mark it unavailable with the reason, and do not accept it.
+Before asking, check whether option 2 is available: both `git remote get-url origin` and `gh auth status` must succeed. If either fails, still show option 2 but mark it unavailable with the reason, and do not accept it. If no base was recorded — a resume where the user declined to name one — show option 1 as unavailable for that reason and do not accept it; options 2 and 3 (and 4 where present) need no base.
 
 ````
 TICKET-NNN implemented on ticket-NNN-<slug> (base: <base>).

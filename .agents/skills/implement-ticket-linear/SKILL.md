@@ -13,9 +13,9 @@ If the user included an issue id or URL after `$implement-ticket-linear`, implem
 
 ## Portable interaction rules
 
-This skill prompts the user three times — once if the working tree is dirty (Phase 3), once to offer the as-built comment (Phase 7), and once to land the work (Phase 8). All three follow these rules:
+This skill prompts the user at several points — when the working tree is dirty, when resuming without a discoverable base, when offering the as-built comment, and when landing the work. All of them follow these rules:
 
-- Show every option with a stable number and a one-line description of what it does.
+- Show every option with a stable number and a one-line description of what it does. A yes/no confirmation is the degenerate case: state the default explicitly (`[y/N]`) and treat anything but an explicit yes as that default.
 - Use the host's structured choice mechanism only when it is available and can represent the options clearly. Otherwise ask a concise numbered prose question and accept the number or the option name.
 - Never assume an option limit or an automatically supplied "Other" choice.
 - Treat an unanswered or ambiguous response as the documented default; never re-ask and never escalate.
@@ -116,7 +116,7 @@ Stop after a clear summary:
 
 ## Phase 8: Land the Work
 
-Ask exactly once, after the Phase 7 summary, following the portable interaction rules. Before asking, check whether option 2 is available: both `git remote get-url origin` and `gh auth status` must succeed. If either fails, show option 2 as unavailable with the reason and do not accept it.
+Ask exactly once, after the Phase 7 summary, following the portable interaction rules. Before asking, check whether option 2 is available: both `git remote get-url origin` and `gh auth status` must succeed. If either fails, show option 2 as unavailable with the reason and do not accept it. If no base was recorded — a resume where the user declined to name one — show option 1 as unavailable for that reason and do not accept it; options 2 and 3 (and 4 where present) need no base.
 
 ````
 <issue_id> implemented on linear-<issue_id>-<slug> (base: <base>).
