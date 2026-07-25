@@ -192,6 +192,22 @@ later command failing on a dangling cwd. The landing phase therefore opens by
 returning to `$MAIN_ROOT`, and the Linear twins' inline merge scopes every
 command with `git -C "$MAIN_ROOT"`.
 
+**Verified 2026-07-25: the delegated commit skills do see the pinned worktree
+cwd.** Options 1-3 hand off to `commit-ticket` / `commit-push-pr`, which collect
+their state through `!git status`-style frontmatter injection rather than through
+the Bash tool — so it was not obvious that injection shares the cwd a previous
+`cd` established. Tested directly: with the Bash cwd pinned inside a worktree on
+branch `feat`, the injected context reported `On branch feat` and the worktree's
+untracked file, and the resulting commit landed on `feat` while the repo's own
+`main` stayed untouched. The assertion in all four documents is correct; do not
+"fix" it on suspicion.
+
+One real constraint surfaced by that test: **`cd` persists between Bash calls only
+within the project root** — a `cd` to a path outside it is reset back. Harmless
+here, because worktrees always live at `$MAIN_ROOT/.worktrees/`, inside the
+project. A future skill that pinned the cwd somewhere outside would silently lose
+the pin.
+
 **Option 2 does not honor `<base>`.** `commit-push-pr` runs a bare
 `gh pr create`, so the PR targets the repository default branch even when the
 menu printed a different base. Changing that skill is out of scope, so each
