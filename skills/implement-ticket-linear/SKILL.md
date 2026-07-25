@@ -103,7 +103,18 @@ That resolution check is what protects against typos like `worktre` now that the
 0. **Resolve `base`** — the branch Phase 9 will offer to merge into:
    - Worktree mode: `base_token` if present, otherwise `main`.
    - Current checkout with a `base_token`: that token.
-   - Current checkout without one: the current branch, from `git rev-parse --abbrev-ref HEAD`. If that returns `HEAD` (detached), stop and ask the user to pass an explicit base branch — there is no merge target to record.
+   - Current checkout without one, when the current branch is **not** `linear-<issue_id>-<slug>`: the current branch, from `git rev-parse --abbrev-ref HEAD`. If that returns `HEAD` (detached), stop and ask the user to pass an explicit base branch — there is no merge target to record.
+   - Current checkout without one, when the current branch already **is** `linear-<issue_id>-<slug>` (you are resuming): a branch cannot be its own base, and nothing on disk records what it forked from. Ask once, following the portable interaction rules, offering the plausible bases that actually exist locally or on `origin` (check `main`, `master`, `dev`, `develop`):
+
+     ```
+     Resuming on linear-<issue_id>-<slug>. I can't tell which branch it forked from.
+     Which branch should Phase 9 offer to merge into?
+       1  main
+       2  dev
+       3  other (name it)
+     ```
+
+     Use the answer as `base`. If the user declines to answer, record no base and mark Phase 9's option 1 unavailable rather than guessing — options 2, 3, and 4 need no base. Without this branch of the rule, `base` would be the issue branch itself and option 1 would merge it into itself: git reports "Already up to date" and exits 0, so the skill would claim a successful land while nothing reached the real base.
 1. **If `use_worktree` is true:**
    - If the worktree path is already registered (`git worktree list --porcelain`), reuse it. Uncommitted changes are fine (resume) — note "reused existing worktree (with uncommitted changes)" in the final summary if dirty.
    - Otherwise create it inline (do **not** call `/create-worktree` — that skill requires `docs/tickets/`):
@@ -274,7 +285,7 @@ Leave the changes uncommitted. Report the branch name and that `/commit-push-pr`
 ## Safety Rules
 
 - **Never** change Linear status, assignee, labels, or any other field. The single permitted write is the opt-in as-built comment in Phase 8, and only after explicit user confirmation. Nothing in Phase 9 writes to Linear.
-- No commit, merge, push, or branch deletion happens before Phase 9, and then only per the user's explicit choice. Never force-push and never touch a remote branch. Never invoke `/update-ticket` or `/update-ticket-linear` — Linear status stays a separate, deliberate step.
+- No commit, merge, push, or branch deletion happens before Phase 9, and then only per the user's explicit choice. Never force-push, and never delete or overwrite a remote branch. Never invoke `/update-ticket` or `/update-ticket-linear` — Linear status stays a separate, deliberate step.
 - Do not read or write `docs/tickets/` as the ticket source (optional project context elsewhere is fine).
 - If unrelated dirty changes in `WORK_DIR` conflict with the issue, stop and ask instead of overwriting.
 - In worktree mode, do not switch the user's main checkout branch or remove the worktree except as part of an explicitly chosen Phase 9 option 1.
