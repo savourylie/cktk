@@ -337,6 +337,41 @@ instead would leave dependent tickets unable to see their predecessors' code.
 - Writing Linear status from `implement-ticket-linear`.
 - Automatic conflict resolution during a landing merge.
 
+## Known follow-ups
+
+Recorded at merge time. None blocks the change; all were surfaced by review and
+deliberately deferred rather than missed.
+
+1. **The landing phase's cwd rationale over-generalizes.** It reads "every option
+   below acts on the repository as a whole — merging into the base, delegating to
+   another skill, or removing the very worktree the cwd points at." But options 2
+   and 3 also delegate to skills — `commit-ticket`, `commit-push-pr` — and those
+   must *not* run from `$MAIN_ROOT`: they act on the ambient checkout with no
+   repo-root logic of their own, so in worktree mode they must stay in the
+   worktree to commit the ticket branch. Each option restates its own scoping
+   inline, so an agent following the document step by step gets it right; the
+   phase-opening sentence is the weak link. Tighten it to name the operations
+   rather than the mechanism: "merging into `<base>`, switching the main
+   checkout, or removing the worktree".
+2. **`require_literal "Portable interaction"` is satisfied by the section heading
+   alone**, so it asserts the section exists rather than that its rules survive.
+   Inherited verbatim from `validate_clarify_contract` and
+   `validate_interact_contract`; fixing it properly is a repo-wide decision about
+   all three validators, not a change to this one.
+3. **The `validate_implement_contract` carve-out comment** names "explicit-only"
+   and "disable-model-invocation" but the function also skips `argument-hint` and
+   the Codex-frontmatter-key check. The skips are correct; the comment
+   under-describes them. Same gap in the precedent comment it was modelled on.
+4. **Base-token validation does not fetch first.** A real but unfetched
+   `origin/<base>` fails the resolution check and produces the misleading
+   "did you mean 'worktree'?" error. All four documents.
+5. **`git worktree remove` refuses when untracked files remain** (build output,
+   `node_modules`). The docs twins inherit `merge-worktree`'s auto-commit prompt
+   and are fine; the Linear twins remove worktrees inline and offer no fallback.
+6. **`README.md:204` tells Codex users that `$name` takes "identical arguments"**,
+   which holds for arguments but sits next to a Codex docs twin whose landing menu
+   has three options where the Claude twin has four. Worth a clarifying clause.
+
 ## Acceptance criteria
 
 1. `implement-ticket 007` on any branch creates and switches to
