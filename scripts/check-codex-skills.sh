@@ -288,7 +288,52 @@ for skill in "${antigravity_skills[@]}"; do
   fi
 done
 
+validate_interact_contract() {
+  local skill="interact-html"
+  local claude_skill_md="$claude_root/$skill/SKILL.md"
+  local codex_skill_md="$codex_root/$skill/SKILL.md"
+  local openai_yaml="$codex_root/$skill/agents/openai.yaml"
+  local metadata_error
+  local skill_md
+
+  # interact-html follows the portable-interaction contract but, unlike the
+  # clarify/quiz entry-point workflows, is a mid-flow mechanism that allows
+  # implicit/model invocation by design — so no explicit-only or
+  # disable-model-invocation requirements here.
+  if ! metadata_error="$(RUBYOPT=--disable=gems ruby -e '
+    require "yaml"
+
+    claude_path, codex_path, yaml_path, expected_name = ARGV
+    claude = YAML.load_file(claude_path)
+    codex = YAML.load_file(codex_path)
+    yaml = YAML.load_file(yaml_path)
+
+    abort("Claude skill must be user-invocable") unless claude["user-invocable"] == true
+    hint = claude["argument-hint"]
+    abort("Claude skill must provide argument-hint") unless hint.is_a?(String) && !hint.empty?
+
+    unexpected = codex.keys - %w[name description]
+    abort("Codex frontmatter has unsupported keys: #{unexpected.join(", ")}") unless unexpected.empty?
+    abort("Codex skill name mismatch") unless codex["name"] == expected_name
+
+    short = yaml["interface"]["short_description"]
+    abort("short_description must be 25-64 characters") unless (25..64).cover?(short.length)
+    abort("default_prompt must mention $#{expected_name}") unless yaml["interface"]["default_prompt"].include?("$#{expected_name}")
+  ' "$claude_skill_md" "$codex_skill_md" "$openai_yaml" "$skill" 2>&1)"; then
+    fail "invalid cross-agent metadata for $skill: $metadata_error"
+  fi
+
+  for skill_md in "$claude_skill_md" "$codex_skill_md"; do
+    require_literal "$skill_md" "Portable interaction"
+    require_literal "$skill_md" "Never assume an option limit"
+    require_literal "$skill_md" "AGENTS.md"
+    forbid_literal "$skill_md" "AskUserQuestion"
+    forbid_literal "$skill_md" "rely on \"Other\""
+  done
+}
+
 validate_clarify_contract
+validate_interact_contract
 
 if [[ "$failed" -ne 0 ]]; then
   exit 1
