@@ -1059,9 +1059,11 @@ only be landed by hand, or by the inline merge in implement-ticket-linear's
 landing phase. That was true until this branch; now there is a command.
 
 No control flow changes. implement-ticket-linear keeps merging inline
-deliberately: merge-worktree-linear refuses to run from inside the worktree
-that phase pins its cwd to, which is the delegation defect AGENTS.md rule 6
-already documents. The notes now say why rather than implying no twin exists.
+deliberately: Option 1 must also serve current-checkout mode, where the
+work is still uncommitted in the main checkout — exactly the state
+merge-worktree-linear refuses to run in, the same precondition-checking
+discipline AGENTS.md rule 6 already documents. The notes now say why
+rather than implying no twin exists.
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ```
