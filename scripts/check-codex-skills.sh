@@ -407,7 +407,9 @@ validate_worktree_linear_contract() {
   # surfaces as a silently missing worktree rather than as an error.
   for skill_md in \
     "$claude_root/create-worktree-linear/SKILL.md" \
-    "$codex_root/create-worktree-linear/SKILL.md"; do
+    "$codex_root/create-worktree-linear/SKILL.md" \
+    "$claude_root/merge-worktree-linear/SKILL.md" \
+    "$codex_root/merge-worktree-linear/SKILL.md"; do
     require_literal "$skill_md" "linear-<issue_id>-<slug>"
     require_literal "$skill_md" ".worktrees/<issue_id>-<slug>"
   done
@@ -422,6 +424,16 @@ validate_worktree_linear_contract() {
     "$codex_root/create-worktree-linear/SKILL.md"; do
     require_literal "$skill_md" "never writes to Linear"
     forbid_write_call "$skill_md" "save_issue"
+  done
+
+  # merge-worktree-linear deliberately works without Linear MCP: the worktree,
+  # the branch, and the issue id are all on disk, so cleanup must not fail
+  # because a service is unreachable. This is the only -linear skill with no
+  # MCP prerequisite, which makes it the easiest one to "fix" by mistake.
+  for skill_md in \
+    "$claude_root/merge-worktree-linear/SKILL.md" \
+    "$codex_root/merge-worktree-linear/SKILL.md"; do
+    require_literal "$skill_md" "does not require Linear MCP"
   done
 }
 

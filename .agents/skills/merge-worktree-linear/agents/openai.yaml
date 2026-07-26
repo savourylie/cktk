@@ -1,0 +1,7 @@
+interface:
+  display_name: "Merge Worktree (Linear)"
+  short_description: "Merge and clean up Linear issue worktrees"
+  default_prompt: "With $merge-worktree-linear, merge each requested Linear issue's linear-<issue_id>-<slug> branch into its base, then remove the worktree and delete the local branch, without pushing or writing anything to Linear."
+
+policy:
+  allow_implicit_invocation: false
