@@ -1,0 +1,7 @@
+interface:
+  display_name: "Create Worktree (Linear)"
+  short_description: "Create git worktrees for one or more Linear issues"
+  default_prompt: "Read the requested Linear issues with $create-worktree-linear, resolve a base branch (default main), and create a git worktree per issue under .worktrees/<issue_id>-<slug> on a linear-<issue_id>-<slug> branch, without writing anything back to Linear."
+
+policy:
+  allow_implicit_invocation: false

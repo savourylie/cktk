@@ -134,6 +134,17 @@ forbid_stale_claim() {
   fi
 }
 
+# Same mechanism again, third reason: the text names a Linear write tool in a
+# skill whose contract is read-only.
+forbid_write_call() {
+  local file="$1"
+  local text="$2"
+
+  if grep -Fq -- "$text" "$file"; then
+    fail "$file must not call a Linear write tool: $text"
+  fi
+}
+
 validate_clarify_contract() {
   local skill
   local claude_skill_md
@@ -386,9 +397,38 @@ validate_implement_contract() {
   done
 }
 
+validate_worktree_linear_contract() {
+  local skill_md
+
+  # The Linear worktree twins share one naming contract with
+  # implement-ticket-linear and update-ticket-linear: worktrees at
+  # .worktrees/<issue_id>-<slug>, branches at linear-<issue_id>-<slug>.
+  # Discovery in all four skills keys on those exact forms, so drift here
+  # surfaces as a silently missing worktree rather than as an error.
+  for skill_md in \
+    "$claude_root/create-worktree-linear/SKILL.md" \
+    "$codex_root/create-worktree-linear/SKILL.md"; do
+    require_literal "$skill_md" "linear-<issue_id>-<slug>"
+    require_literal "$skill_md" ".worktrees/<issue_id>-<slug>"
+  done
+
+  # create-worktree-linear prepares a workspace, so it must never write to
+  # Linear — including the Todo -> In Progress transition its implement
+  # sibling performs. The forbidden literal is the write tool rather than the
+  # name of that transition, which the skill legitimately mentions when
+  # explaining which write it declines to make.
+  for skill_md in \
+    "$claude_root/create-worktree-linear/SKILL.md" \
+    "$codex_root/create-worktree-linear/SKILL.md"; do
+    require_literal "$skill_md" "never writes to Linear"
+    forbid_write_call "$skill_md" "save_issue"
+  done
+}
+
 validate_clarify_contract
 validate_interact_contract
 validate_implement_contract
+validate_worktree_linear_contract
 
 if [[ "$failed" -ne 0 ]]; then
   exit 1
