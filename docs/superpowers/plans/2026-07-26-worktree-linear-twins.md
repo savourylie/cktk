@@ -1027,11 +1027,11 @@ Expected: `Validated 33 skill(s) ...`, exit 0, and the stale phrase gone.
 
 ```bash
 cd /Users/calvinku/FunProjects/cktk
-git diff --stat
+git diff --stat -- skills/ .agents/skills/
 git diff skills/implement-ticket-linear/SKILL.md | grep -E "^[+-]" | grep -vE "^(\+\+\+|---)" | wc -l
 ```
 
-Expected: exactly four files changed; the `implement-ticket-linear` diff is 4 lines (two removed, two added). If more, an edit strayed beyond a cross-reference.
+Expected: exactly four skill documents changed — the diff is scoped to the two skill trees because Step 7 also modifies `scripts/check-codex-skills.sh`, which is a fifth file and not a cross-reference. The `implement-ticket-linear` diff is 4 lines (two removed, two added). If more, an edit strayed beyond a cross-reference.
 
 - [ ] **Step 10: Commit**
 
