@@ -61,6 +61,6 @@ Group by outcome (auto-committed+merged, merged+cleaned, already-merged+cleaned,
 ## Safety Rules
 
 - No Linear writes, and no Linear MCP requirement.
-- Never push, never delete a remote branch, never resolve a conflict.
+- Never push, never delete a remote branch, never open a PR, never resolve a conflict.
 - Never `--force` a `worktree remove`; never `--no-verify` a commit.
 - Do not touch `docs/tickets/` — that is `$merge-worktree`'s domain.

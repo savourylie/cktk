@@ -434,6 +434,8 @@ validate_worktree_linear_contract() {
     "$claude_root/merge-worktree-linear/SKILL.md" \
     "$codex_root/merge-worktree-linear/SKILL.md"; do
     require_literal "$skill_md" "does not require Linear MCP"
+    require_literal "$skill_md" "never writes to Linear"
+    forbid_write_call "$skill_md" "save_issue"
   done
 }
 

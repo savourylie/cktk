@@ -707,7 +707,7 @@ Group by outcome (auto-committed+merged, merged+cleaned, already-merged+cleaned,
 ## Safety Rules
 
 - No Linear writes, and no Linear MCP requirement.
-- Never push, never delete a remote branch, never resolve a conflict.
+- Never push, never delete a remote branch, never open a PR, never resolve a conflict.
 - Never `--force` a `worktree remove`; never `--no-verify` a commit.
 - Do not touch `docs/tickets/` — that is `$merge-worktree`'s domain.
 `````
@@ -785,6 +785,8 @@ Replace with:
     "$claude_root/merge-worktree-linear/SKILL.md" \
     "$codex_root/merge-worktree-linear/SKILL.md"; do
     require_literal "$skill_md" "does not require Linear MCP"
+    require_literal "$skill_md" "never writes to Linear"
+    forbid_write_call "$skill_md" "save_issue"
   done
 }
 ```
@@ -987,6 +989,8 @@ In `scripts/check-codex-skills.sh`, find the closing brace of `validate_worktree
     "$claude_root/merge-worktree-linear/SKILL.md" \
     "$codex_root/merge-worktree-linear/SKILL.md"; do
     require_literal "$skill_md" "does not require Linear MCP"
+    require_literal "$skill_md" "never writes to Linear"
+    forbid_write_call "$skill_md" "save_issue"
   done
 }
 ```
@@ -998,6 +1002,8 @@ Replace with:
     "$claude_root/merge-worktree-linear/SKILL.md" \
     "$codex_root/merge-worktree-linear/SKILL.md"; do
     require_literal "$skill_md" "does not require Linear MCP"
+    require_literal "$skill_md" "never writes to Linear"
+    forbid_write_call "$skill_md" "save_issue"
   done
 
   # Both Linear skills that produce a linear-<issue_id>-<slug> branch used to
