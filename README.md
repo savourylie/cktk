@@ -45,8 +45,8 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 |---|---|---|
 | `commit-ticket` | Create a single git commit from the intended repo changes | |
 | `commit-push-pr` | Create one commit, push the branch, and open a pull request | |
-| `create-worktree` | Create git worktrees for one or more tickets under `.worktrees/NNN-slug/`, each on its own branch off a chosen base | |
-| `merge-worktree` | Merge ticket worktree branches back into their base, then remove the worktree and delete the local branch | Cleanup half of `create-worktree` |
+| `create-worktree` · `create-worktree-linear` | Create git worktrees for one or more tickets under `.worktrees/NNN-slug/` or Linear issues under `.worktrees/ENG-42-slug/`, each on its own branch off a chosen base | Linear twin requires Linear MCP and makes no Linear writes — not even the Todo → In Progress transition `implement-ticket-linear` performs |
+| `merge-worktree` · `merge-worktree-linear` | Merge ticket or Linear issue worktree branches back into their base, then remove the worktree and delete the local branch | Cleanup halves of the two create skills. The Linear twin is the one `-linear` skill that needs no Linear MCP — everything it reads is on disk |
 
 ### Agent handoff
 
@@ -136,7 +136,9 @@ $skill-installer install from https://github.com/savourylie/cktk with these path
 .agents/skills/commit-ticket
 .agents/skills/commit-push-pr
 .agents/skills/create-worktree
+.agents/skills/create-worktree-linear
 .agents/skills/merge-worktree
+.agents/skills/merge-worktree-linear
 .agents/skills/feature-catalog
 .agents/skills/implement-ticket
 .agents/skills/clarify-ticket
@@ -183,7 +185,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree merge-worktree feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover interact-html readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
+for s in create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree create-worktree-linear merge-worktree merge-worktree-linear feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover interact-html readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills
@@ -241,11 +243,15 @@ All commands below use Claude Code's `/name` syntax. In **Codex**, invoke the sa
 ### Git and worktrees
 
 ```text
-/commit-ticket                     # Commit current changes
-/commit-push-pr                    # Commit, push, and open a PR
-/create-worktree 7                 # Worktree for ticket 007 off origin/main
-/create-worktree 7 8 9 dev         # Several tickets at once, based on origin/dev
-/merge-worktree 7                  # Merge ticket 007 back, remove worktree, delete branch (same multi-ticket and base args)
+/commit-ticket                        # Commit current changes
+/commit-push-pr                       # Commit, push, and open a PR
+/create-worktree 7                    # Worktree for ticket 007 off origin/main
+/create-worktree 7 8 9 dev            # Several tickets at once, based on origin/dev
+/merge-worktree 7                     # Merge ticket 007 back, remove worktree, delete branch (same multi-ticket and base args)
+/create-worktree-linear ENG-42        # Worktree for Linear issue ENG-42 off origin/main
+/create-worktree-linear ENG-42 ENG-43 dev   # Several issues at once, based on origin/dev
+/merge-worktree-linear ENG-42         # Merge ENG-42 back, remove worktree, delete branch
+/merge-worktree-linear ENG-42 no-cleanup    # Merge and remove the worktree, but keep the branch
 ```
 
 ### Agent handoff

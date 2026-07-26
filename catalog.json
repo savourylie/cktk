@@ -75,6 +75,16 @@
       "description": "Merge ticket worktrees back into their base branch, then remove the worktree and delete the local branch"
     },
     {
+      "name": "create-worktree-linear",
+      "path": ".agent/skills/create-worktree-linear",
+      "description": "Create git worktrees for one or more Linear issues, each on its own branch under .worktrees/<issue_id>-<slug> (requires Linear MCP, makes no Linear writes; Linear twin of create-worktree)"
+    },
+    {
+      "name": "merge-worktree-linear",
+      "path": ".agent/skills/merge-worktree-linear",
+      "description": "Merge Linear issue worktrees back into their base branch, then remove the worktree and delete the local branch (no Linear MCP required; Linear twin of merge-worktree)"
+    },
+    {
       "name": "feature-catalog",
       "path": ".agent/skills/feature-catalog",
       "description": "Explore a codebase and produce a user-facing feature catalog"
