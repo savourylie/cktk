@@ -900,7 +900,7 @@ Find (line 305):
 Replace with:
 
 ```
-`/merge-worktree` only understands markdown `TICKET-NNN` worktrees, so both modes merge inline. (`/merge-worktree-linear` does understand Linear worktrees, but it is a standalone cleanup command that refuses to run from inside the worktree this phase is pinned to — so it stays the user's later choice, not a delegation target here.)
+`/merge-worktree` only understands markdown `TICKET-NNN` worktrees, so both modes merge inline. (`/merge-worktree-linear` does understand Linear worktrees, but option 1 must also serve current-checkout mode, where the work is still uncommitted in the main checkout — precisely the state that skill refuses to run in. One inline flow covers both modes; `/merge-worktree-linear` stays the user's later, standalone choice.)
 ```
 
 - [ ] **Step 4: Fix the Claude `update-ticket-linear` next step**
@@ -963,7 +963,7 @@ Find (line 142):
 Replace with:
 
 ```
-**Option 1 — merge into `<base>`.** Both modes merge inline, since `$merge-worktree` only understands markdown tickets and `$merge-worktree-linear` refuses to run from inside the worktree this phase is pinned to:
+**Option 1 — merge into `<base>`.** Both modes merge inline: `$merge-worktree` only understands markdown tickets, and `$merge-worktree-linear` refuses a dirty main checkout — exactly the state current-checkout mode is in before the commit:
 ```
 
 - [ ] **Step 6: Fix the Codex `update-ticket-linear` reference**
@@ -1006,9 +1006,12 @@ Replace with:
     forbid_write_call "$skill_md" "save_issue"
   done
 
-  # Both Linear skills that produce a linear-<issue_id>-<slug> branch used to
-  # tell the user it could only be landed by hand. Keep the pointer to the
-  # cleanup twin from rotting back to that advice.
+  # implement-ticket-linear merges inline and now also names
+  # merge-worktree-linear as the later, standalone way to land a worktree
+  # branch; update-ticket-linear never merges anything itself and used to
+  # tell the user to land the branch "manually" instead. Keep the pointer to
+  # the cleanup twin present in all four documents, and keep the superseded
+  # manual-landing phrasing out of update-ticket-linear specifically.
   for skill_md in \
     "$claude_root/implement-ticket-linear/SKILL.md" \
     "$codex_root/implement-ticket-linear/SKILL.md" \
@@ -1016,6 +1019,9 @@ Replace with:
     "$codex_root/update-ticket-linear/SKILL.md"; do
     require_literal "$skill_md" "merge-worktree-linear"
   done
+
+  forbid_stale_claim "$claude_root/update-ticket-linear/SKILL.md" "Land the branch manually"
+  forbid_stale_claim "$codex_root/update-ticket-linear/SKILL.md" "manual land"
 }
 ```
 

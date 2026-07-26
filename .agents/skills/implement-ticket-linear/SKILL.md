@@ -139,7 +139,7 @@ How do you want to land it?
 
 An ambiguous, empty, or unanswered response is option 4. Never re-ask. None of these options writes to Linear.
 
-**Option 1 — merge into `<base>`.** Both modes merge inline, since `$merge-worktree` only understands markdown tickets and `$merge-worktree-linear` refuses to run from inside the worktree this phase is pinned to:
+**Option 1 — merge into `<base>`.** Both modes merge inline: `$merge-worktree` only understands markdown tickets, and `$merge-worktree-linear` refuses a dirty main checkout — exactly the state current-checkout mode is in before the commit:
 
 - Invoke `$commit-ticket` (in worktree mode the pinned cwd puts the commit on the issue branch).
 - From `$MAIN_ROOT`: `git -C "$MAIN_ROOT" switch <base>` if the base exists locally, otherwise `git -C "$MAIN_ROOT" switch -c <base> origin/<base>`.

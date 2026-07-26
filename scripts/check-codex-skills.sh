@@ -438,9 +438,12 @@ validate_worktree_linear_contract() {
     forbid_write_call "$skill_md" "save_issue"
   done
 
-  # Both Linear skills that produce a linear-<issue_id>-<slug> branch used to
-  # tell the user it could only be landed by hand. Keep the pointer to the
-  # cleanup twin from rotting back to that advice.
+  # implement-ticket-linear merges inline and now also names
+  # merge-worktree-linear as the later, standalone way to land a worktree
+  # branch; update-ticket-linear never merges anything itself and used to
+  # tell the user to land the branch "manually" instead. Keep the pointer to
+  # the cleanup twin present in all four documents, and keep the superseded
+  # manual-landing phrasing out of update-ticket-linear specifically.
   for skill_md in \
     "$claude_root/implement-ticket-linear/SKILL.md" \
     "$codex_root/implement-ticket-linear/SKILL.md" \
@@ -448,6 +451,9 @@ validate_worktree_linear_contract() {
     "$codex_root/update-ticket-linear/SKILL.md"; do
     require_literal "$skill_md" "merge-worktree-linear"
   done
+
+  forbid_stale_claim "$claude_root/update-ticket-linear/SKILL.md" "Land the branch manually"
+  forbid_stale_claim "$codex_root/update-ticket-linear/SKILL.md" "manual land"
 }
 
 validate_clarify_contract
