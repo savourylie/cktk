@@ -117,7 +117,7 @@ Stop after a clear summary:
 4. Manual testing steps
 5. **Next step for Linear status:** when ready to mark the issue done (or move it), run `$update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear. This skill only ever moves an issue *into* progress at the start of a run; it never sets a completion state.
 6. **As-built comment (opt-in):** ask exactly once — "Post this as-built summary as a comment on <issue_id>? (y/N)", default no. Only an explicit yes posts one comment (deviations from spec and why, key decisions, follow-ups/tech debt; "None" where empty) via the Linear MCP comment tool. Besides the Phase 2 start transition, never change any other Linear field.
-7. If worktree mode: path, branch, and base. Note that `$merge-worktree` only understands markdown `TICKET-NNN` worktrees, so Phase 8 merges inline.
+7. If worktree mode: path, branch, and base. Note that `$merge-worktree` only understands markdown `TICKET-NNN` worktrees, so Phase 8 merges inline; `$merge-worktree-linear <issue_id>` is the standalone way to land it later.
 
 ## Phase 8: Land the Work
 
@@ -139,7 +139,7 @@ How do you want to land it?
 
 An ambiguous, empty, or unanswered response is option 4. Never re-ask. None of these options writes to Linear.
 
-**Option 1 — merge into `<base>`.** Both modes merge inline, since `$merge-worktree` only understands markdown tickets:
+**Option 1 — merge into `<base>`.** Both modes merge inline, since `$merge-worktree` only understands markdown tickets and `$merge-worktree-linear` refuses to run from inside the worktree this phase is pinned to:
 
 - Invoke `$commit-ticket` (in worktree mode the pinned cwd puts the commit on the issue branch).
 - From `$MAIN_ROOT`: `git -C "$MAIN_ROOT" switch <base>` if the base exists locally, otherwise `git -C "$MAIN_ROOT" switch -c <base> origin/<base>`.

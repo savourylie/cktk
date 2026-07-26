@@ -272,7 +272,7 @@ After presenting the summary, ask exactly once, as its own question: "Post this 
 
 - **Worktree:** `.worktrees/<issue_id>-<slug>/` (branch `linear-<issue_id>-<slug>`, base `<base>`)
 - **Inspect:** `cd .worktrees/<issue_id>-<slug>`
-- **Land:** Phase 9 below offers to do this for you. Note that `/merge-worktree` is for markdown `TICKET-NNN` worktrees and will **not** work for Linear branches, so Phase 9 performs the merge inline.
+- **Land:** Phase 9 below offers to do this for you. `/merge-worktree` is for markdown `TICKET-NNN` worktrees and will **not** work for Linear branches, so Phase 9 performs the merge inline. If you pick option 4 now, `/merge-worktree-linear <issue_id>` lands it later as a standalone step.
 
 If the worktree was reused with pre-existing uncommitted changes, mention that here too.
 
@@ -302,7 +302,7 @@ An ambiguous, empty, or unanswered response is option 4. Never re-ask. None of t
 
 ### Option 1 — merge into `<base>`
 
-`/merge-worktree` only understands markdown `TICKET-NNN` worktrees, so both modes merge inline:
+`/merge-worktree` only understands markdown `TICKET-NNN` worktrees, so both modes merge inline. (`/merge-worktree-linear` does understand Linear worktrees, but it is a standalone cleanup command that refuses to run from inside the worktree this phase is pinned to — so it stays the user's later choice, not a delegation target here.)
 
 a. Invoke `/commit-ticket` via the `Skill` tool. In worktree mode this runs in the pinned worktree cwd, so it commits on the issue branch.
 b. From `$MAIN_ROOT`, switch to the base — it may exist only on the remote: `git -C "$MAIN_ROOT" switch <base>` if it exists locally, otherwise `git -C "$MAIN_ROOT" switch -c <base> origin/<base>`.

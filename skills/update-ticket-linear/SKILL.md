@@ -200,7 +200,12 @@ Report:
 
 ```
 ## Next step
-Linear status is updated. Land the branch manually — $merge-worktree only understands markdown TICKET-NNN worktrees:
+Linear status is updated. Land the branch with:
+
+/merge-worktree-linear <issue_id>
+
+It merges into main by default — pass a base branch as a second argument to
+target another. Or do it by hand:
 
 git checkout <base>
 git merge linear-<issue_id>-<slug>

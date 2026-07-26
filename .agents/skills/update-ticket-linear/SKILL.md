@@ -111,7 +111,7 @@ When the new state is completed-type:
 3. AC evaluation (if any), comment/description outcomes
 4. Unblocked / ready issues list (annotate auto-moves)
 5. Explicit note: **no git commit**
-6. If completed in a matching linear worktree, give **manual land** instructions — `$merge-worktree` only understands markdown `TICKET-NNN` worktrees:
+6. If completed in a matching linear worktree, point at `$merge-worktree-linear <issue_id>` to land it (base defaults to main; pass another as a second argument), and give the manual `git checkout <base>` / `git merge linear-<issue_id>-<slug>` fallback — `$merge-worktree` itself only understands markdown `TICKET-NNN` worktrees:
 
 ```bash
 git checkout <base>
