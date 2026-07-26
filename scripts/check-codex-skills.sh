@@ -403,8 +403,11 @@ validate_worktree_linear_contract() {
   # The Linear worktree twins share one naming contract with
   # implement-ticket-linear and update-ticket-linear: worktrees at
   # .worktrees/<issue_id>-<slug>, branches at linear-<issue_id>-<slug>.
-  # Discovery in all four skills keys on those exact forms, so drift here
-  # surfaces as a silently missing worktree rather than as an error.
+  # This pins the canonical form each document creates and prints. Discovery
+  # deliberately keys on the <issue_id>- prefix rather than on the whole form,
+  # so a slug that drifts is tolerated at read time -- but the .worktrees/ and
+  # linear- halves are load-bearing, and a document that renamed either would
+  # send one skill looking where the others never write.
   for skill_md in \
     "$claude_root/create-worktree-linear/SKILL.md" \
     "$codex_root/create-worktree-linear/SKILL.md" \
@@ -416,14 +419,20 @@ validate_worktree_linear_contract() {
 
   # create-worktree-linear prepares a workspace, so it must never write to
   # Linear — including the Todo -> In Progress transition its implement
-  # sibling performs. The forbidden literal is the write tool rather than the
-  # name of that transition, which the skill legitimately mentions when
-  # explaining which write it declines to make.
+  # sibling performs. The forbidden literals are the write tools rather than
+  # the name of that transition, which the skill legitimately mentions when
+  # explaining which write it declines to make. save_comment is forbidden
+  # beside save_issue because implement-ticket-linear does post a comment and
+  # is the obvious copy-paste source. The MCP *requirement* is asserted here
+  # for the mirror-image reason its merge twin's lack of one is asserted
+  # below: nothing else stops a rewrite from swapping the two prerequisites.
   for skill_md in \
     "$claude_root/create-worktree-linear/SKILL.md" \
     "$codex_root/create-worktree-linear/SKILL.md"; do
     require_literal "$skill_md" "never writes to Linear"
+    require_literal "$skill_md" "must be available and authenticated"
     forbid_write_call "$skill_md" "save_issue"
+    forbid_write_call "$skill_md" "save_comment"
   done
 
   # merge-worktree-linear deliberately works without Linear MCP: the worktree,
@@ -436,6 +445,7 @@ validate_worktree_linear_contract() {
     require_literal "$skill_md" "does not require Linear MCP"
     require_literal "$skill_md" "never writes to Linear"
     forbid_write_call "$skill_md" "save_issue"
+    forbid_write_call "$skill_md" "save_comment"
   done
 
   # implement-ticket-linear merges inline and now also names

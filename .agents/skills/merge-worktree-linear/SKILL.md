@@ -12,7 +12,7 @@ This skill **does not require Linear MCP** — the worktree, the branch, and the
 ## Phase 1: Parse Arguments
 
 1. Split on whitespace and classify:
-   - **Issue reference** if it matches `^[A-Za-z]+-\d+$` (case-insensitive; uppercase the team key) or is a `linear.app` URL containing one.
+   - **Issue reference** if it matches `^[A-Za-z]+-\d+$` (case-insensitive; uppercase the team key) or is a `linear.app` URL containing one — take the first path segment matching `[A-Za-z]+-\d+`.
    - **`no-cleanup` flag** if it matches `^no-cleanup$` (case-insensitive). Preserves the local branch; the worktree directory is still removed. Does not consume the base slot.
    - **Base branch** otherwise. At most one; two or more → report the conflict and stop.
 2. Require at least one issue reference. Default the base to `main`.
@@ -21,7 +21,7 @@ Examples:
 - `$merge-worktree-linear ENG-42` → issues `[ENG-42]`, base `main`
 - `$merge-worktree-linear ENG-42 dev no-cleanup` → issues `[ENG-42]`, base `dev`, branch retained
 
-**Trailing-token tiebreak, resolved on disk.** If a trailing id-looking token has no worktree under `.worktrees/<token>-*` and no branch matching `linear-<token>-*`, but resolves as a branch, treat it as the base and say so. Otherwise report it as an issue with nothing to merge.
+**Trailing-token tiebreak, resolved on disk.** If a trailing id-looking token has no worktree under `.worktrees/<token>-*` and no branch matching `linear-<token>-*`, but resolves as a branch, treat it as the base and say so. Otherwise report it as an issue with nothing to merge. Never promote the only issue token — that leaves zero issues, and step 2's "require at least one" has already run — and never promote when step 1 already classified a base token, since two bases have no arbitration rule; report the conflict and stop in both cases.
 
 ## Phase 2: Resolve Repo Root and Handles
 
@@ -34,10 +34,10 @@ Examples:
 ## Phase 3: Pre-flight (once, whole batch)
 
 1. **Refuse if the cwd is inside a target worktree** — removing it would orphan the shell. Tell the user to `cd "$MAIN_ROOT"`.
-2. **Main checkout must be clean**, with one carve-out: `$create-worktree-linear` leaves `.gitignore` uncommitted after adding `.worktrees/`. When that file is the only dirty entry (` M .gitignore` or `?? .gitignore`) and its only change is that line, ask once — "Commit it so the merge can proceed? [Y/n]" — and on anything but an explicit no, commit just that file. Any other dirty state refuses.
+2. **Main checkout must be clean**, with one carve-out: `$create-worktree-linear` leaves `.gitignore` uncommitted after adding `.worktrees/`. When that file is the only dirty entry (` M .gitignore` or `?? .gitignore`) and its only change is that line, ask once — "Commit it so the merge can proceed? [Y/n]" — and on anything but an explicit no, record consent to commit just that file, deferring the commit itself to step 5. Any other dirty state refuses.
 3. `git -C "$MAIN_ROOT" fetch origin <base>`; on failure warn and continue with the local base.
 4. Resolve the base ref: `origin/<base>` → local `<base>` → stop if neither.
-5. Switch the main checkout to the base (`switch`, or `switch -c <base> origin/<base>`) and `merge --ff-only origin/<base>`. A diverged local base aborts the batch.
+5. Switch the main checkout to the base (`switch`, or `switch -c <base> origin/<base>`) and `merge --ff-only origin/<base>`. A diverged local base aborts the batch; a switch refused because the uncommitted `.gitignore` would be overwritten also aborts — never force it. Then, and only then, commit the step 2 carve-out: `git -C "$MAIN_ROOT" add .gitignore && git -C "$MAIN_ROOT" commit -m "chore: ignore .worktrees/"`. Committing before the switch would strand it on the old branch (routine for `$merge-worktree-linear ENG-42 dev` from a `main` checkout), `<base>` would lose the ignore line, and the next run would see `?? .worktrees/` — dirt the carve-out does not cover.
 6. **Dirty-worktree scan.** For each target worktree, `git -C <path> status --porcelain`. Present all dirty worktrees in one batched message with modified/added/deleted/untracked counts and ask "Auto-commit each before merging? [Y/n]", default yes. On yes: read the issue title via MCP if available (else use the branch slug), inspect `diff HEAD`, then `add -A` and commit with a conventional message referencing the issue id. A failed commit is never retried with `--no-verify` — mark the issue and move on. On no, leave them; Phase 4 skips them.
 
 ## Phase 4: Per-Issue Merge and Cleanup
@@ -48,7 +48,7 @@ Independent per issue:
 2. Worktree still dirty → skip with a reason; never lose uncommitted work.
 3. `git -C "$MAIN_ROOT" merge-base --is-ancestor <branch> <base-ref>` exits 0 → already merged; go to step 5.
 4. `git -C "$MAIN_ROOT" merge --no-ff -m "Merge <branch> into <base>" <branch>`. On conflict: `merge --abort`, report the files, retain the worktree, continue. On other failure: record and continue.
-5. Cleanup, worktree first — `branch -d/-D` refuses while the branch is checked out in a worktree:
+5. Cleanup. If Phase 2 found **no worktree** for this issue (branch only — what `$implement-ticket-linear` leaves in current-checkout mode), skip the removal and go straight to the branch delete: `worktree remove` on a path that is not a registered worktree fails with `fatal: '<path>' is not a working tree` (exit 128), matching neither case below. Otherwise remove the worktree first — `branch -d/-D` refuses while the branch is checked out in a worktree:
    - `git -C "$MAIN_ROOT" worktree remove <path>`; if it fails because the directory is gone but still registered, `worktree prune` and retry once.
    - If it fails with `contains modified or untracked files`, do **not** use `--force`: report and retain. Ignored build output does not trigger this, so the message means real work is present.
    - `no-cleanup` → stop here and record `branch retained (no-cleanup)`.

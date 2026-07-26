@@ -40,11 +40,15 @@ discovery across all four Linear skills.
    the loop open, and `update-ticket-linear`'s "land it manually" note with no
    command to point at.
 2. **No delegation refactor.** `implement-ticket-linear` keeps its inline worktree
-   creation and inline merge. Only the stale cross-references change. Delegating
-   the landing merge would re-create the defect AGENTS.md rule 6 documents —
-   calling a merge skill from inside the worktree it refuses to run in — and the
-   inline path already carries the `cd "$MAIN_ROOT"` fix for it. Accepted cost:
-   two implementations of "merge a linear branch" that can drift.
+   creation and inline merge. Only the stale cross-references change. Landing
+   option 1 must also serve current-checkout mode, where the work is still
+   uncommitted in the main checkout — precisely the state `merge-worktree-linear`
+   refuses to run in, since its auto-commit carve-out covers worktrees only.
+   Delegating there would hand the user a refusal instead of a landing: the same
+   precondition-checking discipline AGENTS.md rule 6 documents, applied before
+   writing the call. One inline flow covers both modes; `merge-worktree-linear`
+   stays the user's later, standalone choice. Accepted cost: two implementations
+   of "merge a linear branch" that can drift.
 3. **`create-worktree-linear` never writes to Linear**, including the
    `Todo → In Progress` transition `implement-ticket-linear` performs. Preparing a
    workspace is not starting work, and a five-issue batch would fire five status
@@ -95,6 +99,11 @@ Pattern classification therefore runs first, and a tiebreak applies to the
 - **`merge-worktree-linear`** — the same shape without MCP: if a trailing
   id-looking token has no registered worktree and no `linear-<issue_id>-*` branch, but
   does resolve as a branch, it is the base.
+- **Neither promotes unconditionally.** The tiebreak never fires on the last
+  remaining issue token: promoting it leaves zero issues, and Phase 1's "no issue
+  references → ask and stop" has already been evaluated by then. It also never
+  fires when Phase 1 already classified a base token, since two bases have no
+  arbitration rule. Both cases report and stop rather than promote.
 
 If a repository genuinely has a branch named `ENG-42` while issue ENG-42 also
 exists, the issue wins. Document it; do not add disambiguation machinery. This
@@ -200,11 +209,20 @@ batch:
    delegation. When the *only* dirty entry is `.gitignore` and its only change is
    the added `.worktrees/` line, offer to commit it (`[Y/n]`, default yes),
    matching the convention 448c868 established. Anything else refuses as the docs
-   twin does.
+   twin does. Only the *consent* is collected here — the commit itself is deferred
+   to step 3, so it lands on `<base>`.
 3. **Fetch and resolve the base**, then switch the main checkout to it and
    fast-forward — `git switch <base>` when it exists locally, else
    `git switch -c <base> origin/<base>`; abort and report if the fast-forward fails
-   on a diverged local base.
+   on a diverged local base, or if the switch is refused because the uncommitted
+   `.gitignore` would be overwritten. **Only after the switch** is the step 2
+   carve-out committed. The order is load-bearing: committing first strands
+   `chore: ignore .worktrees/` on the pre-switch branch — routine for
+   `/merge-worktree-linear ENG-42 dev` from a `main` checkout — after which
+   `<base>` carries no ignore line, `.worktrees/` reappears as `?? .worktrees/`,
+   and the next run refuses over dirt the carve-out (scoped to a lone
+   `.gitignore`) does not cover, telling the user to "commit, stash, or discard"
+   a directory holding their work.
 4. **Dirty-worktree scan with batched auto-commit.** For each target worktree,
    `git -C <path> status --porcelain`; present all dirty worktrees in one message
    with modified/added/deleted/untracked counts and ask `[Y/n]`, default yes. On
@@ -220,7 +238,13 @@ post-PR state) and skips straight to cleanup; otherwise
 On conflict: `merge --abort`, report the conflicted files, retain the worktree,
 continue. Cleanup is `worktree remove` (with a `worktree prune` retry when the
 directory is gone but still registered) then `branch -D` unless `no-cleanup` was
-passed. `-D` is deliberate and safe here for the same reason as
+passed. An issue resolved to a **branch with no worktree** — what
+`implement-ticket-linear` leaves behind in current-checkout mode — skips the
+removal and goes straight to the branch delete: `git worktree remove` on a path
+that is not a registered worktree fails with `fatal: '<path>' is not a working
+tree` and exit 128, which matches neither documented failure branch (the
+prune-and-retry or the modified/untracked refusal) and would leave the agent
+guessing whether to proceed. `-D` is deliberate and safe here for the same reason as
 `merge-worktree:107` — this step is reached only when the merge is confirmed, and
 a GitHub squash-merge leaves the branch tip a non-ancestor that `-d` would refuse.
 
@@ -283,11 +307,22 @@ accurate about `/merge-worktree` and all now incomplete:
 
 | Location | Change |
 | --- | --- |
-| `skills/implement-ticket-linear/SKILL.md:275` | keep the inline-merge statement; add that `/merge-worktree-linear` lands it standalone later |
-| `skills/implement-ticket-linear/SKILL.md:305` | same, as the justification for option 1 merging inline |
+| `skills/implement-ticket-linear/SKILL.md:275` | keep the inline-merge statement; add that `/merge-worktree-linear` lands it standalone later — after options 2, 3, or 4, every option that leaves the worktree in place |
+| `skills/implement-ticket-linear/SKILL.md:305` | same, as the justification for option 1 merging inline (decision 2's reason, not a cwd-refusal claim) |
 | `.agents/skills/implement-ticket-linear/SKILL.md:120,142` | same two, in Codex idiom (`$merge-worktree-linear`) |
-| `skills/update-ticket-linear/SKILL.md:203` | replace "Land the branch manually" with `/merge-worktree-linear <issue_id>`; keep the raw git commands as the fallback |
-| `.agents/skills/update-ticket-linear/SKILL.md:114` | same, Codex idiom |
+| `skills/update-ticket-linear/SKILL.md:203` | replace "Land the branch manually" with `/merge-worktree-linear <issue_id>` — but **only when the worktree exists on disk**; the branch-only case keeps the raw `git checkout` / `git merge` commands and must not name the merge twin (see below) |
+| `.agents/skills/update-ticket-linear/SKILL.md:114` | same, Codex idiom; already scoped to "if completed in a matching linear worktree" |
+
+The worktree gate on the Claude row is load-bearing, not a nicety.
+`/implement-ticket-linear` creates `linear-<issue_id>-<slug>` on **every** run,
+including current-checkout mode where no worktree is ever made, so a branch with
+no worktree is the common case rather than an edge. `merge-worktree-linear`'s
+auto-commit carve-out covers worktrees only; in current-checkout mode the work is
+still uncommitted in the main checkout, which is exactly the state it refuses to
+run in — and `/update-ticket-linear` never commits. This is the same defect
+448c868 fixed as "defect B" in the docs twin
+(`skills/update-ticket/SKILL.md:193`), and the fix takes the same shape: being on
+the branch is not sufficient on its own.
 
 No control flow changes in any of the four.
 
@@ -309,15 +344,23 @@ user's missing worktree:
 
 - both new skills, both trees: `require_literal` `linear-<issue_id>-<slug>` and
   `.worktrees/<issue_id>-<slug>` — the naming contract shared with the implement
-  and update twins.
+  and update twins. This pins the **canonical form** each document creates and
+  prints; discovery itself deliberately keys on the `<issue_id>-` prefix (§2), so
+  a drifting slug is tolerated at read time while a renamed `.worktrees/` or
+  `linear-` half is not.
 - `create-worktree-linear`, both trees: `require_literal "never writes to Linear"`
-  and `forbid_literal "save_issue"`, pinning decision 3 against a future
-  copy-paste from `implement-ticket-linear`. The forbidden literal is the write
-  tool, not the phrase `Todo → In Progress`: the skill legitimately names that
-  transition when explaining which write it declines to make, so forbidding the
-  phrase would fire on its own disclaimer.
+  plus `forbid_write_call "save_issue"` and `forbid_write_call "save_comment"`,
+  pinning decision 3 against a future copy-paste from `implement-ticket-linear`,
+  which performs both a status write and an opt-in comment. The forbidden
+  literals are the write tools, not the phrase `Todo → In Progress`: the skill
+  legitimately names that transition when explaining which write it declines to
+  make, so forbidding the phrase would fire on its own disclaimer. Its Linear MCP
+  **requirement** is pinned too, with
+  `require_literal "must be available and authenticated"` — the mirror of the
+  merge twin's assertion below, so nothing silently swaps the two prerequisites.
 - `merge-worktree-linear`, both trees:
-  `require_literal "does not require Linear MCP"`, pinning decision 4.
+  `require_literal "does not require Linear MCP"`, pinning decision 4, plus the
+  same `never writes to Linear` / `save_issue` / `save_comment` trio.
 - `implement-ticket-linear` and `update-ticket-linear`, both trees:
   `require_literal "merge-worktree-linear"`, so §6 cannot rot back.
 
@@ -369,6 +412,17 @@ Recorded at design time; none blocks this change.
    files do. The Linear twins' inline removal in `implement-ticket-linear` Phase 9
    is therefore safe whenever `commit-ticket` has just run, and the gap is limited
    to a `commit-ticket` that leaves files uncommitted.
+3. **`implement-ticket-linear` still matches worktrees by exact path.** Both new
+   twins match by `<issue_id>-` prefix per §2, but
+   `skills/implement-ticket-linear/SKILL.md:153` reuses a worktree only when the
+   registered path equals the slug it computes today. A Linear title edit — or a
+   branch reused at an older slug by `create-worktree-linear` — makes
+   `/implement-ticket-linear ENG-42 worktree` create a *second* worktree for an
+   issue that already has one, the exact failure §2 exists to prevent.
+   `merge-worktree-linear` then reports two matches for the id, skips the issue,
+   and the user cleans up by hand. It fails loudly rather than silently, and
+   changing `implement-ticket-linear`'s resolution is out of scope for this branch
+   (decision 2), so this is recorded rather than fixed.
 
 ## Acceptance criteria
 

@@ -100,6 +100,11 @@ Unlike `TICKET-NNN`, the Linear identifier pattern collides with ordinary branch
 
 - If it resolves as neither, report `<token> not found in Linear` and stop the batch.
 
+Two cases where the tiebreak does **not** fire, because promoting the token would leave the invocation incoherent:
+
+- **Never promote the last remaining issue token.** If the trailing token is the only issue reference, promoting it leaves zero issues, and Phase 1's "no issue references → ask and stop" has already been evaluated. Report `<token> not found in Linear` and stop the batch instead.
+- **Never promote when a base token was already classified in Phase 1.** Two base branches have no arbitration rule. Report the conflict — the same one two non-issue tokens produce — and stop.
+
 If a repository genuinely has a branch named `ENG-42` while issue ENG-42 also exists, the issue wins, and that branch cannot be named as a base here. Document the collision rather than adding disambiguation machinery.
 
 ## Phase 2: Resolve the Main Repo Root and Issues
@@ -247,7 +252,7 @@ Examples:
 - `$create-worktree-linear ENG-42` → issues `[ENG-42]`, base `main`
 - `$create-worktree-linear ENG-42 ENG-43 dev` → issues `[ENG-42, ENG-43]`, base `dev`
 
-**Trailing-token tiebreak.** The Linear id pattern collides with branch names like `release-2026`. If the trailing token fails to resolve as a Linear issue but resolves as a branch (`git rev-parse --verify --quiet origin/<token>`, then `<token>`), treat it as the base and say so in one line. If it resolves as neither, stop. If a branch and an issue share a name, the issue wins.
+**Trailing-token tiebreak.** The Linear id pattern collides with branch names like `release-2026`. If the trailing token fails to resolve as a Linear issue but resolves as a branch (`git rev-parse --verify --quiet origin/<token>`, then `<token>`), treat it as the base and say so in one line. If it resolves as neither, stop. If a branch and an issue share a name, the issue wins. Never promote the only issue token — that leaves zero issues, and step 3's "require at least one" has already run — and never promote when step 2 already classified a base token, since two bases have no arbitration rule; report the conflict and stop in both cases.
 
 ## Phase 2: Resolve Repo Root and Issues
 
@@ -371,8 +376,11 @@ validate_worktree_linear_contract() {
   # The Linear worktree twins share one naming contract with
   # implement-ticket-linear and update-ticket-linear: worktrees at
   # .worktrees/<issue_id>-<slug>, branches at linear-<issue_id>-<slug>.
-  # Discovery in all four skills keys on those exact forms, so drift here
-  # surfaces as a silently missing worktree rather than as an error.
+  # This pins the canonical form each document creates and prints. Discovery
+  # deliberately keys on the <issue_id>- prefix rather than on the whole form,
+  # so a slug that drifts is tolerated at read time -- but the .worktrees/ and
+  # linear- halves are load-bearing, and a document that renamed either would
+  # send one skill looking where the others never write.
   for skill_md in \
     "$claude_root/create-worktree-linear/SKILL.md" \
     "$codex_root/create-worktree-linear/SKILL.md"; do
@@ -382,14 +390,20 @@ validate_worktree_linear_contract() {
 
   # create-worktree-linear prepares a workspace, so it must never write to
   # Linear — including the Todo -> In Progress transition its implement
-  # sibling performs. The forbidden literal is the write tool rather than the
-  # name of that transition, which the skill legitimately mentions when
-  # explaining which write it declines to make.
+  # sibling performs. The forbidden literals are the write tools rather than
+  # the name of that transition, which the skill legitimately mentions when
+  # explaining which write it declines to make. save_comment is forbidden
+  # beside save_issue because implement-ticket-linear does post a comment and
+  # is the obvious copy-paste source. The MCP *requirement* is asserted here
+  # for the mirror-image reason its merge twin's lack of one is asserted
+  # below: nothing else stops a rewrite from swapping the two prerequisites.
   for skill_md in \
     "$claude_root/create-worktree-linear/SKILL.md" \
     "$codex_root/create-worktree-linear/SKILL.md"; do
     require_literal "$skill_md" "never writes to Linear"
+    require_literal "$skill_md" "must be available and authenticated"
     forbid_write_call "$skill_md" "save_issue"
+    forbid_write_call "$skill_md" "save_comment"
   done
 }
 
@@ -495,7 +509,7 @@ This skill **does not require Linear MCP**, and it is the only `-linear` skill t
 
 Use the same grammar as `/create-worktree-linear` so users don't have to learn two. Split `$ARGUMENTS` on whitespace and classify each token:
 
-- **Issue reference** — matches `^[A-Za-z]+-\d+$` (case-insensitive; uppercase the team key), or a `linear.app` URL containing such an identifier.
+- **Issue reference** — matches `^[A-Za-z]+-\d+$` (case-insensitive; uppercase the team key), or a `linear.app` URL containing such an identifier (extract the first path segment matching `[A-Za-z]+-\d+`).
 - **`no-cleanup` flag** — matches `^no-cleanup$` (case-insensitive). When set, the local branch is preserved after merging (the worktree directory is still removed). Duplicates are ignored. Does **not** consume the base-branch slot.
 - **Base branch** — anything else. At most one base-branch token. Two or more non-issue, non-flag tokens → report the conflict and stop.
 
@@ -512,6 +526,11 @@ If no issue references are provided, ask the user for at least one and stop. If 
 ### The trailing-token tiebreak
 
 The Linear identifier pattern collides with branch names like `release-2026`. Because this skill needs no Linear MCP, the tiebreak is resolved entirely on disk: if a trailing id-looking token has **no** registered worktree under `.worktrees/<token>-*` and **no** branch matching `linear-<token>-*`, but does resolve as a branch (`git rev-parse --verify --quiet origin/<token>`, then `<token>`), treat it as the base and say so in one line. If it resolves as neither, report it as an issue with nothing to merge.
+
+Two cases where the tiebreak does **not** fire, because promoting the token would leave the invocation incoherent:
+
+- **Never promote the last remaining issue token.** If the trailing token is the only issue reference, promoting it leaves zero issues, and Phase 1's "no issue references → ask and stop" has already been evaluated. Leave it classified as an issue and report it with nothing to merge.
+- **Never promote when a base token was already classified in Phase 1.** Two base branches have no arbitration rule. Report the conflict — the same one two non-issue tokens produce — and stop.
 
 ## Phase 2: Resolve the Main Repo Root and Handles
 
@@ -541,8 +560,7 @@ These run once before touching any issue. If any of them fail, stop the entire b
    Commit it so the merge can proceed? [Y/n]
    ```
 
-   Anything but an explicit no commits just that file:
-   `git -C "$MAIN_ROOT" add .gitignore && git -C "$MAIN_ROOT" commit -m "chore: ignore .worktrees/"`. On an explicit no, refuse the batch as below.
+   Anything but an explicit no records consent to commit that file — but **do not commit it here**. The commit is deferred to step 5, which runs it once the main checkout is on `<base>`. On an explicit no, refuse the batch as below.
 
    For any other dirty state — or `.gitignore` plus anything else — refuse and tell the user to commit, stash, or discard.
 
@@ -550,10 +568,15 @@ These run once before touching any issue. If any of them fail, stop the entire b
 
 4. **Resolve the base ref.** Prefer `origin/<base>`; fall back to local `<base>`. If neither exists, report `base branch '<base>' not found locally or on origin` and stop.
 
-5. **Switch the main checkout to the base branch and fast-forward it.**
+5. **Switch the main checkout to the base branch, fast-forward it, then commit the deferred `.gitignore` carve-out.**
    - If local `<base>` exists: `git -C "$MAIN_ROOT" switch <base>`.
    - If it doesn't (only `origin/<base>` was found): `git -C "$MAIN_ROOT" switch -c <base> origin/<base>`.
+   - If the switch is refused because the uncommitted `.gitignore` would be overwritten (the current branch and `<base>` disagree about that file), refuse the batch and say so. Never force the switch, and never commit the carve-out on whatever branch happens to be checked out.
    - Then `git -C "$MAIN_ROOT" merge --ff-only origin/<base>` (skip if there is no `origin/<base>`). If the fast-forward fails because the local base has diverged from origin, abort and report — that needs human judgment, not a default decision.
+   - Finally, if step 2 recorded consent for the `.gitignore` carve-out, commit it **now**:
+     `git -C "$MAIN_ROOT" add .gitignore && git -C "$MAIN_ROOT" commit -m "chore: ignore .worktrees/"`.
+
+   Committing after the switch is the whole point of the ordering. `/merge-worktree-linear ENG-42 dev` from a `main` checkout would otherwise strand `chore: ignore .worktrees/` on `main`; switching to `dev` would drop the ignore line, `.worktrees/` would reappear as `?? .worktrees/` on the next run, and the carve-out — scoped to a lone `.gitignore` — would not cover it, so the batch would refuse with "commit, stash, or discard" over a directory holding the user's work.
 
 6. **Worktree dirty-state scan + auto-commit.** The natural flow is `/implement-ticket-linear ENG-42 worktree` → `/update-ticket-linear ENG-42` → `/merge-worktree-linear ENG-42`, and neither of those commits implementation code. Rather than refuse, detect it up front and offer to commit.
 
@@ -599,7 +622,9 @@ For each `(issue_id, worktree_path, branch)`:
    - **On conflict:** `git -C "$MAIN_ROOT" merge --abort` to clean up the half-merged state, record which files conflicted, skip cleanup for this issue, and continue with the next.
    - **On other failure:** record the error, skip cleanup for this issue, continue.
 
-5. **Cleanup.** Remove the worktree **before** deleting the branch — `git branch -d/-D` refuses with `cannot delete branch '<branch>' used by worktree at '<path>'` while it is still checked out there.
+5. **Cleanup.** If Phase 2 discovered **no worktree** for this issue — a branch-only issue, the state `/implement-ticket-linear` leaves behind in current-checkout mode — skip the removal entirely and go straight to the branch delete below. Calling `git worktree remove` on a path that is not a registered worktree fails with `fatal: '<path>' is not a working tree` and exit 128, which matches neither failure branch below, leaving the agent guessing whether to proceed.
+
+   Otherwise remove the worktree **before** deleting the branch — `git branch -d/-D` refuses with `cannot delete branch '<branch>' used by worktree at '<path>'` while it is still checked out there.
    - `git -C "$MAIN_ROOT" worktree remove <worktree_path>` — removes the directory and unregisters it. If it fails because the worktree is missing on disk but still registered, run `git -C "$MAIN_ROOT" worktree prune` and retry once.
    - If it fails with `contains modified or untracked files`, **do not pass `--force`** — report it and retain the worktree. Ignored build output such as `node_modules/` does not trigger this; only modified or untracked files do, which means auto-commit was declined or partially failed and there is real work to preserve.
    - If the `no-cleanup` flag was passed, stop here: leave the local branch and record `branch retained (no-cleanup)`.
@@ -627,7 +652,7 @@ Linear status is not updated by this skill — run /update-ticket-linear ENG-42 
 
 Group entries by outcome (auto-committed-and-merged, merged-and-cleaned, already-merged-and-cleaned, branch-retained-by-flag, skipped, conflict, error) so the user immediately sees what needs follow-up. Issues whose changes were auto-committed in Phase 3 get the `auto-committed` prefix so those commits can be audited afterwards. The `branch retained (no-cleanup)` label is informational — the user asked for it.
 
-Do not push to origin, and do not delete the remote branch. The only commits this skill ever creates are the merge commits in Phase 4, the user-confirmed auto-commits in Phase 3 step 6, and the user-confirmed `.gitignore` commit in Phase 3 step 2.
+Do not push to origin, and do not delete the remote branch. The only commits this skill ever creates are the merge commits in Phase 4, the user-confirmed auto-commits in Phase 3 step 6, and the user-confirmed `.gitignore` commit in Phase 3 step 5.
 
 ## Safety Rules
 
@@ -658,7 +683,7 @@ This skill **does not require Linear MCP** — the worktree, the branch, and the
 ## Phase 1: Parse Arguments
 
 1. Split on whitespace and classify:
-   - **Issue reference** if it matches `^[A-Za-z]+-\d+$` (case-insensitive; uppercase the team key) or is a `linear.app` URL containing one.
+   - **Issue reference** if it matches `^[A-Za-z]+-\d+$` (case-insensitive; uppercase the team key) or is a `linear.app` URL containing one — take the first path segment matching `[A-Za-z]+-\d+`.
    - **`no-cleanup` flag** if it matches `^no-cleanup$` (case-insensitive). Preserves the local branch; the worktree directory is still removed. Does not consume the base slot.
    - **Base branch** otherwise. At most one; two or more → report the conflict and stop.
 2. Require at least one issue reference. Default the base to `main`.
@@ -667,7 +692,7 @@ Examples:
 - `$merge-worktree-linear ENG-42` → issues `[ENG-42]`, base `main`
 - `$merge-worktree-linear ENG-42 dev no-cleanup` → issues `[ENG-42]`, base `dev`, branch retained
 
-**Trailing-token tiebreak, resolved on disk.** If a trailing id-looking token has no worktree under `.worktrees/<token>-*` and no branch matching `linear-<token>-*`, but resolves as a branch, treat it as the base and say so. Otherwise report it as an issue with nothing to merge.
+**Trailing-token tiebreak, resolved on disk.** If a trailing id-looking token has no worktree under `.worktrees/<token>-*` and no branch matching `linear-<token>-*`, but resolves as a branch, treat it as the base and say so. Otherwise report it as an issue with nothing to merge. Never promote the only issue token — that leaves zero issues, and step 2's "require at least one" has already run — and never promote when step 1 already classified a base token, since two bases have no arbitration rule; report the conflict and stop in both cases.
 
 ## Phase 2: Resolve Repo Root and Handles
 
@@ -680,10 +705,10 @@ Examples:
 ## Phase 3: Pre-flight (once, whole batch)
 
 1. **Refuse if the cwd is inside a target worktree** — removing it would orphan the shell. Tell the user to `cd "$MAIN_ROOT"`.
-2. **Main checkout must be clean**, with one carve-out: `$create-worktree-linear` leaves `.gitignore` uncommitted after adding `.worktrees/`. When that file is the only dirty entry (` M .gitignore` or `?? .gitignore`) and its only change is that line, ask once — "Commit it so the merge can proceed? [Y/n]" — and on anything but an explicit no, commit just that file. Any other dirty state refuses.
+2. **Main checkout must be clean**, with one carve-out: `$create-worktree-linear` leaves `.gitignore` uncommitted after adding `.worktrees/`. When that file is the only dirty entry (` M .gitignore` or `?? .gitignore`) and its only change is that line, ask once — "Commit it so the merge can proceed? [Y/n]" — and on anything but an explicit no, record consent to commit just that file, deferring the commit itself to step 5. Any other dirty state refuses.
 3. `git -C "$MAIN_ROOT" fetch origin <base>`; on failure warn and continue with the local base.
 4. Resolve the base ref: `origin/<base>` → local `<base>` → stop if neither.
-5. Switch the main checkout to the base (`switch`, or `switch -c <base> origin/<base>`) and `merge --ff-only origin/<base>`. A diverged local base aborts the batch.
+5. Switch the main checkout to the base (`switch`, or `switch -c <base> origin/<base>`) and `merge --ff-only origin/<base>`. A diverged local base aborts the batch; a switch refused because the uncommitted `.gitignore` would be overwritten also aborts — never force it. Then, and only then, commit the step 2 carve-out: `git -C "$MAIN_ROOT" add .gitignore && git -C "$MAIN_ROOT" commit -m "chore: ignore .worktrees/"`. Committing before the switch would strand it on the old branch (routine for `$merge-worktree-linear ENG-42 dev` from a `main` checkout), `<base>` would lose the ignore line, and the next run would see `?? .worktrees/` — dirt the carve-out does not cover.
 6. **Dirty-worktree scan.** For each target worktree, `git -C <path> status --porcelain`. Present all dirty worktrees in one batched message with modified/added/deleted/untracked counts and ask "Auto-commit each before merging? [Y/n]", default yes. On yes: read the issue title via MCP if available (else use the branch slug), inspect `diff HEAD`, then `add -A` and commit with a conventional message referencing the issue id. A failed commit is never retried with `--no-verify` — mark the issue and move on. On no, leave them; Phase 4 skips them.
 
 ## Phase 4: Per-Issue Merge and Cleanup
@@ -694,7 +719,7 @@ Independent per issue:
 2. Worktree still dirty → skip with a reason; never lose uncommitted work.
 3. `git -C "$MAIN_ROOT" merge-base --is-ancestor <branch> <base-ref>` exits 0 → already merged; go to step 5.
 4. `git -C "$MAIN_ROOT" merge --no-ff -m "Merge <branch> into <base>" <branch>`. On conflict: `merge --abort`, report the files, retain the worktree, continue. On other failure: record and continue.
-5. Cleanup, worktree first — `branch -d/-D` refuses while the branch is checked out in a worktree:
+5. Cleanup. If Phase 2 found **no worktree** for this issue (branch only — what `$implement-ticket-linear` leaves in current-checkout mode), skip the removal and go straight to the branch delete: `worktree remove` on a path that is not a registered worktree fails with `fatal: '<path>' is not a working tree` (exit 128), matching neither case below. Otherwise remove the worktree first — `branch -d/-D` refuses while the branch is checked out in a worktree:
    - `git -C "$MAIN_ROOT" worktree remove <path>`; if it fails because the directory is gone but still registered, `worktree prune` and retry once.
    - If it fails with `contains modified or untracked files`, do **not** use `--force`: report and retain. Ignored build output does not trigger this, so the message means real work is present.
    - `no-cleanup` → stop here and record `branch retained (no-cleanup)`.
@@ -764,8 +789,9 @@ Replace with:
 Then find the closing brace of `validate_worktree_linear_contract`:
 
 ```bash
-    require_literal "$skill_md" "never writes to Linear"
+    require_literal "$skill_md" "must be available and authenticated"
     forbid_write_call "$skill_md" "save_issue"
+    forbid_write_call "$skill_md" "save_comment"
   done
 }
 ```
@@ -773,8 +799,9 @@ Then find the closing brace of `validate_worktree_linear_contract`:
 Replace with:
 
 ```bash
-    require_literal "$skill_md" "never writes to Linear"
+    require_literal "$skill_md" "must be available and authenticated"
     forbid_write_call "$skill_md" "save_issue"
+    forbid_write_call "$skill_md" "save_comment"
   done
 
   # merge-worktree-linear deliberately works without Linear MCP: the worktree,
@@ -787,6 +814,7 @@ Replace with:
     require_literal "$skill_md" "does not require Linear MCP"
     require_literal "$skill_md" "never writes to Linear"
     forbid_write_call "$skill_md" "save_issue"
+    forbid_write_call "$skill_md" "save_comment"
   done
 }
 ```
@@ -886,7 +914,7 @@ Find (line 275):
 Replace with:
 
 ```
-- **Land:** Phase 9 below offers to do this for you. `/merge-worktree` is for markdown `TICKET-NNN` worktrees and will **not** work for Linear branches, so Phase 9 performs the merge inline. If you pick option 4 now, `/merge-worktree-linear <issue_id>` lands it later as a standalone step.
+- **Land:** Phase 9 below offers to do this for you. `/merge-worktree` is for markdown `TICKET-NNN` worktrees and will **not** work for Linear branches, so Phase 9 performs the merge inline. If you pick option 2, 3, or 4 — every option that leaves the worktree in place — `/merge-worktree-linear <issue_id>` lands it later as a standalone step; after option 2's PR is merged it detects the branch is already in the base and just cleans up.
 ```
 
 - [ ] **Step 3: Fix the Claude `implement-ticket-linear` option 1 justification**
@@ -922,23 +950,39 @@ git merge linear-<issue_id>-<slug>
 
 Replace with:
 
-````
-7. **Next step for this issue** when `WORK_DIR` is a matching linear worktree or branch and the target was completed:
+`````
+7. **Next step for this issue** when `WORK_DIR` is a matching linear worktree or branch and the target was completed. Which of the two variants you print depends on whether the worktree still exists on disk — scan `git worktree list --porcelain` for a registered path under `$MAIN_ROOT/.worktrees/<issue_id>-`:
 
-```
-## Next step
-Linear status is updated. Land the branch with:
+   **Worktree exists** — `/merge-worktree-linear` can land it:
 
-/merge-worktree-linear <issue_id>
+   ```
+   ## Next step
+   Linear status is updated. Land the branch with:
 
-It merges into main by default — pass a base branch as a second argument to
-target another. Or do it by hand:
+   /merge-worktree-linear <issue_id>
 
-git checkout <base>
-git merge linear-<issue_id>-<slug>
-# or: push the branch and open a PR
-```
-````
+   It merges into main by default — pass a base branch as a second argument to
+   target another. It auto-commits whatever is still uncommitted in the worktree
+   before merging, so you do not need to commit first. Or do it by hand:
+
+   git checkout <base>
+   git merge linear-<issue_id>-<slug>
+   # or: push the branch and open a PR
+   ```
+
+   **Branch only, no worktree** — print the manual commands and do **not** name `/merge-worktree-linear`:
+
+   ```
+   ## Next step
+   Linear status is updated. Land the branch by hand:
+
+   git checkout <base>
+   git merge linear-<issue_id>-<slug>
+   # or: push the branch and open a PR
+   ```
+
+   **Being on branch `linear-<issue_id>-<slug>` is not sufficient on its own.** `/implement-ticket-linear` creates that branch on every run, including current-checkout mode where no worktree is ever created, so the branch-only case is the common one rather than an edge. `/merge-worktree-linear`'s auto-commit carve-out covers worktrees only; in current-checkout mode the implementation is still sitting uncommitted in the main checkout — and `/update-ticket-linear` never commits — which is precisely the state that skill refuses to run in. Naming it there would point the user at a skill that cannot serve them.
+`````
 
 - [ ] **Step 5: Fix the Codex `implement-ticket-linear` references**
 
@@ -991,6 +1035,7 @@ In `scripts/check-codex-skills.sh`, find the closing brace of `validate_worktree
     require_literal "$skill_md" "does not require Linear MCP"
     require_literal "$skill_md" "never writes to Linear"
     forbid_write_call "$skill_md" "save_issue"
+    forbid_write_call "$skill_md" "save_comment"
   done
 }
 ```
@@ -1004,6 +1049,7 @@ Replace with:
     require_literal "$skill_md" "does not require Linear MCP"
     require_literal "$skill_md" "never writes to Linear"
     forbid_write_call "$skill_md" "save_issue"
+    forbid_write_call "$skill_md" "save_comment"
   done
 
   # implement-ticket-linear merges inline and now also names

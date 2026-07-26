@@ -196,21 +196,37 @@ Report:
    - Bulleted list of dependents that are now free of open blockers
    - Annotate ones that were auto-moved with `(moved to <state>)`
    - If none, say so
-7. **Next step for this issue** when `WORK_DIR` is a matching linear worktree or branch and the target was completed:
+7. **Next step for this issue** when `WORK_DIR` is a matching linear worktree or branch and the target was completed. Which of the two variants you print depends on whether the worktree still exists on disk — scan `git worktree list --porcelain` for a registered path under `$MAIN_ROOT/.worktrees/<issue_id>-`:
 
-```
-## Next step
-Linear status is updated. Land the branch with:
+   **Worktree exists** — `/merge-worktree-linear` can land it:
 
-/merge-worktree-linear <issue_id>
+   ```
+   ## Next step
+   Linear status is updated. Land the branch with:
 
-It merges into main by default — pass a base branch as a second argument to
-target another. Or do it by hand:
+   /merge-worktree-linear <issue_id>
 
-git checkout <base>
-git merge linear-<issue_id>-<slug>
-# or: push the branch and open a PR
-```
+   It merges into main by default — pass a base branch as a second argument to
+   target another. It auto-commits whatever is still uncommitted in the worktree
+   before merging, so you do not need to commit first. Or do it by hand:
+
+   git checkout <base>
+   git merge linear-<issue_id>-<slug>
+   # or: push the branch and open a PR
+   ```
+
+   **Branch only, no worktree** — print the manual commands and do **not** name `/merge-worktree-linear`:
+
+   ```
+   ## Next step
+   Linear status is updated. Land the branch by hand:
+
+   git checkout <base>
+   git merge linear-<issue_id>-<slug>
+   # or: push the branch and open a PR
+   ```
+
+   **Being on branch `linear-<issue_id>-<slug>` is not sufficient on its own.** `/implement-ticket-linear` creates that branch on every run, including current-checkout mode where no worktree is ever created, so the branch-only case is the common one rather than an edge. `/merge-worktree-linear`'s auto-commit carve-out covers worktrees only; in current-checkout mode the implementation is still sitting uncommitted in the main checkout — and `/update-ticket-linear` never commits — which is precisely the state that skill refuses to run in. Naming it there would point the user at a skill that cannot serve them.
 
 8. Explicit note: **no git commit was created**.
 

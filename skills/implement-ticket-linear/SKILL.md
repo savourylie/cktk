@@ -272,7 +272,7 @@ After presenting the summary, ask exactly once, as its own question: "Post this 
 
 - **Worktree:** `.worktrees/<issue_id>-<slug>/` (branch `linear-<issue_id>-<slug>`, base `<base>`)
 - **Inspect:** `cd .worktrees/<issue_id>-<slug>`
-- **Land:** Phase 9 below offers to do this for you. `/merge-worktree` is for markdown `TICKET-NNN` worktrees and will **not** work for Linear branches, so Phase 9 performs the merge inline. If you pick option 4 now, `/merge-worktree-linear <issue_id>` lands it later as a standalone step.
+- **Land:** Phase 9 below offers to do this for you. `/merge-worktree` is for markdown `TICKET-NNN` worktrees and will **not** work for Linear branches, so Phase 9 performs the merge inline. If you pick option 2, 3, or 4 — every option that leaves the worktree in place — `/merge-worktree-linear <issue_id>` lands it later as a standalone step; after option 2's PR is merged it detects the branch is already in the base and just cleans up.
 
 If the worktree was reused with pre-existing uncommitted changes, mention that here too.
 

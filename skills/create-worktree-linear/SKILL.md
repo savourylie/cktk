@@ -46,6 +46,11 @@ Unlike `TICKET-NNN`, the Linear identifier pattern collides with ordinary branch
 
 - If it resolves as neither, report `<token> not found in Linear` and stop the batch.
 
+Two cases where the tiebreak does **not** fire, because promoting the token would leave the invocation incoherent:
+
+- **Never promote the last remaining issue token.** If the trailing token is the only issue reference, promoting it leaves zero issues, and Phase 1's "no issue references → ask and stop" has already been evaluated. Report `<token> not found in Linear` and stop the batch instead.
+- **Never promote when a base token was already classified in Phase 1.** Two base branches have no arbitration rule. Report the conflict — the same one two non-issue tokens produce — and stop.
+
 If a repository genuinely has a branch named `ENG-42` while issue ENG-42 also exists, the issue wins, and that branch cannot be named as a base here. Document the collision rather than adding disambiguation machinery.
 
 ## Phase 2: Resolve the Main Repo Root and Issues

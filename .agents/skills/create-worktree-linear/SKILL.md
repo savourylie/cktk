@@ -26,7 +26,7 @@ Examples:
 - `$create-worktree-linear ENG-42` → issues `[ENG-42]`, base `main`
 - `$create-worktree-linear ENG-42 ENG-43 dev` → issues `[ENG-42, ENG-43]`, base `dev`
 
-**Trailing-token tiebreak.** The Linear id pattern collides with branch names like `release-2026`. If the trailing token fails to resolve as a Linear issue but resolves as a branch (`git rev-parse --verify --quiet origin/<token>`, then `<token>`), treat it as the base and say so in one line. If it resolves as neither, stop. If a branch and an issue share a name, the issue wins.
+**Trailing-token tiebreak.** The Linear id pattern collides with branch names like `release-2026`. If the trailing token fails to resolve as a Linear issue but resolves as a branch (`git rev-parse --verify --quiet origin/<token>`, then `<token>`), treat it as the base and say so in one line. If it resolves as neither, stop. If a branch and an issue share a name, the issue wins. Never promote the only issue token — that leaves zero issues, and step 3's "require at least one" has already run — and never promote when step 2 already classified a base token, since two bases have no arbitration rule; report the conflict and stop in both cases.
 
 ## Phase 2: Resolve Repo Root and Issues
 
