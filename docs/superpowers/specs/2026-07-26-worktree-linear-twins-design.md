@@ -233,6 +233,41 @@ when ready.
 
 No push, no remote branch deletion, no Linear write.
 
+### 4a. Verified against real git (2026-07-26)
+
+Run in a scratch repo with a real `origin` remote before writing any of the four
+documents, because all four prescribe these sequences verbatim.
+
+1. **`git branch --list 'linear-ENG-42-*'` prints `+ linear-ENG-42-…`** — the `+`
+   marks a branch checked out in another worktree, and `*` marks the current one.
+   Prefix discovery must use
+   `git branch --list --format='%(refname:short)' 'linear-<issue_id>-*'`, which
+   prints the bare name. A naive parse would carry the marker into a branch name.
+2. **A squash-merged branch is not an ancestor of the base.**
+   `git merge-base --is-ancestor` exits 1 after `merge --squash`, and `git branch -d`
+   then refuses. This is the documented reason `merge-worktree:107` uses `-D`, now
+   confirmed rather than assumed; the Linear twin inherits it for the same reason.
+3. **`git branch -d` refuses while the branch is checked out in a worktree**
+   (`cannot delete branch … used by worktree at …`). Cleanup must therefore remove
+   the worktree *before* deleting the branch — the order `merge-worktree:105-107`
+   already uses, now with a concrete failure behind it.
+4. **`git worktree remove` refuses on modified or untracked files**
+   (`fatal: … contains modified or untracked files, use --force to delete it`) but
+   **succeeds when the worktree is clean and holds only ignored files** such as
+   `node_modules/`. Auto-commit runs `git add -A`, which sweeps untracked files and
+   leaves ignored ones — so after an accepted auto-commit, removal succeeds. The
+   refusal is reachable only when the user *declined* auto-commit, and Phase 4's
+   dirty guard already skips those tickets before cleanup. **Therefore
+   `merge-worktree-linear` never passes `--force`**: on that error it reports and
+   retains the worktree. This narrows known follow-up 5 of the 2026-07-25 spec,
+   which assumed ignored build output alone would block removal.
+5. **`git worktree add <path> -b <branch> origin/<base>` sets the new branch to
+   track `origin/<base>`** ("set up to track 'origin/main'"), so the worktree
+   reports "up to date with 'origin/main'" and a later bare `git push` targets the
+   wrong ref. `create-worktree` has always done this; the Linear twin inherits it
+   for parity rather than silently diverging with `--no-track`. Recorded as a known
+   follow-up below, since fixing it is a decision about both pairs at once.
+
 ### 5. `.gitignore` stays uncommitted
 
 `create-worktree-linear` inherits the docs twin's rule: report the `.gitignore`
@@ -319,6 +354,21 @@ worktree skill appears there.
 - Writing any Linear status from either new skill, including on merge.
 - Pushing, deleting remote branches, or opening PRs.
 - Automatic conflict resolution during a merge.
+
+## Known follow-ups
+
+Recorded at design time; none blocks this change.
+
+1. **Worktree branches track the base branch.** Per §4a finding 5, both
+   `create-worktree` and `create-worktree-linear` leave the new branch tracking
+   `origin/<base>`. Adding `--no-track` would fix the misleading "up to date with
+   'origin/main'" status and the wrong bare-push target, but it changes both pairs
+   and belongs in its own change.
+2. **The 2026-07-25 spec's known follow-up 5 is narrower than recorded.** Ignored
+   build output does not block `git worktree remove`; only modified or untracked
+   files do. The Linear twins' inline removal in `implement-ticket-linear` Phase 9
+   is therefore safe whenever `commit-ticket` has just run, and the gap is limited
+   to a `commit-ticket` that leaves files uncommitted.
 
 ## Acceptance criteria
 
