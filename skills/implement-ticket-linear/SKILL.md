@@ -1,6 +1,6 @@
 ---
 name: implement-ticket-linear
-description: "Implement a Linear issue end to end on its own branch with code review, then offer to merge it, open a PR, commit only, or leave it. Source of truth is Linear (not docs/tickets/). Moves a Todo issue to In Progress before implementing, and reports the status before doing anything when the issue is in any other state. Optional `worktree` keyword runs inside an isolated git worktree. Triggers on: /implement-ticket-linear ENG-42, /implement-ticket-linear ENG-42 dev, /implement-ticket-linear https://linear.app/.../issue/ENG-42/..., implement Linear issue ENG-42, implement Linear ticket worktree"
+description: "Implement a Linear issue end to end on its own branch with code review, then offer to merge it, open a PR, commit only, or leave it. Source of truth is Linear (not docs/tickets/). Moves a Todo issue to In Progress before implementing. Optional `worktree` chooses isolation; a final `via codex`, `via claude`, or `via grok` delegates implementation only before this host verifies and reviews it. Triggers on: /implement-ticket-linear ENG-42, /implement-ticket-linear ENG-42 dev, /implement-ticket-linear ENG-42 via codex, implement Linear issue ENG-42, implement Linear ticket worktree"
 user-invocable: true
 ---
 
@@ -43,6 +43,26 @@ Every invocation implements on a branch. The optional tokens choose where that b
 | `<issue> worktree` | New branch off `origin/main`, inside an isolated worktree. |
 | `<issue> worktree <base>` | New branch off `origin/<base>`, inside an isolated worktree. |
 
+Any valid row may end with the optional final clause `via <executor>`, where
+`<executor>` is exactly `codex`, `claude`, or `grok` (case-insensitive):
+
+| Invocation | Meaning |
+| --- | --- |
+| `<issue> via codex` | Keep the normal Linear/branch setup, then delegate implementation to Codex CLI. |
+| `<issue> <base> via grok` | Fork from `<base>`, then delegate implementation to Grok Build CLI. |
+| `<issue> worktree [base] via claude` | Use the requested worktree, then delegate implementation to Claude Code CLI. |
+
+Parse the `via` clause before interpreting `worktree` or a base:
+
+1. Count case-insensitive `via` tokens. More than one is a duplicate clause and an invocation error.
+2. If absent, leave `executor` unset and preserve the existing host-native workflow exactly.
+3. If present, it must be the penultimate token. Reject a missing executor, an unknown executor, or any tokens after the executor.
+4. Normalize the executor to lowercase, remove the final pair, and parse the remaining issue/worktree/base tokens with the existing grammar.
+
+Do not reinterpret an invalid executor as a branch. Stop with
+`unsupported executor '<name>' (expected codex, claude, or grok)` before any
+Linear write, branch, or worktree setup.
+
 `<issue>` is either:
 
 - A Linear identifier `TEAM-NUMBER` (e.g. `ENG-42`, `CKTK-7`) — case-insensitive; normalize the team key to uppercase.
@@ -65,6 +85,7 @@ That resolution check is what protects against typos like `worktre` now that the
    - `issue_ref` (first token — required)
    - `use_worktree` (true iff a token is exactly `worktree`, case-insensitive)
    - `base_token` (the trailing non-`worktree` token after the issue ref, if any)
+   - `executor` (unset for the native path, otherwise the normalized final `via` target)
 2. If there is no first token, stop: "A Linear issue id or URL is required (e.g. `ENG-42`)."
 3. If a fourth token exists, stop with an unrecognized-arguments error.
 4. If `base_token` is present, validate that it resolves as a branch, as described in the argument grammar above. If it does not, stop with the "did you mean 'worktree'?" error.
@@ -109,6 +130,8 @@ That resolution check is what protects against typos like `worktre` now that the
 9. **Terminal states stop the run.** If `state_type` is `completed` or `canceled`, inform the user of the status and **stop** unless they explicitly asked to re-implement — in that case ask once before continuing. Do **not** write to Linear on this path in either case: reopening a closed issue is the user's decision, not a side effect of this skill, so a terminal issue never gets moved to In Progress even when the user opts to re-implement.
 
 10. **Otherwise, gate on Todo — this is the last step before any branch is created or any code is written.**
+
+    The **Todo → In Progress transition remains host-owned** even when `executor` is set. Never place a Linear MCP call, credential, token, or tracker-update instruction in the delegated task input.
 
     Before writing anything, confirm this run is actually going to proceed: if the relations captured in step 5 show an **open blocker**, stop and report here rather than waiting for Phase 5 to do it. A blocked issue must not be moved to In Progress for a run that Phase 5 would abort anyway.
 
@@ -209,12 +232,60 @@ Before writing code, briefly state:
 
 ## Phase 6: Implement
 
+### Native path (no `via` clause)
+
+When `executor` is unset, preserve the current host-native behavior:
+
 1. Implement fully against the Linear issue and any project design context. All edits land under `$WORK_DIR`.
 2. Follow existing project conventions (naming, structure, patterns).
 3. Include error handling, validation, and edge-case coverage appropriate to the change.
 4. If the issue mentions tests, write them. If the project has a test suite, add tests for the change even when the issue does not list them.
 5. Integrate new files with existing exports/imports and wiring.
 6. Prepare manual testing instructions as you go.
+
+### Delegated path (`via <executor>`)
+
+When `executor` is set, the target CLI performs implementation only. The invoking host retains Linear access and owns build verification, ticket-specific review, remediation, the opt-in as-built comment, and landing.
+
+1. Set `current_host` from the runtime actually invoking this skill: `claude` in Claude Code or `grok` in Grok Build. Do not infer it from installed commands. If `executor == current_host`, stop with `executor '<name>' is the current host; omit via to use native implementation`.
+2. Locate this skill's bundled `scripts/run-ticket-executor.sh`. In a Claude Code plugin install:
+
+   ```bash
+   ADAPTER="${CLAUDE_PLUGIN_ROOT}/skills/implement-ticket-linear/scripts/run-ticket-executor.sh"
+   ```
+
+   Other supported hosts resolve the same script relative to this skill directory. Never substitute a project-local file with the same name.
+3. Create `$WORK_DIR/.ai/cktk/delegation/` and a unique run stem such as `<issue_id>-<UTC timestamp>-<shell pid>`. Write `<stem>.input.md` with the host's file-writing tool, not interpolated shell text. Include:
+   - issue id/title, description, acceptance criteria, non-secret relations and repository requirements;
+   - absolute PRD/design paths when present and the pinned `$WORK_DIR`;
+   - expected files/areas, project conventions, risks, and relevant test commands;
+   - a reminder that the adapter adds the authoritative implementation-only boundary.
+
+   Do not include MCP credentials, connector tokens, hidden reasoning, or any instruction to read or update Linear. Set `<stem>.json` as the record path. Preserve these local diagnostics on failure or timeout, exclude `.ai/cktk/delegation/` from source review, and never stage them.
+4. Invoke the adapter once:
+
+   ```bash
+   bash "$ADAPTER" \
+     --host "$current_host" \
+     --executor "$executor" \
+     --work-dir "$WORK_DIR" \
+     --task-file "$WORK_DIR/.ai/cktk/delegation/<stem>.input.md" \
+     --record-file "$WORK_DIR/.ai/cktk/delegation/<stem>.json" \
+     --timeout-seconds 1800
+   ```
+
+   `run-ticket-executor.sh` owns executor validation, CLI discovery and version checking, final task-package construction, fixed non-interactive invocation, bounded waiting, output capture, no-change detection, and the atomic outcome record. Never replace it with `eval`, free-form shell text, or an automatic retry.
+5. On a non-zero exit, report the adapter error plus `$WORK_DIR` and the record path when it exists, then stop. Do not commit, discard, reset, retry, land, delete the worktree, or make another Linear write. If Phase 2 already moved the issue, explicitly note that `<issue_id>` remains In Progress. When a record exists, read its `status` instead of inferring the cause from the numeric exit because raw target exit codes are preserved. `no_changes` means no new reviewable implementation, `forbidden_git_state` means the target changed the pinned branch or HEAD, and `git_inspection_failed` means the adapter could not safely verify Git state.
+6. On exit `0`, independently inspect reviewable source state:
+
+   ```bash
+   git status --porcelain=v1 --untracked-files=all -- . \
+     ':(exclude).ai/cktk/delegation/**'
+   ```
+
+   If empty, report `no reviewable implementation was produced`, the preserved worktree, record path, and any host-owned Linear transition, then stop. Otherwise continue to Phase 7. Never accept the executor's final message as verification.
+
+The task package must state that the delegated agent **must not commit, push, merge, delete a worktree, or change ticket status**. Only the host may perform the two permitted Linear writes described by this skill.
 
 ## Phase 7: Code Review
 
@@ -231,7 +302,7 @@ skill: "review-ticket"
 args: "<issue_id>"
 ```
 
-`/review-ticket <issue_id>` runs in its Linear mode: it fetches the issue via Linear MCP and reviews the uncommitted diff against the issue's title, description, and acceptance criteria. The diff is read via git in the pinned cwd, so it sees the worktree or main checkout correctly.
+`/review-ticket <issue_id>` is the mandatory ticket-specific review. It runs in Linear mode, fetches the issue via Linear MCP, and reviews the uncommitted diff against the issue's title, description, and acceptance criteria. The diff is read via git in the pinned cwd, so it sees the worktree or main checkout correctly.
 
 ### 7c: Fix and Re-review
 

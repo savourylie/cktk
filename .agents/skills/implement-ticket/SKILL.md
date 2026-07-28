@@ -1,6 +1,6 @@
 ---
 name: "implement-ticket"
-description: "Use when the user explicitly asks to implement one or more backlog tickets from docs/tickets. Each ticket is implemented on its own branch, and the run ends by offering to merge it, open a PR, or stay on the branch. Optionally pass a base branch, or `worktree` (with an optional base branch) to run the implementation inside an isolated git worktree, auto-creating it via $create-worktree if it doesn't exist. Prefer explicit invocation with $implement-ticket."
+description: "Use when the user explicitly asks to implement one or more backlog tickets from docs/tickets. Each ticket is implemented on its own branch, and the run ends by offering to merge it, open a PR, or stay on the branch. Optionally pass a base branch or `worktree`; for one named ticket, a final `via codex`, `via claude`, or `via grok` clause delegates implementation only to that CLI before the invoking host independently validates and reviews it. Prefer explicit invocation with $implement-ticket."
 ---
 
 # Implement Backlog Tickets
@@ -31,13 +31,35 @@ Every invocation implements on a branch. The optional tokens choose where that b
 | `<ticket> worktree <base>` | New branch off `origin/<base>`, inside an isolated worktree. |
 | (no args) | Loop through the pending backlog, one branch per ticket (see Phase 8). |
 
+For one explicitly named ticket, any valid row may end with the optional final
+clause `via <executor>`, where `<executor>` is exactly `codex`, `claude`, or
+`grok` (case-insensitive):
+
+| Invocation | Meaning |
+| --- | --- |
+| `<ticket> via claude` | Keep normal branch setup, then delegate implementation to Claude Code CLI. |
+| `<ticket> <base> via grok` | Fork from `<base>`, then delegate implementation to Grok Build CLI. |
+| `<ticket> worktree [base] via codex` | Use the requested worktree, then delegate implementation to Codex CLI. |
+
+Parse the `via` clause before deciding whether a trailing token is `worktree` or
+a base branch:
+
+1. Count case-insensitive `via` tokens. More than one is a duplicate clause and is an invocation error.
+2. If no `via` appears, leave `executor` unset and preserve the native Codex workflow exactly, including no-argument backlog-loop mode.
+3. If present, `via` must be the penultimate token and an explicit ticket must be present. Reject a missing executor, unknown executor, backlog-loop delegation, or any tokens after the executor.
+4. Normalize the executor to lowercase, remove the final pair, then parse the remaining tokens with the existing grammar.
+
+Do not reinterpret an invalid executor as a base branch. Stop with
+`unsupported executor '<name>' (expected codex, claude, or grok)` before any
+branch or worktree setup.
+
 The `worktree` keyword is case-insensitive; only this exact word triggers worktree mode. Any other trailing token is read as a base branch and must resolve — check `git rev-parse --verify --quiet origin/<token>` then `git rev-parse --verify --quiet <token>`. If neither resolves, stop with "unrecognized argument '<token>' — did you mean 'worktree'? (no branch named '<token>' found locally or on origin)". Worktree mode only makes sense for a single named ticket; if the user provided no ticket id, ignore the `worktree` keyword (it has no ticket to attach to) and report that. A fourth token is an error.
 
 ## Phase 1: Set Up the Working Directory
 
 Run this whether or not worktree mode is requested — both modes need the same handles.
 
-1. Parse the argument string. Capture `ticket_id` (if any), `use_worktree` (bool), and `base_token` (the trailing non-ticket, non-`worktree` token, if any). Validate `base_token` as described in the argument grammar above.
+1. Parse the argument string. Capture `ticket_id` (if any), `use_worktree` (bool), `base_token` (the trailing non-ticket, non-`worktree` token, if any), and `executor` (unset for native runs, otherwise the normalized final `via` target). Validate `base_token` as described in the argument grammar above.
 2. Resolve the main repo root so the skill behaves the same when invoked from the main checkout or another worktree:
    ```
    MAIN_ROOT=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
@@ -91,19 +113,61 @@ Run this whether or not worktree mode is requested — both modes need the same 
 
 ## Phase 4: Implement
 
+### Native Codex path (no `via` clause)
+
+When `executor` is unset, preserve the existing behavior:
+
 1. State what you are about to implement, which files you expect to touch, and the main risks.
 2. Implement the ticket fully against the ticket requirements and the project's design source. All edits land under `$WORK_DIR`.
 3. Follow project conventions and add tests whenever the repo has a test suite or the ticket implies testable behavior.
 4. Handle edge cases and integration details before moving on.
+
+### Delegated path (`via <executor>`)
+
+When `executor` is set, the target CLI performs implementation only. The invoking host remains responsible for the ticket-specific review, build verification, remediation, As-Built Notes, status work, and the final landing choice.
+
+1. Set `current_host` from the runtime: `codex` in Codex or `grok` in Grok Build. Do not infer it from installed commands. If the runtime cannot be mapped to the release allowlist, stop. If `executor == current_host`, stop with `executor '<name>' is the current host; omit via to use native implementation`.
+2. Locate this Codex skill's bundled `scripts/run-ticket-executor.sh` and store its absolute path as `ADAPTER`. Resolve it from the skill directory, not from the target project; never run a project-local file with the same name.
+3. Create `$WORK_DIR/.ai/cktk/delegation/` and a unique run stem such as `TICKET-NNN-<UTC timestamp>-<shell pid>`. Use the file-editing tool to write `<stem>.input.md` with:
+   - ticket id, title, full requirements, and acceptance criteria;
+   - absolute ticket, PRD, and chosen design-source paths;
+   - `$WORK_DIR`, expected files/areas, project conventions, risks, and relevant test commands;
+   - a note that the adapter adds the authoritative implementation-only boundary.
+
+   Do not include credentials, connector tokens, hidden reasoning, or ticket-status instructions. Use `<stem>.json` for the outcome record. Preserve `.ai/cktk/delegation/` on failure or timeout, exclude it from source review, and never stage these diagnostics.
+4. Invoke the adapter exactly once:
+
+   ```bash
+   bash "$ADAPTER" \
+     --host "$current_host" \
+     --executor "$executor" \
+     --work-dir "$WORK_DIR" \
+     --task-file "$WORK_DIR/.ai/cktk/delegation/<stem>.input.md" \
+     --record-file "$WORK_DIR/.ai/cktk/delegation/<stem>.json" \
+     --timeout-seconds 1800
+   ```
+
+   `run-ticket-executor.sh` owns executor validation, CLI discovery and version checking, final task-package construction, fixed non-interactive invocation, bounded waiting, output capture, no-change detection, and the atomic record. Never replace it with `eval`, free-form shell text, or an automatic retry.
+5. On a non-zero exit, report the adapter error plus `$WORK_DIR` and the record path when it exists, then stop. Do not commit, discard, reset, retry, land, or delete the worktree. When a record exists, read its `status` instead of inferring the cause from the numeric exit because raw target exit codes are preserved. `no_changes` means no new reviewable implementation, `forbidden_git_state` means the target changed the pinned branch or HEAD, and `git_inspection_failed` means the adapter could not safely verify Git state.
+6. On exit `0`, independently inspect source state while excluding the preserved diagnostics:
+
+   ```bash
+   git status --porcelain=v1 --untracked-files=all -- . \
+     ':(exclude).ai/cktk/delegation/**'
+   ```
+
+   Empty output is a safe stop: report `no reviewable implementation was produced`, the worktree, and the record path. Otherwise continue to Phase 5 and require the delegated-path ticket review described there. Never trust the executor's final response as verification.
+
+The generated task package must say the target agent **must not commit, push, merge, delete a worktree, or change ticket status**. Codex retains all lifecycle authority after implementation.
 
 ## Phase 5: Validate
 
 1. Run the relevant lint, type-check, test, and build commands for the repo. The Bash cwd is pinned to `$WORK_DIR`, so these run against the worktree's checkout when worktree mode is active.
 2. Fix every regression introduced by the ticket.
 3. Perform a review pass against the same rubric used by the review workflow:
-   - read `../review-ticket/references/review-guidelines.md`
-   - review only the diff introduced by the ticket
-   - look for correctness issues, missing acceptance criteria, risky edge cases, and regressions
+   - Delegated path: invoke `$review-ticket NNN` so the review opens the ticket and checks its acceptance criteria. Passing the ticket id is mandatory; generic diff review is not ticket-specific review.
+   - Native path: read `../review-ticket/references/review-guidelines.md`.
+   - In both paths, review only the diff introduced by the ticket and look for correctness issues, missing acceptance criteria, risky edge cases, and regressions.
 4. If the review pass finds issues, fix them and rerun the checks.
 
 ## Phase 6: Commit

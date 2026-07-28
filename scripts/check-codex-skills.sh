@@ -397,6 +397,51 @@ validate_implement_contract() {
   done
 }
 
+validate_ticket_delegation_contract() {
+  local skill_md
+
+  for skill_md in \
+    "$claude_root/implement-ticket/SKILL.md" \
+    "$codex_root/implement-ticket/SKILL.md"; do
+    require_literal "$skill_md" "via <executor>"
+    require_literal "$skill_md" "run-ticket-executor.sh"
+    require_literal "$skill_md" "codex"
+    require_literal "$skill_md" "claude"
+    require_literal "$skill_md" "grok"
+    require_literal "$skill_md" "duplicate"
+    require_literal "$skill_md" "tokens after the executor"
+    require_literal "$skill_md" \
+      "must not commit, push, merge, delete a worktree, or change ticket status"
+    require_literal "$skill_md" "no reviewable implementation"
+    require_literal "$skill_md" "ticket-specific review"
+  done
+
+  require_literal "$root/README.md" \
+    "/implement-ticket 003 worktree via claude"
+  require_literal "$root/README.md" \
+    "/implement-ticket 003 via codex"
+  require_literal "$root/README.md" \
+    "/implement-ticket 003 dev via grok"
+
+  for skill_md in \
+    "$claude_root/implement-ticket-linear/SKILL.md" \
+    "$codex_root/implement-ticket-linear/SKILL.md"; do
+    require_literal "$skill_md" "via <executor>"
+    require_literal "$skill_md" "run-ticket-executor.sh"
+    require_literal "$skill_md" "duplicate"
+    require_literal "$skill_md" "tokens after the executor"
+    require_literal "$skill_md" \
+      "must not commit, push, merge, delete a worktree, or change ticket status"
+    require_literal "$skill_md" "no reviewable implementation"
+    require_literal "$skill_md" "ticket-specific review"
+    require_literal "$skill_md" \
+      "Todo → In Progress transition remains host-owned"
+  done
+
+  require_literal "$root/README.md" \
+    "/implement-ticket-linear ENG-42 via codex"
+}
+
 validate_worktree_linear_contract() {
   local skill_md
 
@@ -469,6 +514,7 @@ validate_worktree_linear_contract() {
 validate_clarify_contract
 validate_interact_contract
 validate_implement_contract
+validate_ticket_delegation_contract
 validate_worktree_linear_contract
 
 if [[ "$failed" -ne 0 ]]; then

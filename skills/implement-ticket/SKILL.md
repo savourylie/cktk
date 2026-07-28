@@ -1,6 +1,6 @@
 ---
 name: implement-ticket
-description: "Implement a specific ticket from the ticket tracker on its own branch with code review, then offer to merge it, open a PR, commit only, or leave it. Optional `worktree` keyword runs the implementation inside an isolated git worktree (auto-created via /create-worktree if it doesn't exist), so multiple tickets can be worked in parallel. Triggers on: /implement-ticket TICKET-NNN, /implement-ticket NNN dev, /implement-ticket NNN worktree, /implement-ticket NNN worktree dev, implement TICKET-NNN, implement ticket NNN, implement ticket on a branch, implement ticket in a worktree, work on ticket in parallel"
+description: "Implement a specific ticket from the ticket tracker on its own branch with code review, then offer to merge it, open a PR, commit only, or leave it. Optional `worktree` keyword runs the implementation inside an isolated git worktree. A final `via codex`, `via claude`, or `via grok` clause delegates implementation only to that CLI, after which this host verifies and reviews the result. Triggers on: /implement-ticket TICKET-NNN, /implement-ticket NNN dev, /implement-ticket NNN worktree, /implement-ticket NNN worktree dev, /implement-ticket NNN via codex, implement ticket on a branch, implement ticket in a worktree, delegate ticket implementation"
 user-invocable: true
 ---
 
@@ -31,6 +31,26 @@ Every invocation implements on a branch. The optional tokens choose where that b
 | `<ticket> worktree` | New branch off `origin/main`, inside an isolated worktree. |
 | `<ticket> worktree <base>` | New branch off `origin/<base>`, inside an isolated worktree. |
 
+Any valid row may end with the optional final clause `via <executor>`, where
+`<executor>` is exactly `codex`, `claude`, or `grok` (case-insensitive):
+
+| Invocation | Meaning |
+| --- | --- |
+| `<ticket> via codex` | Keep the normal branch setup, then delegate implementation to Codex CLI. |
+| `<ticket> <base> via grok` | Fork from `<base>`, then delegate implementation to Grok Build CLI. |
+| `<ticket> worktree [base] via claude` | Use the requested isolated worktree, then delegate implementation to Claude Code CLI. |
+
+Parse the `via` clause **before** interpreting `worktree` or a trailing base:
+
+1. Count case-insensitive `via` tokens. More than one is a duplicate clause and is an invocation error.
+2. If `via` is absent, leave `executor` unset and preserve the existing native implementation workflow exactly.
+3. If present, it must be the penultimate token. Reject a missing executor, an unknown executor, or any tokens after the executor.
+4. Normalize the executor to lowercase, remove the final pair, and parse the remaining tokens with the existing grammar below.
+
+Do not reinterpret an invalid executor as a base branch. Use direct errors such as
+`unsupported executor '<name>' (expected codex, claude, or grok)` and stop before
+branch/worktree setup.
+
 The `worktree` keyword is case-insensitive; only this exact word triggers worktree mode (not `wt`, not `--worktree`). Any other trailing token is read as a base branch and **must resolve** — check `git rev-parse --verify --quiet origin/<token>` then `git rev-parse --verify --quiet <token>`. If neither resolves, stop with:
 
 ```
@@ -48,6 +68,7 @@ This phase runs whether or not worktree mode is requested, because both modes ne
    - `ticket_id`, normalized to a 3-digit zero-padded `NNN` (so `7`, `007`, `#7`, `TICKET-007` all become `007`).
    - `use_worktree` (bool — true iff a token is exactly `worktree`, case-insensitive).
    - `base_token` (the trailing non-ticket, non-`worktree` token, if any). Validate it as described in the argument grammar above.
+   - `executor` (unset for the native path, otherwise the normalized final `via` target).
 2. **Resolve the main repo root** so this skill behaves the same whether invoked from the main checkout or another worktree:
    ```
    MAIN_ROOT=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
@@ -129,12 +150,60 @@ This phase runs whether or not worktree mode is requested, because both modes ne
 
 ## Phase 4: Implement the Ticket
 
+### Native path (no `via` clause)
+
+When `executor` is unset, preserve the current host-native behavior:
+
 1. Implement the ticket fully, following the project's design source and the requirements in the ticket. All edits land under `$WORK_DIR`.
 2. Write clean, well-structured code. Follow existing project conventions (naming, file structure, patterns).
 3. Include appropriate error handling, input validation, and edge case coverage.
 4. If the ticket specifies tests, write them. If it doesn't but the project has a test suite, add tests for your changes anyway.
 5. Make sure any new files are properly exported/imported and integrated with the rest of the codebase.
 6. Prepare manual testing instructions for the implementation. Think about what a developer or QA tester would need to do to verify the feature works correctly by hand — specific commands to run, URLs to visit, inputs to provide, expected outputs to observe, and edge cases to try.
+
+### Delegated path (`via <executor>`)
+
+When `executor` is set, the target CLI performs implementation only. This invoking host still owns the ticket-specific review, build verification, remediation, As-Built Notes, and every Phase 7 landing choice.
+
+1. Set `current_host` from the runtime actually invoking this skill: `claude` in Claude Code or `grok` in Grok Build. Do not infer it from which CLIs happen to be installed. If `executor == current_host`, stop with: `executor '<name>' is the current host; omit via to use native implementation`.
+2. Locate this skill's bundled `scripts/run-ticket-executor.sh`. In a Claude Code plugin install it is:
+
+   ```bash
+   ADAPTER="${CLAUDE_PLUGIN_ROOT}/skills/implement-ticket/scripts/run-ticket-executor.sh"
+   ```
+
+   In another supported host, resolve `scripts/run-ticket-executor.sh` relative to this skill's own directory. Never substitute a project-local script with the same name.
+3. Create `$WORK_DIR/.ai/cktk/delegation/` and a unique run stem such as `TICKET-NNN-<UTC timestamp>-<shell pid>`. Write `<stem>.input.md` there using the host's file-writing tool, not interpolated shell text. Include:
+   - ticket id, title, full requirements, and acceptance criteria;
+   - absolute ticket, PRD, and selected design-source paths;
+   - the pinned `$WORK_DIR`, expected files/areas, project conventions, risks, and relevant test commands;
+   - a reminder that the adapter adds the authoritative implementation-only boundary.
+
+   Do not include credentials, connector tokens, hidden reasoning, or instructions to update ticket state. Set `<stem>.json` as the record path. These `.ai/cktk/delegation/` files are local diagnostics: preserve them on failure or timeout, exclude them from source review, and never stage them.
+4. Invoke the adapter once with its fixed interface and a 30-minute bound:
+
+   ```bash
+   bash "$ADAPTER" \
+     --host "$current_host" \
+     --executor "$executor" \
+     --work-dir "$WORK_DIR" \
+     --task-file "$WORK_DIR/.ai/cktk/delegation/<stem>.input.md" \
+     --record-file "$WORK_DIR/.ai/cktk/delegation/<stem>.json" \
+     --timeout-seconds 1800
+   ```
+
+   `run-ticket-executor.sh` owns executor validation, CLI discovery and version checking, final task-package construction, the fixed non-interactive command template, bounded waiting, output capture, no-change detection, and the atomic outcome record. Never replace this call with `eval`, a free-form shell command, or an automatic retry.
+5. On any non-zero adapter exit, report its error verbatim plus `$WORK_DIR` and the record path when one exists, then stop. Do not commit, discard, reset, retry, land, or delete the worktree. When a record exists, read its `status` rather than inferring the cause from the numeric exit alone because raw target exit codes are preserved. `no_changes` means the CLI produced no new reviewable implementation; `forbidden_git_state` means it changed the pinned branch or HEAD; `git_inspection_failed` means the adapter could not safely verify the resulting Git state. Preserve all work and diagnostics for inspection.
+6. On exit `0`, independently confirm reviewable source changes remain:
+
+   ```bash
+   git status --porcelain=v1 --untracked-files=all -- . \
+     ':(exclude).ai/cktk/delegation/**'
+   ```
+
+   If that output is empty, report `no reviewable implementation was produced`, point to the worktree and record, and stop safely. Otherwise continue to Phase 5. Do not accept the target agent's final message as verification.
+
+The delegated task package must state exactly: the target agent **must not commit, push, merge, delete a worktree, or change ticket status**. The invoking host enforces that boundary procedurally by withholding every later lifecycle phase until the adapter succeeds.
 
 ## Phase 5: Code Review
 

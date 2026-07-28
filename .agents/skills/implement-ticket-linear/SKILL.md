@@ -1,6 +1,6 @@
 ---
 name: "implement-ticket-linear"
-description: "Use when the user explicitly asks to implement a Linear issue (not docs/tickets markdown). The issue is implemented on its own branch, and the run ends by offering to merge it, open a PR, commit only, or leave it. A Todo issue is moved to In Progress before implementation starts; any other non-terminal status is reported first and then implemented anyway. Optionally pass a base branch, or `worktree` (with an optional base branch) to run inside an isolated git worktree. Prefer explicit invocation with $implement-ticket-linear. Requires Linear MCP."
+description: "Use when the user explicitly asks to implement a Linear issue (not docs/tickets markdown). The issue is implemented on its own branch, and the run ends by offering to merge it, open a PR, commit only, or leave it. A Todo issue is moved to In Progress before implementation. Optionally pass a base branch or `worktree`; a final `via codex`, `via claude`, or `via grok` delegates implementation only before the invoking host independently validates and reviews it. Prefer explicit invocation with $implement-ticket-linear. Requires Linear MCP."
 ---
 
 # Implement a Linear Issue
@@ -38,13 +38,33 @@ Every invocation implements on a branch:
 | `<issue> worktree` | New branch off `origin/main`, inside an isolated worktree. |
 | `<issue> worktree <base>` | New branch off `origin/<base>`, inside an isolated worktree. |
 
+Any valid row may end with the optional final clause `via <executor>`, where
+`<executor>` is exactly `codex`, `claude`, or `grok` (case-insensitive):
+
+| Invocation | Meaning |
+| --- | --- |
+| `<issue> via claude` | Keep the normal Linear/branch setup, then delegate implementation to Claude Code CLI. |
+| `<issue> <base> via grok` | Fork from `<base>`, then delegate implementation to Grok Build CLI. |
+| `<issue> worktree [base] via codex` | Use the requested worktree, then delegate implementation to Codex CLI. |
+
+Parse `via` before treating a trailing token as `worktree` or a base:
+
+1. Count case-insensitive `via` tokens. More than one is a duplicate clause and an invocation error.
+2. If absent, leave `executor` unset and preserve the native Codex implementation workflow exactly.
+3. If present, `via` must be the penultimate token. Reject a missing executor, unknown executor, or any tokens after the executor.
+4. Normalize the executor to lowercase, remove the final pair, then apply the existing issue/worktree/base grammar.
+
+Do not reinterpret an invalid executor as a branch. Stop with
+`unsupported executor '<name>' (expected codex, claude, or grok)` before any
+Linear write or git setup.
+
 `<issue>` is a Linear identifier (`ENG-42`) or a Linear issue URL. Normalize team keys to uppercase. The `worktree` keyword is case-insensitive; only that exact word triggers worktree mode. Any other trailing token is read as a base branch and must resolve — check `git rev-parse --verify --quiet origin/<token>` then `git rev-parse --verify --quiet <token>`. If neither resolves, stop with "unrecognized argument '<token>' — did you mean 'worktree'? (no branch named '<token>' found locally or on origin)". A fourth token is an error.
 
 Not accepted: title-only search, status flags, commit flags, multi-issue batches, empty “next assigned” mode.
 
 ## Phase 1: Parse & Resolve
 
-1. Parse args: `issue_ref` (required), `use_worktree`, `base_token` (the trailing non-`worktree` token, if any — validate it resolves as a branch per the argument grammar).
+1. Parse args: `issue_ref` (required), `use_worktree`, `base_token` (the trailing non-`worktree` token, if any — validate it resolves as a branch per the argument grammar), and `executor` (unset for native runs, otherwise the normalized final `via` target).
 2. Normalize to `issue_id`:
    - `TEAM-NUM` pattern → uppercase team key
    - URL → extract first `TEAM-NUM` path segment; fail if none
@@ -61,7 +81,7 @@ Not accepted: title-only search, status flags, commit flags, multi-issue batches
 4. Worktree path: `$MAIN_ROOT/.worktrees/<issue_id>-<slug>`. Branch: `linear-<issue_id>-<slug>`.
 5. **Classify the state by type, not name.** Linear state names are workspace-configurable ("Todo" is only the default name for `unstarted`), so a literal match silently no-ops on a renamed workflow. Call `list_issue_statuses` for the team — each status returns a `type` (`triage` / `backlog` / `unstarted` / `started` / `completed` / `canceled`), name, id, and position — and look up the current state to get `state_type`. Keep the list; step 7 reuses it. If the call fails or the state is absent, fall back to names: `Todo` → `unstarted`, `Done`/`Completed` → `completed`, `Canceled`/`Cancelled`/`Duplicate` → `canceled`, anything else → unknown (takes the report-and-continue path).
 6. **Terminal (`completed` / `canceled`):** report and stop unless the user explicitly asked to re-implement (then confirm once). Do not write to Linear on this path either way — reopening a closed issue is the user's decision, so a terminal issue is never moved to In Progress.
-7. **Otherwise gate on Todo, before any branch exists or any code is written.** Before writing anything, confirm the run will proceed: if the captured relations show an **open blocker**, stop and report here rather than waiting for Phase 5 — a blocked issue must not be moved to In Progress for a run that Phase 5 would abort anyway.
+7. **Otherwise gate on Todo, before any branch exists or any code is written.** The **Todo → In Progress transition remains host-owned** even for a delegated run; no Linear credentials or tracker-update instructions may enter its task input. Before writing anything, confirm the run will proceed: if the captured relations show an **open blocker**, stop and report here rather than waiting for Phase 5 — a blocked issue must not be moved to In Progress for a run that Phase 5 would abort anyway.
    - **`state_type == unstarted`** → move it to In Progress first. Resolve the target from the step-5 list: a name matching `In Progress` case-insensitively, else the lowest-position `started` status, else none exists → skip the write, report "team `<key>` has no in-progress status; leaving `<state_name>` unchanged", and continue. Write with `save_issue` passing `id: <issue_id>` and `state: <status id>` — the **id**, not the name, since names are not unique across teams. No other field. Report one line: `ENG-42: Todo → In Progress`. If the write fails, do **not** stop: report the error verbatim, continue, and carry it into the Phase 7 summary.
    - **Any other non-terminal state** (`backlog`, `triage`, an already-`started` state like In Progress or In Review, or unknown) → report it and continue, writing nothing: `ENG-42 is in "In Review" (not Todo) — leaving the Linear status unchanged.` The report lands before Phase 3 branches and Phase 5 codes, so the user sees the unexpected state while nothing has happened. Then proceed normally — a non-Todo state is informational, not a refusal.
    - **If the run stops after a transition was written** (dirty-tree decline in Phase 3, detached HEAD, unresolvable base): say so and note that `<issue_id>` is now In Progress so the user can decide whether to move it back. Do **not** auto-revert — that is a third write, and it could clobber a concurrent Linear change.
@@ -94,16 +114,59 @@ Not accepted: title-only search, status flags, commit flags, multi-issue batches
 ## Phase 5: Implement
 
 1. State plan: issue id/title, current Linear state (including the Todo → In Progress transition if Phase 2 made one, or the failure if it tried and could not), files to touch, risks, acceptance criteria. If Linear shows an open blocker relation, stop and report.
+
+### Native Codex path (no `via` clause)
+
+When `executor` is unset:
+
 2. Implement fully under `$WORK_DIR` against the issue and design context.
 3. Follow project conventions; add tests when the repo has a suite or the issue implies testable behavior.
+
+### Delegated path (`via <executor>`)
+
+When `executor` is set, the selected CLI implements only. The invoking host retains Linear access and owns build verification, ticket-specific review, remediation, the opt-in as-built comment, and landing.
+
+2. Set `current_host` from the runtime: `codex` in Codex or `grok` in Grok Build. Do not infer it from installed commands. If the runtime cannot be mapped to the release allowlist, stop. If `executor == current_host`, stop with `executor '<name>' is the current host; omit via to use native implementation`.
+3. Locate this Codex skill's bundled `scripts/run-ticket-executor.sh` and store its absolute path as `ADAPTER`. Resolve it from the skill directory, never from the target project.
+4. Create `$WORK_DIR/.ai/cktk/delegation/` and a unique run stem such as `<issue_id>-<UTC timestamp>-<shell pid>`. Use the file-editing tool to write `<stem>.input.md` containing:
+   - issue id/title, description, acceptance criteria, non-secret relations, and repository requirements;
+   - the pinned `$WORK_DIR` and absolute PRD/design paths when present;
+   - expected files/areas, project conventions, risks, and relevant test commands;
+   - a note that the adapter adds the authoritative implementation-only boundary.
+
+   Do not include MCP credentials, connector tokens, hidden reasoning, or any instruction to read or update Linear. Use `<stem>.json` as the record. Preserve these diagnostics on failure/timeout, exclude `.ai/cktk/delegation/` from source review, and never stage them.
+5. Invoke the adapter once:
+
+   ```bash
+   bash "$ADAPTER" \
+     --host "$current_host" \
+     --executor "$executor" \
+     --work-dir "$WORK_DIR" \
+     --task-file "$WORK_DIR/.ai/cktk/delegation/<stem>.input.md" \
+     --record-file "$WORK_DIR/.ai/cktk/delegation/<stem>.json" \
+     --timeout-seconds 1800
+   ```
+
+   `run-ticket-executor.sh` owns validation, CLI discovery and version checking, final task-package construction, fixed non-interactive invocation, bounded waiting, output capture, no-change detection, and the atomic record. Never substitute `eval`, free-form shell text, or an automatic retry.
+6. On a non-zero exit, report the adapter error plus `$WORK_DIR` and the record when it exists, then stop. Do not commit, discard, reset, retry, land, delete the worktree, or make another Linear write. If Phase 2 moved the issue, say it remains In Progress. When a record exists, read its `status` rather than inferring the cause from the numeric exit because raw target exit codes are preserved. `no_changes` means no new reviewable implementation, `forbidden_git_state` means the target changed the pinned branch or HEAD, and `git_inspection_failed` means the adapter could not safely verify Git state.
+7. On exit `0`, independently inspect source state:
+
+   ```bash
+   git status --porcelain=v1 --untracked-files=all -- . \
+     ':(exclude).ai/cktk/delegation/**'
+   ```
+
+   Empty output is a safe stop: report `no reviewable implementation was produced`, the worktree, record, and any host-owned Linear transition. Otherwise continue to Phase 6. Never trust the executor's final response as verification.
+
+The final task package must say the delegated agent **must not commit, push, merge, delete a worktree, or change ticket status**. Only the host may perform the two Linear writes permitted by this skill.
 
 ## Phase 6: Validate
 
 1. Run lint, type-check, test, and build commands for the repo (cwd is `$WORK_DIR`).
 2. Fix regressions introduced by the work.
 3. Review pass against `$review-ticket` guidelines:
-   - Prefer invoking `$review-ticket <issue_id>` when available — its Linear mode fetches the issue and checks acceptance-criteria alignment
-   - Or read `../review-ticket/references/review-guidelines.md` and review only the ticket diff
+   - Delegated path: invoking `$review-ticket <issue_id>` is mandatory. Its Linear mode fetches the issue and performs ticket-specific review against the acceptance criteria.
+   - Native path: prefer `$review-ticket <issue_id>` when available, or read `../review-ticket/references/review-guidelines.md` and review only the ticket diff.
    - Treat Linear title + description + AC as the requirements
 4. Fix findings and re-check until build is clean and no P0/P1 remain.
 
