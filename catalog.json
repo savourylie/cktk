@@ -12,7 +12,7 @@
     {
       "name": "implement-ticket",
       "path": ".agent/skills/implement-ticket",
-      "description": "Implement a specific ticket on its own branch with code review, then offer to merge, open a PR, commit only, or leave it; optionally in an isolated worktree (docs/tickets twin of implement-ticket-linear)"
+      "description": "Implement a specific ticket on its own branch with code review, then offer to merge, open a PR, commit only, or leave it; optionally use an isolated worktree or delegate implementation via Codex, Claude Code, or Grok Build CLI (docs/tickets twin of implement-ticket-linear)"
     },
     {
       "name": "clarify-ticket",
@@ -27,7 +27,7 @@
     {
       "name": "implement-ticket-linear",
       "path": ".agent/skills/implement-ticket-linear",
-      "description": "Implement a Linear issue on its own branch with code review, then offer to merge, open a PR, commit only, or leave it; moves a Todo issue to In Progress first and reports any other status before starting; optionally in an isolated worktree (requires Linear MCP; Linear twin of implement-ticket)"
+      "description": "Implement a Linear issue on its own branch with code review, then offer to merge, open a PR, commit only, or leave it; moves Todo to In Progress first and reports any other status; optionally use an isolated worktree or delegate implementation via Codex, Claude Code, or Grok Build CLI (requires Linear MCP; Linear twin of implement-ticket)"
     },
     {
       "name": "review-ticket",
