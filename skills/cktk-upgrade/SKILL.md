@@ -2,7 +2,7 @@
 name: cktk-upgrade
 description: "Upgrade cktk to the latest version and automatically reconcile Claude Code, Codex, Antigravity, OpenCode, and handoff helper installs. Triggers on: /cktk-upgrade, upgrade cktk, update cktk, get latest cktk"
 user-invocable: true
-allowed-tools: Bash(git:*), Bash(test:*), Bash(ls:*), Bash(cp:*), Bash(rm:*), Bash(mkdir:*), Bash(cat:*), Bash(rsync:*), Bash(bash:*), Read
+allowed-tools: Bash(claude:*), Bash(CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1 claude:*), Bash(git:*), Bash(test:*), Bash(ls:*), Bash(bash:*), Read
 ---
 
 # Upgrade cktk
@@ -27,14 +27,11 @@ Run these checks to classify the installation:
    test -d "$HOME/.claude/plugins/marketplaces/cktk/.git" && echo "yes" || echo "no"
    ```
 
-2. If `yes`, get the plugin marketplace path and cache path:
+2. If `yes`, get the plugin marketplace path:
    ```bash
    cd "$HOME/.claude/plugins/marketplaces/cktk" && pwd
    ```
-   ```bash
-   ls -d "$HOME/.claude/plugins/cache/cktk/cktk/"* 2>/dev/null | head -1 || echo "N/A"
-   ```
-   Set **INSTALL_TYPE** to `plugin-marketplace`, **CKTK_DIR** to the marketplace path, and **CACHE_PATH** to the cache path or `N/A`.
+   Set **INSTALL_TYPE** to `plugin-marketplace` and **CKTK_DIR** to the marketplace path.
 
 3. Else, check if the current working directory is a cktk git clone:
    ```bash
@@ -46,29 +43,44 @@ Run these checks to classify the installation:
    ```
    Set **INSTALL_TYPE** to `git-clone` and **CKTK_DIR** to the repo root.
 
-4. If neither is found, report that no cktk git installation was found and stop. Suggest the user install via `/plugin marketplace add savourylie/cktk` then `/plugin install cktk@savourylie`, or clone from `https://github.com/savourylie/cktk`.
+4. If neither is found, report that no cktk git installation was found and stop. Suggest the user install via `/plugin marketplace add savourylie/cktk` then `/plugin install cktk@cktk`, or clone from `https://github.com/savourylie/cktk`.
 
 ## Step 2: Record current state
 
 Run `git -C <CKTK_DIR> rev-parse HEAD` and save the output as **OLD_HEAD**.
 
-## Step 3: Pull latest
+## Step 3: Update the active checkout and Claude plugin
 
-Run:
+### Plugin marketplace install
+
+If **INSTALL_TYPE** is `plugin-marketplace`, use Claude Code's supported plugin commands instead of writing into `~/.claude/plugins/cache` directly:
+
+```bash
+CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1 claude plugin marketplace update cktk
+claude plugin list --json
+```
+
+From the JSON list, find every installed entry whose `id` is `cktk@cktk`. For each editable `user`, `project`, or `local` scope, run:
+
+```bash
+CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1 claude plugin update cktk@cktk --scope <SCOPE>
+```
+
+If the marketplace is registered but the plugin is not installed in any scope, continue without the plugin-update command. The marketplace checkout is still the source for all-agent reconciliation.
+
+If a scope-specific plugin update fails after the marketplace update succeeded, record that Claude plugin-cache failure but still run all-agent reconciliation from **CKTK_DIR**. Report the failed scope in the final response.
+
+Do not select a cache directory manually and do not use `rsync` on Claude's plugin cache. Claude Code owns its cache metadata and version directories.
+
+### Git clone install
+
+If **INSTALL_TYPE** is `git-clone`, run:
 
 ```bash
 cd <CKTK_DIR> && git fetch origin && git pull origin main
 ```
 
-If the pull reports "Already up to date", record that result but continue to all-agent install reconciliation.
-
-### Sync plugin cache (plugin-marketplace only)
-
-If new commits were pulled, **INSTALL_TYPE** is `plugin-marketplace`, and the plugin cache path detected in Step 1 is not `N/A`, sync the updated files into the cache:
-
-```bash
-rsync -a --delete --exclude '.git' <CKTK_DIR>/ <CACHE_PATH>/
-```
+If either update path reports that it is already current, record that result but continue to all-agent install reconciliation.
 
 ## Step 4: Reconcile all local agent installs
 
@@ -98,7 +110,8 @@ Report to the user:
 - Previous version: `<OLD_HEAD short>`
 - Updated to: `<NEW_HEAD short>`
 - Changes pulled (the log output)
-- If **INSTALL_TYPE** is `plugin-marketplace`: note that a Claude Code restart may be needed for the updated skills to take effect.
+- If **INSTALL_TYPE** is `plugin-marketplace`: tell the user to run `/reload-plugins` in Claude Code, or restart it, for the updated plugin skills to take effect.
+- Note that Codex must be restarted before newly installed skill names appear in its skill registry.
 - The all-agent installer actions for shell helpers, Codex skills, Antigravity skills, OpenCode skills, and project `.gitignore`.
 
 If there were no new commits, report that cktk is already on the latest version instead of listing changes.
@@ -106,6 +119,7 @@ If there were no new commits, report that cktk is already on the latest version 
 ## Safety
 
 - Run `scripts/install-all-agent-skills.sh` automatically after a successful version check; do not ask a second confirmation question.
+- Never write to Claude Code's plugin cache directly. Use `claude plugin marketplace update` and `claude plugin update` so Claude Code keeps its cache and installation metadata consistent.
 - Only edit the invoking project's `.gitignore`; do not infer another project from the later working directory.
 - The installer may replace existing cktk-owned skill folders or symlinks, but must not overwrite unrelated files or unrelated skill directories.
 - Do not discard local cktk changes, force-push, or reset.

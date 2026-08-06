@@ -92,7 +92,7 @@
     {
       "name": "cktk-upgrade",
       "path": ".agent/skills/cktk-upgrade",
-      "description": "Pull the latest cktk skills from GitHub"
+      "description": "Pull the latest cktk skills from GitHub and reconcile Claude Code, Codex, Antigravity, OpenCode, and handoff helper installs"
     },
     {
       "name": "codex-handoff",

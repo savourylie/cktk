@@ -136,10 +136,16 @@ install_codex_skills() {
   [[ -d "$codex_skills" ]] || die "missing Codex skill tree: $codex_skills"
   mkdir -p "$codex_target"
 
+  # Repair the upgrader first. If a later skill has an ownership conflict, the
+  # next invocation can still use the current reconciliation workflow.
+  [[ -d "$codex_skills/cktk-upgrade" ]] || die "missing Codex cktk-upgrade skill"
+  link_skill_dir "$codex_skills/cktk-upgrade" "$codex_target/cktk-upgrade" "cktk-upgrade"
+  count=$((count + 1))
+
   while IFS= read -r skill; do
     link_skill_dir "$codex_skills/$skill" "$codex_target/$skill" "$skill"
     count=$((count + 1))
-  done < <(find "$codex_skills" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+  done < <(find "$codex_skills" -mindepth 1 -maxdepth 1 -type d ! -name cktk-upgrade -exec basename {} \; | sort)
 
   printf '\nCodex skills:\n'
   printf '  installed %d skill link(s) under %s\n' "$count" "$codex_target"
@@ -229,8 +235,8 @@ install_project_ignore() {
 command -v python3 >/dev/null 2>&1 || die "Python 3 is required"
 [[ -d "$claude_skills" ]] || die "missing Claude skill tree: $claude_skills"
 
-install_shell_helpers
 install_codex_skills
 install_antigravity_skills
 install_opencode_skills
+install_shell_helpers
 install_project_ignore

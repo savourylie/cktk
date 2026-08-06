@@ -665,16 +665,52 @@ HOME="$all_agents_home" CODEX_HOME="$all_agents_codex_home" PATH="/usr/bin:/bin"
 stale_home="$tmp/stale-agents-home"
 stale_codex_home="$tmp/stale-codex"
 stale_tree="$tmp/stale-cktk/.agent/skills"
-mkdir -p "$stale_home/.agent" "$stale_codex_home" "$stale_tree/cktk-upgrade"
+mkdir -p \
+  "$stale_home/.agent" \
+  "$stale_codex_home/skills/cktk-upgrade" \
+  "$stale_codex_home/skills/implement-ticket" \
+  "$stale_tree/cktk-upgrade"
 printf -- '---\nname: cktk-upgrade\ndescription: stale fixture\n---\n' \
   >"$stale_tree/cktk-upgrade/SKILL.md"
+printf -- '---\nname: cktk-upgrade\ndescription: stale Codex fixture\n---\n' \
+  >"$stale_codex_home/skills/cktk-upgrade/SKILL.md"
+printf -- '---\nname: implement-ticket\ndescription: stale Codex fixture\n---\n' \
+  >"$stale_codex_home/skills/implement-ticket/SKILL.md"
 ln -s "$stale_tree" "$stale_home/.agent/skills"
 HOME="$stale_home" CODEX_HOME="$stale_codex_home" PATH="/usr/bin:/bin" \
   "$all_agent_installer" >"$tmp/stale-agents.out" 2>"$tmp/stale-agents.err"
+assert_symlink "$stale_codex_home/skills/cktk-upgrade"
+assert_symlink "$stale_codex_home/skills/implement-ticket"
+assert_symlink "$stale_codex_home/skills/implement-ticket-linear"
+[[ "$(readlink "$stale_codex_home/skills/cktk-upgrade")" = "$root/.agents/skills/cktk-upgrade" ]] ||
+  fail "stale Codex cktk-upgrade copy was not linked to the active tree"
+[[ "$(readlink "$stale_codex_home/skills/implement-ticket-linear")" = "$root/.agents/skills/implement-ticket-linear" ]] ||
+  fail "new Codex skill was not installed while migrating stale copies"
 assert_symlink "$stale_home/.agent/skills"
 [[ "$(readlink "$stale_home/.agent/skills")" = "$root/.agent/skills" ]] ||
   fail "stale Antigravity skills symlink was not updated to the active cktk tree"
 pass "all-agent installer reconciles global Codex, Antigravity, and shell surfaces"
+
+bootstrap_home="$tmp/bootstrap-home"
+bootstrap_codex_home="$tmp/bootstrap-codex"
+mkdir -p \
+  "$bootstrap_home" \
+  "$bootstrap_codex_home/skills/cktk-upgrade" \
+  "$bootstrap_codex_home/skills/cinematic-design-system"
+printf -- '---\nname: cktk-upgrade\ndescription: stale bootstrap fixture\n---\n' \
+  >"$bootstrap_codex_home/skills/cktk-upgrade/SKILL.md"
+printf -- '---\nname: private-cinematic\ndescription: unrelated fixture\n---\n' \
+  >"$bootstrap_codex_home/skills/cinematic-design-system/SKILL.md"
+if HOME="$bootstrap_home" CODEX_HOME="$bootstrap_codex_home" PATH="/usr/bin:/bin" \
+  "$all_agent_installer" >"$tmp/bootstrap.out" 2>"$tmp/bootstrap.err"; then
+  fail "all-agent installer ignored an unrelated Codex skill conflict"
+fi
+assert_symlink "$bootstrap_codex_home/skills/cktk-upgrade"
+[[ "$(readlink "$bootstrap_codex_home/skills/cktk-upgrade")" = "$root/.agents/skills/cktk-upgrade" ]] ||
+  fail "installer did not repair cktk-upgrade before a later skill conflict"
+assert_contains "$bootstrap_codex_home/skills/cinematic-design-system/SKILL.md" "private-cinematic"
+assert_contains "$tmp/bootstrap.err" "refusing to replace non-cktk skill directory"
+pass "all-agent installer repairs cktk-upgrade before later skill conflicts"
 
 for skill in codex-handoff grok-handoff opencode-handoff takeover; do
   assert_file "$root/skills/$skill/SKILL.md"
@@ -713,15 +749,18 @@ import sys
 root = sys.argv[1]
 for rel in (
     "catalog.json",
-    ".claude-plugin/plugin.json",
-    ".claude-plugin/marketplace.json",
 ):
     with open(os.path.join(root, rel), encoding="utf-8") as handle:
         data = json.load(handle)
-    if rel == ".claude-plugin/marketplace.json":
-        assert data["plugins"][0]["version"] == "1.2.0"
-    else:
-        assert data["version"] == "1.2.0"
+    assert data["version"] == "1.2.0"
+
+with open(os.path.join(root, ".claude-plugin/plugin.json"), encoding="utf-8") as handle:
+    plugin = json.load(handle)
+assert "version" not in plugin
+
+with open(os.path.join(root, ".claude-plugin/marketplace.json"), encoding="utf-8") as handle:
+    marketplace = json.load(handle)
+assert "version" not in marketplace["plugins"][0]
 
 with open(os.path.join(root, "catalog.json"), encoding="utf-8") as handle:
     names = {skill["name"] for skill in json.load(handle)["skills"]}
@@ -737,6 +776,8 @@ assert_contains "$root/README.md" ".ai/handoffs/"
 assert_contains "$root/README.md" "not compatible with archive-based"
 assert_contains "$root/README.md" "install-all-agent-skills.sh"
 assert_contains "$root/README.md" '${CODEX_HOME:-$HOME/.codex}/skills'
+assert_contains "$root/README.md" "/plugin install cktk@cktk"
+assert_not_contains "$root/README.md" "cktk@savourylie"
 assert_not_contains "$root/README.md" ".agents/skills/codex-handoff"
 assert_not_contains "$root/README.md" ".agents/skills/takeover"
 assert_contains "$root/.gitignore" ".ai/handoffs/"
@@ -746,7 +787,13 @@ for upgrade_skill in \
   assert_contains "$upgrade_skill" "Already up to date"
   assert_contains "$upgrade_skill" "install-all-agent-skills.sh"
   assert_contains "$upgrade_skill" "automatically"
+  assert_contains "$upgrade_skill" "claude plugin marketplace update cktk"
+  assert_contains "$upgrade_skill" "claude plugin update cktk@cktk"
+  assert_contains "$upgrade_skill" "/reload-plugins"
+  assert_contains "$upgrade_skill" "Codex must be restarted"
   assert_not_contains "$upgrade_skill" "Apply recommended setup?"
+  assert_not_contains "$upgrade_skill" "CACHE_PATH"
+  assert_not_contains "$upgrade_skill" "rsync -a"
 done
 pass "documentation and release metadata register the MVP"
 

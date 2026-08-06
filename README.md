@@ -69,7 +69,7 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 |---|---|---|
 | `feature-catalog` | Explore a codebase and produce a user-facing feature catalog | |
 | `readme-builder` | Generate or refresh `README.md` from observed facts (framework, scripts, env vars, existing docs) plus optional UI screenshots via Playwright MCP | Pass `no-screenshots` for a pure-text README |
-| `cktk-upgrade` | Pull the latest cktk skills from GitHub and reconcile Claude Code, Codex, Antigravity, and handoff helper installs | |
+| `cktk-upgrade` | Pull the latest cktk skills from GitHub and reconcile Claude Code, Codex, Antigravity, OpenCode, and handoff helper installs | |
 
 ### Design and UX
 
@@ -98,8 +98,10 @@ Pick your agent:
 
 ```text
 /plugin marketplace add savourylie/cktk
-/plugin install cktk@savourylie
+/plugin install cktk@cktk
 ```
+
+The marketplace intentionally uses Git commit versions, so Claude Code can recognize every new cktk commit as an update instead of waiting for a manually bumped package version.
 
 ### Codex (repo-local)
 
@@ -120,7 +122,17 @@ To make the skills available across repos, run the all-agent installer from a fu
 bash /absolute/path/to/cktk/scripts/install-all-agent-skills.sh
 ```
 
-The installer symlinks cktk skill folders into `${CODEX_HOME:-$HOME/.codex}/skills` without replacing unrelated skills. It also reconciles Antigravity global skills and the handoff shell helpers. `$cktk-upgrade` runs this installer automatically after every successful version check.
+The installer symlinks cktk skill folders into `${CODEX_HOME:-$HOME/.codex}/skills` without replacing unrelated skills. It also reconciles Antigravity and OpenCode global skills plus the handoff shell helpers. `$cktk-upgrade` runs this installer automatically after every successful version check.
+
+#### Repair older copied Codex installs
+
+Codex installations created before the all-agent reconciliation workflow may still have standalone copied skills under `~/.codex/skills`. Their old `$cktk-upgrade` can update the Claude marketplace checkout but cannot replace itself, because Codex loaded those old instructions before the update. Bootstrap those installs once from the current marketplace checkout:
+
+```sh
+env -u PROJECT_ROOT bash "$HOME/.claude/plugins/marketplaces/cktk/scripts/install-all-agent-skills.sh"
+```
+
+Then restart Codex. The installer replaces recognized cktk skill copies with links to the current checkout; future `$cktk-upgrade` runs reconcile all supported agent installs automatically.
 
 ### Codex ($skill-installer)
 
@@ -288,7 +300,7 @@ host-native workflow.
 /feature-catalog                   # Generate a feature catalog for the current project
 /readme-builder                    # Generate or refresh README.md from codebase facts + screenshots
 /readme-builder no-screenshots     # Same, but skip Playwright screenshot capture
-/cktk-upgrade                      # Upgrade cktk to the latest version from GitHub
+/cktk-upgrade                      # Upgrade cktk and reconcile all supported agent installs
 ```
 
 ### Design and UX

@@ -9,7 +9,6 @@
       "name": "cktk",
       "description": "Software development and UI design workflow skills — generate tickets from PRDs, implement tickets, code review, design system extraction, theme generation, WCAG auditing, and UX design",
       "source": "./",
-      "version": "1.2.0",
       "author": {
         "name": "savourylie"
       },
