@@ -511,11 +511,82 @@ validate_worktree_linear_contract() {
   forbid_stale_claim "$codex_root/update-ticket-linear/SKILL.md" "manual land"
 }
 
+validate_review_ticket_contract() {
+  local skill_md
+
+  # The explicit flag form combines two previously separate review dimensions:
+  # a committed branch diff and exact Linear issue context. Pin its parser,
+  # diff, context, and failure contracts in both host-native documents.
+  for skill_md in \
+    "$claude_root/review-ticket/SKILL.md" \
+    "$codex_root/review-ticket/SKILL.md"; do
+    # --ticket TAI-90 --base main and default-base resolution.
+    require_literal "$skill_md" '--ticket <ID> [--base <branch>]'
+    require_literal "$skill_md" 'git diff "$base_ref"...HEAD'
+    require_literal "$skill_md" 'try `main`, then `master`'
+    require_literal "$skill_md" \
+      'Linear ticket {ISSUE-ID} against {base} (merge-base)'
+
+    # Invalid/missing values, extra arguments, and unresolved bases.
+    require_literal "$skill_md" \
+      '--ticket requires a Linear issue ID like TAI-90.'
+    require_literal "$skill_md" \
+      "Invalid --ticket value '<value>'; expected a Linear issue ID like TAI-90."
+    require_literal "$skill_md" '--base requires a branch name.'
+    require_literal "$skill_md" \
+      '--base is only supported with --ticket <ID>.'
+    require_literal "$skill_md" \
+      "Unsupported argument '<value>'; expected --ticket <ID> [--base <branch>]."
+    require_literal "$skill_md" \
+      "Base branch '<branch>' was not found locally or on origin."
+
+    # Empty diffs and unavailable Linear tooling must stop early.
+    require_literal "$skill_md" 'there is nothing to review and stop'
+    require_literal "$skill_md" \
+      'Linear MCP is unavailable; configure and authenticate the Linear MCP tools, then retry.'
+
+    # Exact ticket context, complete changed files, and scoped repo guidance.
+    require_literal "$skill_md" 'exact issue'
+    require_literal "$skill_md" 'title, description'
+    require_literal "$skill_md" 'state'
+    require_literal "$skill_md" 'acceptance criteria'
+    require_literal "$skill_md" 'as-built comments'
+    require_literal "$skill_md" 'complete content of every changed file'
+    require_literal "$skill_md" 'AGENTS.md'
+    require_literal "$skill_md" 'CLAUDE.md'
+
+    # Backward compatibility: auto, PR, uncommitted, staged, docs-ticket,
+    # Linear URL/id, branch, commit, and unrecognized-argument modes.
+    require_literal "$skill_md" 'git status --porcelain'
+    require_literal "$skill_md" '--pr <number>'
+    require_literal "$skill_md" '--uncommitted'
+    require_literal "$skill_md" '--staged'
+    require_literal "$skill_md" 'docs/tickets/'
+    require_literal "$skill_md" 'linear.app'
+    require_literal "$skill_md" '^[A-Za-z]+-\d+$'
+    require_literal "$skill_md" \
+      'local or remote branch with this exact name also exists'
+    require_literal "$skill_md" 'legacy branch mode'
+    require_literal "$skill_md" 'git rev-parse --verify --quiet'
+    require_literal "$skill_md" 'Anything else'
+  done
+
+  require_literal "$claude_root/review-ticket/SKILL.md" \
+    '/review-ticket --ticket TAI-90 --base main'
+  require_literal "$claude_root/review-ticket/SKILL.md" \
+    '/review-ticket --ticket TAI-90               # Same, resolving the default main/master base'
+  require_literal "$codex_root/review-ticket/SKILL.md" \
+    '$cktk:review-ticket --ticket TAI-90 --base main'
+  require_literal "$codex_root/review-ticket/SKILL.md" \
+    '$cktk:review-ticket --ticket TAI-90              # Same, using default main/master base resolution'
+}
+
 validate_clarify_contract
 validate_interact_contract
 validate_implement_contract
 validate_ticket_delegation_contract
 validate_worktree_linear_contract
+validate_review_ticket_contract
 
 if [[ "$failed" -ne 0 ]]; then
   exit 1

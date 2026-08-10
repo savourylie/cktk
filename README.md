@@ -245,6 +245,8 @@ All commands below use Claude Code's `/name` syntax. In **Codex**, invoke the sa
 /review-ticket --pr 42                       # Review a pull request
 /review-ticket 42                            # Review against ticket #42
 /review-ticket ENG-42                        # Review uncommitted changes against a Linear issue
+/review-ticket --ticket TAI-90 --base main    # Review committed HEAD vs main against a Linear issue
+/review-ticket --ticket TAI-90                # Same, resolving the default main/master base
 /review-ticket abc1234                       # Review a single commit
 
 /update-ticket TICKET-003 done               # Mark done; checks .worktrees/003-slug if present
