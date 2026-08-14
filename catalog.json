@@ -25,6 +25,11 @@
       "description": "Fetch a Linear issue and interactively clarify its details and risks against the codebase before implementation — read-only (requires Linear MCP; Linear twin of clarify-ticket)"
     },
     {
+      "name": "clarify",
+      "path": ".agent/skills/clarify",
+      "description": "Explain a previous statement again after the user says they do not understand it — recovers missing context from Linear, Notion, tickets, docs, and code, then re-explains with explicit scope, resolved references, and the missing reasoning steps filled in (read-only)"
+    },
+    {
       "name": "implement-ticket-linear",
       "path": ".agent/skills/implement-ticket-linear",
       "description": "Implement a Linear issue on its own branch with code review, then offer to merge, open a PR, commit only, or leave it; moves Todo to In Progress first and reports any other status; optionally use an isolated worktree or delegate implementation via Codex, Claude Code, or Grok Build CLI (requires Linear MCP; Linear twin of implement-ticket)"

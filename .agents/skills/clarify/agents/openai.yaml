@@ -1,0 +1,7 @@
+interface:
+  display_name: "Clarify"
+  short_description: "Re-explain a previous answer clearly"
+  default_prompt: "Use $clarify to recover the missing project context and explain the previous statement again with explicit scope, resolved references, defined terminology, and the missing reasoning steps filled in."
+
+policy:
+  allow_implicit_invocation: true
