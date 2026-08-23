@@ -60,6 +60,11 @@
       "description": "Quiz your understanding of an implemented Linear issue from its local diff, or generate a stakeholder explainer with `explain` — read-only (requires Linear MCP; Linear twin of quiz-ticket)"
     },
     {
+      "name": "debrief-result",
+      "path": ".agent/skills/debrief-result",
+      "description": "Explain what a just-delivered result means for the project — no ticket id; uses the current conversation (read-only)"
+    },
+    {
       "name": "commit-ticket",
       "path": ".agent/skills/commit-ticket",
       "description": "Create a single git commit from current changes"

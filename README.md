@@ -62,6 +62,7 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 | Skill(s) | What it does | Notes |
 | --- | --- | --- |
 | `clarify` | Explain a previous statement again after the user says they do not understand it — recover the missing context from Linear, Notion, tickets, docs, and code, then re-explain with explicit scope, resolved references, defined terminology, and the missing reasoning steps filled in | Clarifies a *statement*, not a ticket — use `clarify-ticket` for that. Read-only; Linear and Notion MCP are optional and it degrades to repo sources without them |
+| `debrief-result` | Explain what a just-delivered result means for the project (typically after `implement-ticket` or `implement-ticket-linear`) | No ticket id — uses the current conversation. Read-only. Not a quiz, not a review, not `clarify` |
 | `interact-html` | Render clarifying questions, option picks, and decision briefings as a local interactive HTML page, collect answers via a one-shot localhost server or paste-back, and archive the resolved page as a decision record | Pages live under `.ai/interactions/` (gitignored, local-only) |
 
 ### Docs and maintenance
@@ -163,6 +164,7 @@ $skill-installer install from https://github.com/savourylie/cktk with these path
 .agents/skills/quiz-ticket
 .agents/skills/quiz-ticket-linear
 .agents/skills/clarify
+.agents/skills/debrief-result
 .agents/skills/interact-html
 .agents/skills/cktk-upgrade
 .agents/skills/readme-builder
@@ -199,7 +201,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree create-worktree-linear merge-worktree merge-worktree-linear feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover clarify interact-html readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
+for s in create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree create-worktree-linear merge-worktree merge-worktree-linear feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover clarify debrief-result interact-html readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills
@@ -296,11 +298,12 @@ host-native workflow.
 ```text
 /clarify                           # Explain your most recent statement again, with the missing context recovered
 /clarify the scoring worker part   # Clarify a named topic from what you just said
+/debrief-result                    # Explain what the just-finished result means for the project
 /interact-html which caching strategy should we use — 3 options with trade-offs
 /interact-html                     # Render the pending questions from the current conversation as a page
 ```
 
-`clarify` also triggers on its own when the user says they do not understand something you said. It clarifies a *statement*; `clarify-ticket` and `clarify-ticket-linear` clarify a *ticket*.
+`clarify` also triggers on its own when the user says they do not understand something you said. It clarifies a *statement*; `clarify-ticket` and `clarify-ticket-linear` clarify a *ticket*. `debrief-result` explains a *result's* meaning for the project and needs no ticket id.
 
 ### Docs and maintenance
 
@@ -332,7 +335,7 @@ host-native workflow.
 
 Two notes on host behavior:
 
-- **Codex triggering policy:** `review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, `wcag-accessibility-checker`, `interact-html`, and `clarify` also include descriptions suitable for Codex's implicit skill matching; every other skill (the write-heavy, handoff, and external-service workflows) is explicit-only in its `agents/openai.yaml` policy. `clarify` is read-only and its trigger is a user saying they did not understand, so implicit matching is the point of it.
+- **Codex triggering policy:** `review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, `wcag-accessibility-checker`, `interact-html`, `clarify`, and `debrief-result` also include descriptions suitable for Codex's implicit skill matching; every other skill (the write-heavy, handoff, and external-service workflows) is explicit-only in its `agents/openai.yaml` policy. `clarify` is read-only and its trigger is a user saying they did not understand, so implicit matching is the point of it. `debrief-result` is the same pattern for a result whose project-level meaning was left unexplained.
 - The clarification and quiz skills use host-neutral questions and follow-up wording. They do not assume Claude's `/skill` syntax, Codex's `$skill` syntax, or a particular structured-choice tool.
 
 ## Agent Handoff

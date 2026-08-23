@@ -30,6 +30,7 @@ Stay read-only: never edit repository files, tickets, Linear, Notion, or git.
 | Situation | Skill |
 | --- | --- |
 | The user did not understand something **you** said | this skill |
+| The **result** of just-finished work was stated without its project-level meaning | `debrief-result` |
 | The user wants a **ticket's** requirements, risks, and readiness analyzed before implementation | `clarify-ticket` (`docs/tickets/`) or `clarify-ticket-linear` (Linear) |
 | The user's understanding of an **already-implemented** ticket should be checked | `quiz-ticket` or `quiz-ticket-linear` |
 
