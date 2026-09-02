@@ -1,0 +1,7 @@
+interface:
+  display_name: "Update Agents"
+  short_description: "Persist durable instructions into AGENTS.md and CLAUDE.md"
+  default_prompt: "Use $update-agents to persist durable agent instructions into this repo's AGENTS.md and CLAUDE.md. With no argument, write what you said you would remember next time; with an argument, persist that instruction. Never commit."
+
+policy:
+  allow_implicit_invocation: false

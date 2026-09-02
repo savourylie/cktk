@@ -581,12 +581,61 @@ validate_review_ticket_contract() {
     '$cktk:review-ticket --ticket TAI-90              # Same, using default main/master base resolution'
 }
 
+validate_update_agents_contract() {
+  local skill="update-agents"
+  local claude_skill_md="$claude_root/$skill/SKILL.md"
+  local codex_skill_md="$codex_root/$skill/SKILL.md"
+  local openai_yaml="$codex_root/$skill/agents/openai.yaml"
+  local metadata_error
+  local skill_md
+
+  if ! metadata_error="$(RUBYOPT=--disable=gems ruby -e '
+    require "yaml"
+
+    claude_path, codex_path, yaml_path, expected_name = ARGV
+    claude = YAML.load_file(claude_path)
+    codex = YAML.load_file(codex_path)
+    yaml = YAML.load_file(yaml_path)
+
+    abort("Claude skill must be user-invocable") unless claude["user-invocable"] == true
+    hint = claude["argument-hint"]
+    abort("Claude skill must provide argument-hint") unless hint.is_a?(String) && !hint.empty?
+
+    unexpected = codex.keys - %w[name description]
+    abort("Codex frontmatter has unsupported keys: #{unexpected.join(", ")}") unless unexpected.empty?
+    abort("Codex skill name mismatch") unless codex["name"] == expected_name
+
+    short = yaml["interface"]["short_description"]
+    abort("short_description must be 25-64 characters") unless (25..64).cover?(short.length)
+    abort("default_prompt must mention $#{expected_name}") unless yaml["interface"]["default_prompt"].include?("$#{expected_name}")
+    abort("write-heavy skill must be explicit-only") unless yaml["policy"]["allow_implicit_invocation"] == false
+  ' "$claude_skill_md" "$codex_skill_md" "$openai_yaml" "$skill" 2>&1)"; then
+    fail "invalid cross-agent metadata for $skill: $metadata_error"
+  fi
+
+  for skill_md in "$claude_skill_md" "$codex_skill_md"; do
+    require_literal "$skill_md" "Portable interaction"
+    require_literal "$skill_md" "Never assume an option limit"
+    require_literal "$skill_md" "AGENTS.md"
+    require_literal "$skill_md" "CLAUDE.md"
+    require_literal "$skill_md" "Never commit"
+    require_literal "$skill_md" "remember next time"
+    forbid_literal "$skill_md" "AskUserQuestion"
+    forbid_literal "$skill_md" "rely on \"Other\""
+  done
+
+  require_literal "$claude_skill_md" "/update-agents"
+  require_literal "$codex_skill_md" '$update-agents'
+  require_literal "$root/README.md" "/update-agents"
+}
+
 validate_clarify_contract
 validate_interact_contract
 validate_implement_contract
 validate_ticket_delegation_contract
 validate_worktree_linear_contract
 validate_review_ticket_contract
+validate_update_agents_contract
 
 if [[ "$failed" -ne 0 ]]; then
   exit 1

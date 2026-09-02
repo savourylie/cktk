@@ -71,6 +71,7 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 |---|---|---|
 | `feature-catalog` | Explore a codebase and produce a user-facing feature catalog | |
 | `readme-builder` | Generate or refresh `README.md` from observed facts (framework, scripts, env vars, existing docs) plus optional UI screenshots via Playwright MCP | Pass `no-screenshots` for a pure-text README |
+| `update-agents` | Persist durable agent instructions into the current repo's `AGENTS.md` and `CLAUDE.md` | Optional argument is the instruction; with no argument, writes what the agent said it would remember next time. Does not commit |
 | `cktk-upgrade` | Pull the latest cktk skills from GitHub and reconcile Claude Code, Codex, Antigravity, OpenCode, and handoff helper installs | |
 
 ### Design and UX
@@ -168,6 +169,7 @@ $skill-installer install from https://github.com/savourylie/cktk with these path
 .agents/skills/interact-html
 .agents/skills/cktk-upgrade
 .agents/skills/readme-builder
+.agents/skills/update-agents
 .agents/skills/design-system-extractor
 .agents/skills/design-system-web-applier
 .agents/skills/design-system-mobile-applier
@@ -201,7 +203,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree create-worktree-linear merge-worktree merge-worktree-linear feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover clarify debrief-result interact-html readme-builder design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
+for s in create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree create-worktree-linear merge-worktree merge-worktree-linear feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover clarify debrief-result interact-html readme-builder update-agents design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills
@@ -311,6 +313,8 @@ host-native workflow.
 /feature-catalog                   # Generate a feature catalog for the current project
 /readme-builder                    # Generate or refresh README.md from codebase facts + screenshots
 /readme-builder no-screenshots     # Same, but skip Playwright screenshot capture
+/update-agents                     # Persist what you said you'd remember next time into AGENTS.md and CLAUDE.md
+/update-agents use bun, never npm  # Persist this standing instruction into both files
 /cktk-upgrade                      # Upgrade cktk and reconcile all supported agent installs
 ```
 

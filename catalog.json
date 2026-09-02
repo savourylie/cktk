@@ -170,6 +170,11 @@
       "description": "Generate or refresh README.md from observed codebase facts plus optional UI screenshots via Playwright MCP"
     },
     {
+      "name": "update-agents",
+      "path": ".agent/skills/update-agents",
+      "description": "Persist durable agent instructions into the current repo's AGENTS.md and CLAUDE.md; with no argument, write what the agent said it would remember next time"
+    },
+    {
       "name": "gen-image-codex",
       "path": ".agent/skills/gen-image-codex",
       "description": "Generate images, icons, logos, or banners with gpt-image-2 via the local Codex CLI and save them into the project"
