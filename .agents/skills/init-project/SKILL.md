@@ -54,6 +54,12 @@ or planning. Harvest `linear.app` URLs, `notion.so` and `*.notion.site` URLs,
 `[A-Z]+-[0-9]+` issue identifiers, and requirement paths. Record the `file:line`
 source of every value — you will show these next.
 
+Product-requirement paths must be **authoritative**: a file that opens by declaring
+itself derived, generated, or a projection of something else does not belong in
+that list at all. Also look for **decision records** — `decision-log`, `decisions`,
+`adr`, `rfc` in names under `docs/` — preferring a containing directory over a long
+file list that goes stale as records are added.
+
 ## Phase 3: Fill gaps by listing
 
 For anything discovery missed, list Linear teams, list projects for the chosen
@@ -160,6 +166,10 @@ misconfiguration in the report.
 Write `$MAIN_ROOT/.ai/cktk/project.json` per `references/project-schema.md`, unless
 every binding ended `unresolved` — then report and stop, leaving no misleading
 artifact.
+
+Give every binding you validated in this run a fresh `validated_at`, and leave the
+timestamp untouched on every binding you did not revalidate. A scoped re-run that
+restamped an unchecked section would claim a check that never happened.
 
 Offer to add `.ai/cktk/delegation/` to `.gitignore`: it holds local run diagnostics
 the implement skills tell nobody to stage, and you are adding a tracked file beside

@@ -65,7 +65,14 @@ answers in prose.
      one.
    - `notion.so` / `*.notion.site` URLs → candidate hub and decision-log pages.
    - Issue identifiers matching `[A-Z]+-[0-9]+` → the team key.
-   - Paths that look like product requirements.
+   - Paths that look like **authoritative** product requirements. A file that
+     opens by declaring itself derived, generated, or a projection of something
+     else is not one — say so and leave it out rather than ranking it lower.
+   - **Paths holding decision records.** Look for `decision-log`, `decisions`,
+     `adr`, and `rfc` in file and directory names under `docs/`. Prefer recording
+     a containing directory over a long list of files, which goes stale as records
+     are added — but only when the directory holds decision records and little
+     else.
    - **A canonical product source.** The project description often names one
      explicitly and links it in Notion. It usually outranks anything in the
      repository, so record it as `notion.product_spec` and keep the repository
@@ -149,7 +156,10 @@ inside an unrelated command.**
 2. **Notion hub** — fetch the page.
 3. **Notion decision log** — fetch it. For a database, fetch the data source and
    record the live property names and their types.
-4. **Repository paths** — confirm each exists on disk. **Drop any that do not**
+4. **Repository paths** — confirm each exists on disk. Where a recorded file
+   contradicts the role it was recorded under — a product-requirements entry that
+   calls itself a derived view, say — quote the line and ask. **Drop any that do
+   not exist**
    rather than recording a path that was never there, name every dropped path in
    the report, and set `repository.status` only once the survivors are confirmed.
    A recorded path a consumer cannot open is worse than an absent one.
@@ -258,11 +268,15 @@ guessed.
 1. Write `$MAIN_ROOT/.ai/cktk/project.json` per `references/project-schema.md`.
    Do not write the file at all if every binding ended `unresolved` — report and
    stop instead, so a failed run leaves no misleading artifact.
-2. **Repository hygiene.** `.ai/cktk/delegation/` holds local run diagnostics that
+2. **Stamp what you checked.** Every binding you validated in this run gets a
+   fresh `validated_at`. Every binding you did **not** touch keeps the timestamp it
+   already had — a scoped re-run must never restamp a section it did not
+   revalidate, because that would claim a check that never happened.
+3. **Repository hygiene.** `.ai/cktk/delegation/` holds local run diagnostics that
    the implement skills instruct nobody to stage, but nothing enforces it. You are
    adding a *tracked* file in the same directory, so offer to add
    `.ai/cktk/delegation/` to `.gitignore`. Offer — do not add it silently.
-3. Report:
+4. Report:
 
 ```
 ## Bindings written — .ai/cktk/project.json

@@ -171,7 +171,7 @@ configuration, unlike `.ai/cktk/delegation/`, which is local diagnostics.
   "generated_by": "cktk/init-project",
   "generated_at": "2026-09-04T09:15:00Z",
   "linear": {
-    "team": { "key": "TAI", "id": "…", "status": "validated" },
+    "team": { "key": "TAI", "id": "…", "status": "validated", "validated_at": "…" },
     "project": {
       "id": "…",
       "name": "…",
@@ -190,19 +190,20 @@ configuration, unlike `.ai/cktk/delegation/`, which is local diagnostics.
         "## 尚待決定的問題 / Open questions"
       ],
       "last_synced_marker": null,
-      "status": "validated"
+      "status": "validated",
+      "validated_at": "2026-09-04T09:15:00Z"
     }
   },
   "notion": {
-    "hub": { "id": "…", "url": "…", "status": "validated" },
-    "product_spec": { "id": "…", "url": "…", "title": "…", "status": "validated" },
+    "hub": { "id": "…", "url": "…", "status": "validated", "validated_at": "…" },
+    "product_spec": { "id": "…", "url": "…", "title": "…", "status": "validated", "validated_at": "…" },
     "decision_log": {
       "shape": "database",
       "data_source_url": "collection://…",
       "database_url": "https://www.notion.so/…",
       "properties": {
         "title": "Decision",
-        "idempotency_key": "cktk Key",
+        "key": "cktk Key",
         "backlink": "Linear issue",
         "referent": "Affects",
         "date": "Decided"
@@ -215,6 +216,7 @@ configuration, unlike `.ai/cktk/delegation/`, which is local diagnostics.
         "Decided": "date"
       },
       "status": "validated",
+      "validated_at": "2026-09-04T09:15:00Z",
       "write_probe": { "at": "2026-09-04T09:15:00Z", "result": "passed" }
     }
   },
@@ -222,7 +224,8 @@ configuration, unlike `.ai/cktk/delegation/`, which is local diagnostics.
     "product_requirements": ["docs/PRD.md"],
     "decisions": ["docs/decisions/"],
     "tickets": { "kind": "linear" },
-    "status": "validated"
+    "status": "validated",
+    "validated_at": "2026-09-04T09:15:00Z"
   },
   "preferences": {
     "sync_project_context": "ask",
@@ -237,6 +240,13 @@ specification, update or retire the ticket" — and it lives in Notion. Recordin
 only `repository.product_requirements` would hand a downstream skill two repo files
 and leave it unaware of the source the project itself says wins. Both are recorded,
 and which is canonical is explicit.
+
+**Timestamps are per binding, inline, and only a revalidated binding is
+restamped.** Scoped re-runs (`/init-project repository`) are the normal way this
+file is maintained, so bindings age independently: after a few, one section may
+have been checked weeks before another while both read `"validated"`. A single
+file-level timestamp cannot express that, and a tool built to prevent staleness
+should not be blind to its own.
 
 **Status values are per binding, inline.** `validated` means resolved and — for the
 decision log — write-probed. `read-only` means the fetch succeeded but write access
@@ -391,7 +401,11 @@ Only content the transition provably affects:
   are **added** to a milestone, not only when they complete, so a falling
   percentage usually means scope grew rather than work being lost. Where the
   document explains a number, the explanation must stay truthful.
-- A "last synced" marker.
+- A "last synced" marker, **only where one already exists.** When
+  `last_synced_marker` is `null` the document has none, and the sync does not
+  invent one: adding a line to a shared document nobody asked for is exactly the
+  kind of uninvited edit section 3.2 exists to prevent. A team that wants a marker
+  adds it and re-runs `init-project`.
 
 #### 3.2 What it may never change
 

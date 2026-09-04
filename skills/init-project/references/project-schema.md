@@ -26,7 +26,12 @@ run diagnostics and is never staged.
   "generated_by": "cktk/init-project",
   "generated_at": "2026-09-04T09:15:00Z",
   "linear": {
-    "team": { "key": "TAI", "id": "8f2c…", "status": "validated" },
+    "team": {
+      "key": "TAI",
+      "id": "8f2c…",
+      "status": "validated",
+      "validated_at": "2026-09-04T09:15:00Z"
+    },
     "project": {
       "id": "b41e…",
       "name": "Trust and Identity",
@@ -45,20 +50,23 @@ run diagnostics and is never staged.
         "## 尚待決定的問題 / Open questions"
       ],
       "last_synced_marker": null,
-      "status": "validated"
+      "status": "validated",
+      "validated_at": "2026-09-04T09:15:00Z"
     }
   },
   "notion": {
     "hub": {
       "id": "26ab1f9f4c5f80b18d3bd10a6b1d2f4e",
       "url": "https://www.notion.so/acme/Trust-and-Identity-26ab1f9f",
-      "status": "validated"
+      "status": "validated",
+      "validated_at": "2026-09-04T09:15:00Z"
     },
     "product_spec": {
       "id": "3b3db72d09ef81029c7dc6dd697a53a0",
       "url": "https://www.notion.so/acme/Product-Specification-3b3db72d",
       "title": "Website MVP Product Specification",
-      "status": "validated"
+      "status": "validated",
+      "validated_at": "2026-09-04T09:15:00Z"
     },
     "decision_log": {
       "shape": "database",
@@ -66,7 +74,7 @@ run diagnostics and is never staged.
       "database_url": "https://www.notion.so/acme/Decision-Log-91cd2f",
       "properties": {
         "title": "Decision",
-        "idempotency_key": "cktk Key",
+        "key": "cktk Key",
         "backlink": "Linear issue",
         "referent": "Affects",
         "date": "Decided"
@@ -79,14 +87,16 @@ run diagnostics and is never staged.
         "Decided": "date"
       },
       "status": "validated",
-      "write_probe": { "at": "2026-09-04T09:15:00Z", "result": "not attempted" }
+      "validated_at": "2026-09-04T09:15:00Z",
+      "write_probe": { "result": "not attempted" }
     }
   },
   "repository": {
     "product_requirements": ["docs/PRD.md"],
     "decisions": ["docs/decisions/"],
     "tickets": { "kind": "linear" },
-    "status": "validated"
+    "status": "validated",
+    "validated_at": "2026-09-04T09:15:00Z"
   },
   "preferences": {
     "sync_project_context": "ask",
@@ -112,7 +122,7 @@ run diagnostics and is never staged.
 | `notion.hub` | The page a reader starts from. |
 | `notion.product_spec` | The page the project treats as its **canonical** product source, when it names one. `null` when it does not. A Linear project description often links it explicitly, and it usually outranks anything in `repository.product_requirements` — record both and record which is canonical. |
 | `notion.decision_log` | Where cross-cutting decisions go. Shape-dependent; see below. |
-| `repository.product_requirements` | **Repository** paths holding product requirements, most authoritative first. Not the canonical source when `notion.product_spec` is set. |
+| `repository.product_requirements` | **Repository** paths holding **authoritative** product requirements, most authoritative first. Not the canonical source when `notion.product_spec` is set. A file that declares itself derived, generated, or a projection of something else does not belong here at all — ordering it last is too weak a signal, since nothing stops a consumer reading the second entry and treating it as a source. |
 | `repository.decisions` | Paths holding repository-local decision records, if any. |
 | `repository.tickets.kind` | `"linear"` or `"files"`. When `"files"`, a `path` sits beside it, e.g. `docs/tickets/`. |
 | `repository.status` | `validated` once every recorded path has been confirmed to exist. Paths that do not exist are **dropped, not recorded** — so every path in the file is a path that was there — and named in the run's report. |
@@ -120,8 +130,14 @@ run diagnostics and is never staged.
 
 ## `status` — three values, per binding
 
-Every binding object carries its own `status`. The value sits **inside** the object
-it describes so the two cannot drift apart.
+Every binding object carries its own `status` **and its own `validated_at`**. Both
+sit **inside** the object they describe so they cannot drift apart from it.
+
+`validated_at` is per binding rather than per file because a scoped re-run
+(`/init-project repository`) deliberately revalidates only one section. Without it,
+a binding checked weeks ago and one checked a minute ago both read `"validated"`
+and nothing distinguishes them. The file's top-level `generated_at` records only
+when it was last written.
 
 | Value | Meaning | What a consumer may do |
 | --- | --- | --- |
@@ -138,8 +154,8 @@ probe is offered, never default, and its outcome is recorded separately from
 
 | `write_probe.result` | Meaning |
 | --- | --- |
-| `"not attempted"` | The default. The binding resolved; write access is unproven and the first real write is the test. |
-| `"passed"` | An entry was created successfully. It is still there — `write_probe.cleanup` names it so a human can delete it. |
+| `"not attempted"` | The default. The binding resolved; write access is unproven and the first real write is the test. No timestamp — nothing happened to time. |
+| `"passed"` | An entry was created successfully, at `write_probe.at`. It is still there — `write_probe.cleanup` names it so a human can delete it. |
 | `"failed"` | Notion refused the write. The binding's `status` is `read-only`. |
 
 A consumer must not treat `"not attempted"` as a reason to refuse. It writes, and
