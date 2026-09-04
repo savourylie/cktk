@@ -195,6 +195,7 @@ configuration, unlike `.ai/cktk/delegation/`, which is local diagnostics.
   },
   "notion": {
     "hub": { "id": "…", "url": "…", "status": "validated" },
+    "product_spec": { "id": "…", "url": "…", "title": "…", "status": "validated" },
     "decision_log": {
       "shape": "database",
       "data_source_url": "collection://…",
@@ -220,7 +221,8 @@ configuration, unlike `.ai/cktk/delegation/`, which is local diagnostics.
   "repository": {
     "product_requirements": ["docs/PRD.md"],
     "decisions": ["docs/decisions/"],
-    "tickets": { "kind": "linear" }
+    "tickets": { "kind": "linear" },
+    "status": "validated"
   },
   "preferences": {
     "sync_project_context": "ask",
@@ -228,6 +230,13 @@ configuration, unlike `.ai/cktk/delegation/`, which is local diagnostics.
   }
 }
 ```
+
+**A canonical product spec is usually not in the repository.** A Linear project
+description commonly names one — "if an older ticket conflicts with the canonical
+specification, update or retire the ticket" — and it lives in Notion. Recording
+only `repository.product_requirements` would hand a downstream skill two repo files
+and leave it unaware of the source the project itself says wins. Both are recorded,
+and which is canonical is explicit.
 
 **Status values are per binding, inline.** `validated` means resolved and — for the
 decision log — write-probed. `read-only` means the fetch succeeded but write access

@@ -66,6 +66,10 @@ answers in prose.
    - `notion.so` / `*.notion.site` URLs → candidate hub and decision-log pages.
    - Issue identifiers matching `[A-Z]+-[0-9]+` → the team key.
    - Paths that look like product requirements.
+   - **A canonical product source.** The project description often names one
+     explicitly and links it in Notion. It usually outranks anything in the
+     repository, so record it as `notion.product_spec` and keep the repository
+     paths separately — do not let one stand in for the other.
 3. Note the **source of every value** as `file:line`. You will show these in
    Phase 4, and a user who can see where a value came from corrects it faster than
    one who cannot.
@@ -145,7 +149,11 @@ inside an unrelated command.**
 2. **Notion hub** — fetch the page.
 3. **Notion decision log** — fetch it. For a database, fetch the data source and
    record the live property names and their types.
-4. **Repository paths** — confirm each exists on disk.
+4. **Repository paths** — confirm each exists on disk. **Drop any that do not**
+   rather than recording a path that was never there, name every dropped path in
+   the report, and set `repository.status` only once the survivors are confirmed.
+   A recorded path a consumer cannot open is worse than an absent one.
+5. **Notion product spec**, when one was found — fetch it like any other binding.
 
 ### 5.1 Fetching proves read access only
 

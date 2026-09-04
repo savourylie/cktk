@@ -54,6 +54,12 @@ run diagnostics and is never staged.
       "url": "https://www.notion.so/acme/Trust-and-Identity-26ab1f9f",
       "status": "validated"
     },
+    "product_spec": {
+      "id": "3b3db72d09ef81029c7dc6dd697a53a0",
+      "url": "https://www.notion.so/acme/Product-Specification-3b3db72d",
+      "title": "Website MVP Product Specification",
+      "status": "validated"
+    },
     "decision_log": {
       "shape": "database",
       "data_source_url": "collection://f336d0bc-b841-465b-8045-024475c079dd",
@@ -79,7 +85,8 @@ run diagnostics and is never staged.
   "repository": {
     "product_requirements": ["docs/PRD.md"],
     "decisions": ["docs/decisions/"],
-    "tickets": { "kind": "linear" }
+    "tickets": { "kind": "linear" },
+    "status": "validated"
   },
   "preferences": {
     "sync_project_context": "ask",
@@ -103,10 +110,12 @@ run diagnostics and is never staged.
 | `linear.project_context.state_sections` | Headings of **every** section holding mutable execution state, in document order. **Read from the live document, never hardcoded.** A document usually has more than one: a current-state or handoff section, an open-questions section, sometimes a current-structure section. Recording only one leaves the rest to go stale, which is the failure this contract exists to prevent. Empty array means nothing in the document is syncable. |
 | `linear.project_context.last_synced_marker` | The literal prefix of the line a sync updates. `null` when the team has none. |
 | `notion.hub` | The page a reader starts from. |
+| `notion.product_spec` | The page the project treats as its **canonical** product source, when it names one. `null` when it does not. A Linear project description often links it explicitly, and it usually outranks anything in `repository.product_requirements` — record both and record which is canonical. |
 | `notion.decision_log` | Where cross-cutting decisions go. Shape-dependent; see below. |
-| `repository.product_requirements` | Paths holding product requirements, most authoritative first. |
+| `repository.product_requirements` | **Repository** paths holding product requirements, most authoritative first. Not the canonical source when `notion.product_spec` is set. |
 | `repository.decisions` | Paths holding repository-local decision records, if any. |
 | `repository.tickets.kind` | `"linear"` or `"files"`. When `"files"`, a `path` sits beside it, e.g. `docs/tickets/`. |
+| `repository.status` | `validated` once every recorded path has been confirmed to exist. Paths that do not exist are **dropped, not recorded** — so every path in the file is a path that was there — and named in the run's report. |
 | `preferences.*` | `"ask"`, `"always"`, or `"never"`. See Preferences. |
 
 ## `status` — three values, per binding
