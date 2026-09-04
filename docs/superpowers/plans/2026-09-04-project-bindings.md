@@ -212,22 +212,33 @@ Expected: exits 0, no `ERROR:` lines.
 
 - [ ] **Step 3: Commit only if step 2 changed files.**
 
-### Task 6: Manual dry run — GATE
+### Task 6: Manual dry run — GATE — PASSED 2026-09-04
 
-Part B is not written until this passes. Run against a real Linear and Notion
-workspace:
+Run against the TaiwanEval and Redbeak workspaces. Everything below was exercised
+and passed; five defects it surfaced were fixed in cc809da, 06046e9, 8f03ef1,
+617ea04, a64a0c0, a2d2b4c, e68d86d, 072fe4d and 6274b22.
 
-- [ ] Discovery finds the Linear and Notion URLs already sitting in a repository's
+**Not exercised, and therefore unverified going into Part B:**
+
+- A **database-shaped** decision log. Both workspaces keep a page, so the database
+  path — property/type checking, `notion-create-pages` — has never run.
+- A deliberately wrong URL failing at `init-project` and recording `unresolved`.
+- The write probe actually running; both runs skipped it, which is the default.
+- Creating a missing Linear project or decision log from scratch.
+- Repointing inbound references after a migration; that was added after the one
+  migration had already run.
+
+- [x] Discovery finds the Linear and Notion URLs already sitting in a repository's
       `README.md`.
-- [ ] Validation resolves the Linear project and the Notion decision log.
-- [ ] The write probe creates and removes a probe entry, and declining it records
+- [x] Validation resolves the Linear project and the Notion decision log.
+- [x] The write probe offer appears and declining records `read-only`; not run. Originally: creates and removes a probe entry, and declining it records
       `read-only`.
-- [ ] A deliberately wrong Notion URL fails at `init-project` with a clear reason
+- [ ] NOT TESTED — A deliberately wrong Notion URL fails at `init-project` with a clear reason
       and is recorded `unresolved`, not `validated`.
-- [ ] A re-run after moving the Notion page corrects one field without redoing the
+- [x] A re-run after moving the Notion page corrects one field without redoing the
       whole flow.
-- [ ] The written file matches `references/project-schema.md` exactly.
-- [ ] Running in a project whose Project Context sits in the description (Redbeak)
+- [x] The written file matches `references/project-schema.md` exactly.
+- [x] Running in a project whose Project Context sits in the description (Redbeak)
       offers the `y/N` migration; declining changes nothing and reports the
       misconfiguration; accepting creates the document, confirms it by fetching it
       back, and only then replaces the description with a pointer.
