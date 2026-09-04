@@ -11,14 +11,21 @@ Teams that run Linear alongside Notion split authority four ways:
 | --- | --- |
 | Product intent, methodology, rationale, cross-ticket decisions | Notion |
 | Executable scope, acceptance criteria, status, verification evidence | Linear issues |
-| Current phase, next checkpoint, milestones, navigation | Linear project description |
+| Current phase, next checkpoint, open questions, navigation | Linear Project Context document |
 | Schemas, code, tests, commands | The repository |
 
 Conflict rules: Linear wins for execution state, the repository wins for technical
 behavior, Notion wins for product and governance intent. The third row is a
-convention, not a Linear feature — a team designates the project description as its
-required first read and calls it the **Project Context**. Section names are that
-team's choice and are never hardcoded here.
+convention, not a Linear feature — a team keeps a Linear **Document** attached to
+the project, calls it the **Project Context**, and makes it the required first read.
+It exists partly because a repository's `AGENTS.md` is not always shareable: it
+mixes project context with technical development rules that often should not leave
+the repository. Section names are that team's choice and are never hardcoded here.
+
+**The project description is a different object and is out of scope.** It says what
+the project is — goal, guardrails, success criteria — and changes occasionally. The
+Project Context document is what a team iterates on, and is where execution state
+goes stale. Skills read the description; they never write it.
 
 Two standing rules constrain any automation: do not create a second live task
 tracker in Notion, and do not copy repository truth into prose that will drift. A
@@ -28,7 +35,7 @@ the Notion decision log.
 
 ### The three failures
 
-**Execution state goes stale.** The Linear project description drifts on almost
+**Execution state goes stale.** The Linear Project Context drifts on almost
 every status change and nothing prompts anyone to fix it. In one observed session
 it claimed a milestone was "under way" at 100%, called a merged pull request "open,
 mergeable, and green", and named two Done issues as "unblocked and may proceed".
@@ -95,10 +102,26 @@ is how the manual process already fails — or guess.
 9. **Schema drift detection compares property types, not only names**
    (section 4.4).
 
+10. **The sync target is the Project Context document, not the project
+    description.** Verified against a live workspace after the first pass was
+    written: the description held only stable intent — goal, guardrails, success
+    criteria — every line of which section 3.2 forbids touching, while the prose
+    that actually goes stale ("as of <date>, TAI-72 is complete; the next step is
+    TAI-73") lived in the document. A sync aimed at the description would have
+    edited the wrong object, and found nothing it was permitted to change there.
+
+    A project keeping its Project Context in the description is misconfigured, not
+    a variant to support. `init-project` reports it and offers to move it.
+
+    `save_document` exposes the same `patch` parameter as `save_project` — same
+    operations, same exactly-once anchor rule, same atomic abort, same 50-operation
+    cap — so only the call and the target id change.
+
 ## What this design can and cannot guarantee
 
-The five hardening decisions above exist because a first pass over this design
-claimed more than the underlying APIs deliver. This section is the honest ledger.
+The hardening decisions above exist because a first pass over this design claimed
+more than the underlying APIs deliver, and aimed at the wrong Linear object. This
+section is the honest ledger.
 
 | Claim | Mechanism | What it does not cover |
 | --- | --- | --- |
@@ -107,7 +130,7 @@ claimed more than the underlying APIs deliver. This section is the honest ledger
 | Never writes a partial entry | Both write paths are single calls carrying properties and body together. | Nothing. There is no create-then-populate sequence to strand. |
 | Detects a schema change before writing | Re-fetches the data source and compares recorded property names **and types**. | A property whose name and type are unchanged but whose meaning changed. |
 | A wrong id or path fails at `init-project`, not later | Every binding is fetched and every repository path is stat'd. | **Write permission**, unless the opt-in probe is run. Notion exposes no delete, so proving write access costs an undeletable entry; skipping it costs one clean report on the first real write. |
-| The Project Context is kept true | `save_project` `patch`, applied after the status write and the cascade. | **Not guaranteed.** The sync cannot be atomic with the status change; see 3.5. The promise is "usually syncs, always reports". |
+| The Project Context is kept true | `save_document` `patch` on the bound document, applied after the status write and the cascade. | **Not guaranteed.** The sync cannot be atomic with the status change; see 3.5. The promise is "usually syncs, always reports". |
 | Cross-cutting decisions are detected | A named-referent gate; see 4.2. | **Not guaranteed.** This is model judgment on every run. The gate makes the judgment falsifiable, not correct. |
 
 The last two rows are the parts of this feature most likely to underdeliver. They
@@ -136,9 +159,12 @@ configuration, unlike `.ai/cktk/delegation/`, which is local diagnostics.
     },
     "project_context": {
       "enabled": true,
-      "state_section": "## Current State",
-      "milestone_section": "## Milestones",
-      "last_synced_marker": "_Last synced:",
+      "document_id": "595b2a61-d373-4212-8541-e8b46fb8e2e5",
+      "document_slug": "df5459f01ca1",
+      "document_url": "https://linear.app/acme/document/project-context-df5459f01ca1",
+      "title": "專案脈絡 / Project Context",
+      "state_section": "## Current research handoff",
+      "last_synced_marker": null,
       "status": "validated"
     }
   },
@@ -287,13 +313,16 @@ when `project_context.enabled` is false.
 
 Only content the transition provably affects:
 
-- The issue's own line, where the description mentions it.
+- The issue's own line, where the document mentions it.
 - Statements the transition falsified: an issue named "in progress", "next", or
   "not started" that is now Done; a "blocked by X" where X just closed.
-- Milestone completion where stated, read from real Linear numbers. Percentages
-  move when issues are **added** to a milestone, not only when they complete — a
-  falling percentage usually means scope grew, not that work was lost. Where the
-  description explains a number, the explanation must stay truthful.
+- Milestone completion **only where the document states it in prose**. Linear
+  computes milestone progress itself and shows it in its own UI, so there is
+  usually nothing to mirror and nothing to sync. Where a team does write a number
+  into the document, read the real one from Linear: percentages move when issues
+  are **added** to a milestone, not only when they complete, so a falling
+  percentage usually means scope grew rather than work being lost. Where the
+  document explains a number, the explanation must stay truthful.
 - A "last synced" marker.
 
 #### 3.2 What it may never change
@@ -305,13 +334,17 @@ conflict. **Ambiguous effect means report and change nothing.**
 
 #### 3.3 How it writes
 
-`save_project` with the `patch` parameter, never a whole-description replace. The
+`save_document` with the `patch` parameter, never a whole-content replace. The
 tool schema confirms two properties this design depends on: every anchor "must
 match the current content exactly once", and operations apply "in order and
 atomically (one failing operation aborts the whole save)". A stale anchor therefore
 fails the sync cleanly instead of half-applying it. Maximum 50 operations.
 
 #### 3.4 Two confirmed Linear behaviours
+
+Both were observed by hand; the second is also visible in the live document this
+design was validated against, where every inline reference is stored as
+`<issue id="…" href="…">TAI-5</issue>` rather than as the text `TAI-5`.
 
 1. **Linear re-serializes the description on save.** A round trip normalized
    malformed markdown — bold markers spanning an inline issue mention were dropped.
@@ -324,10 +357,10 @@ fails the sync cleanly instead of half-applying it. Maximum 50 operations.
 #### 3.5 The sync is not atomic with the status change
 
 Phase 6 writes the status, Phase 7 cascades, Phase 8 syncs. If Phase 8's anchors no
-longer match — someone edited the description by hand — the patch aborts cleanly
-and the workspace is left with the status moved, dependents moved, and the
-description stale. **That is the original bug.** The difference is that Phase 10
-now reports it.
+longer match — someone edited the document by hand — the patch aborts cleanly and
+the workspace is left with the status moved, dependents moved, and the Project
+Context stale. **That is the original bug.** The difference is that Phase 10 now
+reports it.
 
 This cannot be fixed by reordering; the two writes are separate API calls against
 separate objects. The skill documents the promise as "usually syncs, always
@@ -335,8 +368,10 @@ reports".
 
 #### 3.6 No Project Context exists
 
-Offer to create a minimal one: state section, current phase, next checkpoint, and
-the last-synced marker. Never invent purpose, guardrails, or architecture.
+Offer to create a minimal Project Context **document**: state section, current
+phase, next checkpoint, and the last-synced marker. Never invent purpose,
+guardrails, or architecture. Never write the project description instead — that is
+the misconfiguration `init-project` reports, not a fallback.
 
 ### 4. `update-ticket-linear` Phase 9 — Notion decision log
 

@@ -36,9 +36,12 @@ run diagnostics and is never staged.
     },
     "project_context": {
       "enabled": true,
-      "state_section": "## Current State",
-      "milestone_section": "## Milestones",
-      "last_synced_marker": "_Last synced:",
+      "document_id": "595b2a61-d373-4212-8541-e8b46fb8e2e5",
+      "document_slug": "df5459f01ca1",
+      "document_url": "https://linear.app/acme/document/project-context-df5459f01ca1",
+      "title": "專案脈絡 / Project Context",
+      "state_section": "## Current research handoff",
+      "last_synced_marker": null,
       "status": "validated"
     }
   },
@@ -91,10 +94,11 @@ run diagnostics and is never staged.
 | `linear.team.key` | The uppercase team key, e.g. `TAI`. Issue identifiers are `<key>-<number>`. |
 | `linear.team.id` | Linear's own team id. |
 | `linear.project` | `id`, human `name`, and the browser `url`. |
-| `linear.project_context.enabled` | Whether this team uses the project description as its required first read. When `false`, consumers skip every Project Context behaviour. |
-| `linear.project_context.state_section` | The heading of the one section that holds mutable execution state. **Read from the live description, never hardcoded.** |
-| `linear.project_context.milestone_section` | The heading holding milestone completion, if the team states it. `null` when absent. |
-| `linear.project_context.last_synced_marker` | The literal prefix of the line a sync updates, e.g. `_Last synced:`. `null` when the team has none. |
+| `linear.project_context.enabled` | Whether this project keeps a Project Context document. When `false`, consumers skip every Project Context behaviour. |
+| `linear.project_context.document_id` · `document_slug` · `document_url` | Identify the Linear **Document**. See below — this is not the project description. |
+| `linear.project_context.title` | The document's title, for reporting. |
+| `linear.project_context.state_section` | The heading of the one section holding mutable execution state. **Read from the live document, never hardcoded.** |
+| `linear.project_context.last_synced_marker` | The literal prefix of the line a sync updates. `null` when the team has none. |
 | `notion.hub` | The page a reader starts from. |
 | `notion.decision_log` | Where cross-cutting decisions go. Shape-dependent; see below. |
 | `repository.product_requirements` | Paths holding product requirements, most authoritative first. |
@@ -132,6 +136,33 @@ reports cleanly if the write is refused.
 **An unvalidated binding is never recorded as if it were confirmed.** A skill that
 finds `read-only` or `unresolved` degrades to reporting; it does not retry, and it
 does not ask the user to supply the value mid-command.
+
+## The Project Context is a Linear Document, not the project description
+
+Linear stores project prose in two different places, and they are edited through
+two different API calls. Getting this wrong means writing to the wrong object.
+
+| | Project **description** | Project Context **document** |
+| --- | --- | --- |
+| What it is | A text field on the project itself | A separate Linear Document attached to a project |
+| Written with | `save_project` | `save_document` |
+| Typical content | What the project is: goal, scope, guardrails, success criteria | The shared context a team iterates on: current state, conventions, open questions |
+| How often it changes | Occasionally | Often — this is the surface that goes stale |
+| **May a cktk skill write it?** | **No. Read-only, out of scope.** | Yes, within `state_section`. |
+
+**The description is read, never written.** Skills read it for discovery and
+context. Changing it is out of scope for every skill that consumes this contract.
+
+A project that keeps its Project Context in the description instead of a document
+is misconfigured, not a variant to accommodate. `init-project` reports it and
+offers to move the content into a document; it does not record the description as
+the Project Context surface.
+
+`save_document` and `save_project` expose the **same** `patch` parameter — the same
+operations, the same "every anchor must match the current content exactly once",
+the same "applied in order and atomically (one failing operation aborts the whole
+save)", and the same 50-operation cap. So a consumer's patch-building logic is
+identical either way; only the call and the target id differ.
 
 ## Decision log shapes
 

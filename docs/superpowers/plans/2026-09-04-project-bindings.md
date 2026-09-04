@@ -35,6 +35,10 @@ MCP and Notion MCP at runtime.
   (AGENTS.md rule 6).
 - The contract file is `.ai/cktk/project.json`, `schema_version: 1`.
 - Idempotency key format: `cktk:<ISSUE-ID>:<slug>`.
+- The Project Context is a Linear **Document** (`save_document`), never the project
+  description (`save_project`). The description is read-only and out of scope.
+- Linear documents are listed by **project id**; a team-scoped query returns empty
+  even when the document exists.
 - Permitted Notion writes: `notion-create-pages`, and `notion-update-page` with
   `command: "insert_content"` and `position: {"type":"end"}`. `update_content` and
   `replace_content` are forbidden by name.
@@ -236,10 +240,12 @@ Phase 1 loads `.ai/cktk/project.json`; missing, unreadable, or a higher
 
 ### Task 8: Phase 8 — Project Context sync
 
-Per spec §3. `save_project` with `patch`. Anchors from ordinary prose, never from
-issue-identifier substrings. Runs after Phase 7's cascade. Skipped when no status
-was written, bindings are absent, or `project_context.enabled` is false. Reports
-the re-serialization caveat and, on declined consent, prints the patch operations.
+Per spec §3. `save_document` with `patch`, targeting the bound Project Context
+document — **not** `save_project` and not the project description. Anchors from
+ordinary prose, never from issue-identifier substrings, which serialize as
+`<issue …>` markup. Runs after Phase 7's cascade. Skipped when no status was
+written, bindings are absent, or `project_context.enabled` is false. Reports the
+re-serialization caveat and, on declined consent, prints the patch operations.
 
 ### Task 9: Phase 9 — Notion decision log
 

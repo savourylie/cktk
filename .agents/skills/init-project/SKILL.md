@@ -56,27 +56,42 @@ source of every value — you will show these next.
 
 ## Phase 3: Fill gaps by listing
 
-For anything discovery missed, list Linear teams and projects and search Notion for
-candidate pages, then offer the results as labeled choices. Never ask for a raw id
-or URL when the service can be listed. When a service's MCP is unavailable, skip
-that tier, say so once, and allow the binding to be recorded `unresolved`.
+For anything discovery missed, list Linear teams, list projects for the chosen
+team, list **documents for the chosen project**, and search Notion for candidate
+pages, then offer the results as labeled choices. Never ask for a raw id or URL
+when the service can be listed. When a service's MCP is unavailable, skip that
+tier, say so once, and allow the binding to be recorded `unresolved`.
+
+**List documents by project id, not by team id.** A Project Context document hangs
+off a project, and a team-scoped query returns an empty list even when the document
+exists — an empty result there is not evidence of absence.
 
 ## Phase 4: Propose prefilled, then confirm
 
 Show every field with its proposed value and its source, and ask for corrections.
 Accept "all correct" as one answer.
 
-Fetch the Linear project description, show its **actual** headings, and ask which
-one holds mutable execution state. Never hardcode, assume, or invent a section
-name. If the team does not treat the description as a required first read, set
+**The Project Context is a Linear Document, not the project description** — two
+different objects, two different calls. See `references/project-schema.md`. Bind
+the document: fetch it, show its **actual** headings, and ask which one holds
+mutable execution state. Never hardcode, assume, or invent a section name.
+
+Read the project description as well, for discovery and for the report, but never
+record it as the Project Context surface and never write to it. A project keeping
+its context in the description is misconfigured: say so and offer to move it into a
+document rather than binding the description.
+
+If the project keeps no Project Context document, set
 `project_context.enabled: false` and skip those questions.
 
 ## Phase 5: Validate, including write access
 
-Fetch the Linear team and project and confirm the recorded headings appear in the
-description byte for byte. Fetch the Notion hub. Fetch the decision log, and for a
-database record the live property names and their types. Confirm every repository
-path exists.
+Fetch the Linear team and project. Fetch the Project Context **document** and
+confirm the recorded headings appear in it byte for byte — inline issue mentions
+serialize as markup, not as the plain identifier, so compare against fetched
+content rather than a rendered view. Fetch the Notion hub. Fetch the decision log,
+and for a database record the live property names and their types. Confirm every
+repository path exists.
 
 **Fetching proves read access only.** A connector with no write permission passes
 every check above and fails later inside an unrelated command.
@@ -137,6 +152,8 @@ including `preferences`.
 
 ## Safety rules
 
+- Never write the Linear project description. It is read for discovery and context
+  only; changing it is out of scope for this skill and every consumer.
 - Never invent product content; structure only.
 - Never record an unvalidated binding as `validated`.
 - Never add or alter a property on a shared Notion database without explicit

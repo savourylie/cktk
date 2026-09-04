@@ -75,8 +75,14 @@ answers in prose.
 For anything Phase 2 did not find, query the connected services and offer the
 results as labeled choices.
 
-- Linear: list teams; list projects for the chosen team.
+- Linear: list teams; list projects for the chosen team; **list documents for the
+  chosen project**.
 - Notion: search for candidate hub pages and for a decision log by name.
+
+**List documents by project id, not by team id.** A Project Context document is
+attached to a project, and a team-scoped document query returns an empty list even
+when the document exists. An empty result from a team query is not evidence that
+there is no Project Context.
 
 **Never ask the user for a raw id or URL when you can list the options.** Use the
 host's structured choice mechanism when it can represent the candidates clearly;
@@ -106,12 +112,21 @@ Repository
 
 Ask for corrections. Accept "all correct" as a single answer.
 
-**Project Context section names come from the live description.** Fetch the Linear
-project description, show its actual headings, and ask which one holds mutable
+**The Project Context is a Linear Document, not the project description.** The two
+are different objects edited through different calls — `references/project-schema.md`
+has the comparison. Bind the document.
+
+Fetch the document, show its **actual** headings, and ask which one holds mutable
 execution state. Never hardcode a section name, never invent one, and never assume
 another team's naming.
 
-If the team does not use the description as a required first read, set
+**Read the project description too**, for discovery context and for the report —
+but never record it as the Project Context surface, and never write to it. A
+project whose context lives in the description instead of a document is
+misconfigured: say so, offer to move it into a document, and do not quietly bind
+the description instead.
+
+If the project keeps no Project Context document at all, set
 `project_context.enabled: false` and skip its section questions entirely.
 
 ## Phase 5: Validate — including write access
@@ -119,8 +134,11 @@ If the team does not use the description as a required first read, set
 Resolve every binding before writing the file. **A typo must fail here, not at 2am
 inside an unrelated command.**
 
-1. **Linear** — fetch the team, fetch the project by id. Confirm the project
-   description contains the section headings recorded in Phase 4, byte for byte.
+1. **Linear** — fetch the team and the project by id. Fetch the Project Context
+   **document** by id or slug, and confirm it contains the section headings
+   recorded in Phase 4, byte for byte. Inline issue mentions serialize as markup
+   rather than as the plain identifier, so a heading that merely looks right in a
+   rendered view may not match; compare against the fetched content.
 2. **Notion hub** — fetch the page.
 3. **Notion decision log** — fetch it. For a database, fetch the data source and
    record the live property names and their types.
@@ -230,6 +248,9 @@ correction, re-validate only what changed, and preserve everything else includin
 
 ## Safety Rules
 
+- **Never write the Linear project description.** It is read for discovery and
+  context only. Changing it is out of scope for this skill and for every consumer
+  of this contract.
 - **Never invent product content.** Structure only, when creating anything.
 - **Never record an unvalidated binding as `validated`.** The three status values
   are defined in `references/project-schema.md`.
