@@ -92,8 +92,13 @@ Fetch the Linear team and project. Fetch the Project Context **document** and
 confirm the recorded headings appear in it byte for byte — inline issue mentions
 serialize as markup, not as the plain identifier, so compare against fetched
 content rather than a rendered view. Fetch the Notion hub. Fetch the decision log,
-and for a database record the live property names and their types. Confirm every
-repository path exists.
+and for a database record the live property names and their types. Fetch the Notion
+product spec too, when one was found.
+
+Confirm every repository path exists, **dropping any that do not** rather than
+recording a path that was never there. Name every dropped path in the report, and
+set `repository.status` only once the survivors are confirmed — a recorded path a
+consumer cannot open is worse than an absent one.
 
 **Fetching proves read access only.** A connector with no write permission passes
 every check above and fails later inside an unrelated command.
