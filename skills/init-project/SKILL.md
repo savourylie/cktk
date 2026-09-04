@@ -199,20 +199,29 @@ Resolve every binding before writing the file. **A typo must fail here, not at 2
 inside an unrelated command.**
 
 1. **Linear** — fetch the team and the project by id. Fetch the Project Context
-   **document** by id or slug, and confirm it contains the section headings
-   recorded in Phase 4, byte for byte. Inline issue mentions serialize as markup
-   rather than as the plain identifier, so a heading that merely looks right in a
-   rendered view may not match; compare against the fetched content.
+   **document** by id or slug, and confirm every heading in `state_sections` still
+   appears in it, byte for byte. Inline issue mentions serialize as markup rather
+   than as the plain identifier, so a heading that merely looks right in a rendered
+   view may not match; compare against the fetched content.
+
+   **Existence is not correctness.** On a re-run, also re-apply the Phase 4 test to
+   every recorded section — *would closing, reopening, or reassigning an issue make
+   a sentence in here false?* — and scan the document for sections that now pass
+   but are not recorded. A section recorded in error passes an existence check
+   forever, so a validation that only confirms headings exist can never correct a
+   bad selection; the mistake becomes permanent and no re-run can reach it. Report
+   both kinds of drift and offer to fix them. Say nothing when the selection still
+   holds.
 2. **Notion hub** — fetch the page.
 3. **Notion decision log** — fetch it. For a database, fetch the data source and
    record the live property names and their types.
 4. **Repository paths** — confirm each exists on disk. Where a recorded file
    contradicts the role it was recorded under — a product-requirements entry that
    calls itself a derived view, say — quote the line and ask. **Drop any that do
-   not exist**
-   rather than recording a path that was never there, name every dropped path in
-   the report, and set `repository.status` only once the survivors are confirmed.
-   A recorded path a consumer cannot open is worse than an absent one.
+   not exist** rather than recording a path that was never there, name every
+   dropped path in the report, and set `repository.status` only once the survivors
+   are confirmed. A recorded path a consumer cannot open is worse than an absent
+   one.
 5. **Notion product spec**, when one was found — fetch it like any other binding.
 
 ### 5.1 Fetching proves read access only
@@ -299,6 +308,18 @@ lose the content, so the description is written last and never first.
 
 The replacement is a link and nothing else. Writing a project summary would be
 inventing product content.
+
+**Handle what points at the old location.** Before making the offer, search the
+repository for the project URL and for the phrase "Project Context" — at minimum
+`README.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, and under `docs/`. List every
+hit as `file:line` in the offer itself, so the user sees the true cost before
+deciding rather than discovering it afterwards.
+
+After a successful migration, offer once more to repoint those references at the
+new document URL. That edit is a plain URL substitution and nothing else — never
+rewrite the surrounding sentence. Declining leaves the `file:line` list in the
+report so it can be done by hand; a migration that silently leaves three files
+pointing at a stub is a migration that only half happened.
 
 **This is the only place this skill writes the project description**, and it never
 happens without an explicit yes. Declining leaves everything untouched, records

@@ -354,6 +354,20 @@ Declining leaves everything as it is and records `project_context.enabled: false
 with the misconfiguration named in the final report so it is not silently
 forgotten.
 
+**Inbound references are part of the migration.** Repository documents commonly
+link the project URL and call it the Project Context; after a migration those point
+at a stub. The offer lists every hit as `file:line` so the cost is visible before
+the decision, and a successful migration offers once more to repoint them — a plain
+URL substitution, never a rewrite of the surrounding sentence. A migration that
+leaves three files pointing at a stub only half happened.
+
+**Re-validation audits the selection, not just its existence.** A section recorded
+in `state_sections` by mistake passes an existence check forever, so a re-run that
+only confirms headings are still present can never correct a bad selection — the
+mistake is permanent and unreachable. Re-validation therefore re-applies the
+selection test to each recorded section and scans for sections that now pass but
+are unrecorded, reporting both and offering to fix them.
+
 #### 2.6 Offer to create what is missing
 
 If there is no Linear project or no decision log, describe what is needed and

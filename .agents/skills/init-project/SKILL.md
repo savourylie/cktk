@@ -117,9 +117,15 @@ If the project keeps no Project Context document, set
 ## Phase 5: Validate, including write access
 
 Fetch the Linear team and project. Fetch the Project Context **document** and
-confirm the recorded headings appear in it byte for byte — inline issue mentions
-serialize as markup, not as the plain identifier, so compare against fetched
-content rather than a rendered view. Fetch the Notion hub. Fetch the decision log,
+confirm every heading in `state_sections` still appears in it byte for byte —
+inline issue mentions serialize as markup, not as the plain identifier, so compare
+against fetched content rather than a rendered view.
+
+**Existence is not correctness.** On a re-run, re-apply the selection test to every
+recorded section and scan for sections that now pass but are not recorded. A
+section recorded in error passes an existence check forever, so validation that
+only confirms headings exist can never correct a bad selection. Report both kinds
+of drift and offer to fix them; say nothing when the selection still holds. Fetch the Notion hub. Fetch the decision log,
 and for a database record the live property names and their types. Fetch the Notion
 product spec too, when one was found.
 
@@ -182,6 +188,14 @@ else; composing a project summary would be inventing product content.
 This is the only place this skill writes the project description. Declining leaves
 everything untouched, records `project_context.enabled: false`, and names the
 misconfiguration in the report.
+
+Before offering, search the repository for the project URL and for "Project
+Context" — `README.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, and under `docs/` at
+minimum — and list every hit as `file:line` in the offer, so the true cost is
+visible before the decision. After a successful migration, offer once more to
+repoint them at the new document URL: a plain URL substitution, never a rewrite of
+the surrounding sentence. Declining leaves the list in the report. A migration that
+silently leaves files pointing at a stub only half happened.
 
 ## Phase 7: Write and report
 
