@@ -132,6 +132,13 @@ is how the manual process already fails — or guess.
     both would create the divergence this feature exists to prevent, so automation
     writes one and only one.
 
+14. **`state_sections` is a list, not a single heading.** The document this design
+    was validated against has at least two sections that go stale independently —
+    a research-handoff section carrying "as of <date>, TAI-72 is complete" and an
+    open-questions section the document itself says must be emptied as questions
+    resolve. A single-heading field would force a team to pick one and leave the
+    others to rot.
+
 ## What this design can and cannot guarantee
 
 The hardening decisions above exist because a first pass over this design claimed
@@ -178,7 +185,10 @@ configuration, unlike `.ai/cktk/delegation/`, which is local diagnostics.
       "document_slug": "df5459f01ca1",
       "document_url": "https://linear.app/acme/document/project-context-df5459f01ca1",
       "title": "專案脈絡 / Project Context",
-      "state_section": "## Current research handoff",
+      "state_sections": [
+        "## 目前研究交接 / Current research handoff",
+        "## 尚待決定的問題 / Open questions"
+      ],
       "last_synced_marker": null,
       "status": "validated"
     }
@@ -376,7 +386,7 @@ Only content the transition provably affects:
 
 #### 3.2 What it may never change
 
-Everything else, and in particular anything Notion or the repository owns. Purpose,
+Anything outside `state_sections`. Everything else, and in particular anything Notion or the repository owns. Purpose,
 methodology, guardrails, invariants, and architecture contracts appear in the
 Project Context for navigation; editing them from here would put two sources into
 conflict. **Ambiguous effect means report and change nothing.**

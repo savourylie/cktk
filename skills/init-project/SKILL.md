@@ -116,8 +116,11 @@ Ask for corrections. Accept "all correct" as a single answer.
 are different objects edited through different calls — `references/project-schema.md`
 has the comparison. Bind the document.
 
-Fetch the document, show its **actual** headings, and ask which one holds mutable
-execution state. Never hardcode a section name, never invent one, and never assume
+Fetch the document, show its **actual** headings, and ask which ones hold mutable
+execution state. **Expect more than one** — a current-state or handoff section, an
+open-questions section, sometimes a current-structure section. Record every one of
+them in `state_sections`; recording only the most obvious leaves the rest to go
+stale. Never hardcode a section name, never invent one, and never assume
 another team's naming.
 
 **Read the project description too**, for discovery context and for the report —

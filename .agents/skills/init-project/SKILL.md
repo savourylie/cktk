@@ -73,8 +73,10 @@ Accept "all correct" as one answer.
 
 **The Project Context is a Linear Document, not the project description** — two
 different objects, two different calls. See `references/project-schema.md`. Bind
-the document: fetch it, show its **actual** headings, and ask which one holds
-mutable execution state. Never hardcode, assume, or invent a section name.
+the document: fetch it, show its **actual** headings, and ask which ones hold
+mutable execution state. **Expect more than one** — a handoff or current-state
+section, an open-questions section, sometimes a current-structure section. Record
+all of them in `state_sections`. Never hardcode, assume, or invent a section name.
 
 Read the project description as well, for discovery and for the report, but never
 record it as the Project Context surface and never write to it. A project keeping

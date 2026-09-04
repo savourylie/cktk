@@ -40,7 +40,10 @@ run diagnostics and is never staged.
       "document_slug": "df5459f01ca1",
       "document_url": "https://linear.app/acme/document/project-context-df5459f01ca1",
       "title": "專案脈絡 / Project Context",
-      "state_section": "## Current research handoff",
+      "state_sections": [
+        "## 目前研究交接 / Current research handoff",
+        "## 尚待決定的問題 / Open questions"
+      ],
       "last_synced_marker": null,
       "status": "validated"
     }
@@ -97,7 +100,7 @@ run diagnostics and is never staged.
 | `linear.project_context.enabled` | Whether this project keeps a Project Context document. When `false`, consumers skip every Project Context behaviour. |
 | `linear.project_context.document_id` · `document_slug` · `document_url` | Identify the Linear **Document**. See below — this is not the project description. |
 | `linear.project_context.title` | The document's title, for reporting. |
-| `linear.project_context.state_section` | The heading of the one section holding mutable execution state. **Read from the live document, never hardcoded.** |
+| `linear.project_context.state_sections` | Headings of **every** section holding mutable execution state, in document order. **Read from the live document, never hardcoded.** A document usually has more than one: a current-state or handoff section, an open-questions section, sometimes a current-structure section. Recording only one leaves the rest to go stale, which is the failure this contract exists to prevent. Empty array means nothing in the document is syncable. |
 | `linear.project_context.last_synced_marker` | The literal prefix of the line a sync updates. `null` when the team has none. |
 | `notion.hub` | The page a reader starts from. |
 | `notion.decision_log` | Where cross-cutting decisions go. Shape-dependent; see below. |
@@ -148,7 +151,7 @@ two different API calls. Getting this wrong means writing to the wrong object.
 | Written with | `save_project` | `save_document` |
 | Typical content | What the project is: goal, scope, guardrails, success criteria | The shared context a team iterates on: current state, conventions, open questions |
 | How often it changes | Occasionally | Often — this is the surface that goes stale |
-| **May a cktk skill write it?** | **No. Read-only, out of scope.** | Yes, within `state_section`. |
+| **May a cktk skill write it?** | **No. Read-only, out of scope.** | Yes, within `state_sections`. |
 
 **The description is read, never written.** Skills read it for discovery and
 context. Changing it is out of scope for every skill that consumes this contract.
