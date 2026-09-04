@@ -41,7 +41,19 @@ Anything else → stop with an unrecognized-arguments error.
 
 `linear`, `notion`, and `repository` scope the whole run. Within the named section,
 validate and correct. Outside it, **report and stop there** — name the finding in
-the closing report and let the user decide whether to run that section next.
+the closing report, and **print the exact command that resolves it** so acting on
+it costs one paste rather than a guess:
+
+```
+Outside this run's scope
+- notion.product_spec is missing, though docs/scope.md names a canonical
+  product source in Notion. Resolve it with:
+
+  /init-project notion
+```
+
+Reporting it is not the same as burying it. The user decides; you make deciding
+cheap.
 
 **Never turn an out-of-scope finding into a question.** "I noticed X is missing,
 should I fix it anyway?" is a prompt that makes the user adjudicate your scoping

@@ -37,7 +37,9 @@ anything. It is the normative description; this document does not duplicate it.
 - A `linear` / `notion` / `repository` argument is a **hard scope**. Report findings
   outside it in the closing report; never turn one into a question. The user
   already stated the scope by typing it, and asking them to adjudicate your scoping
-  is not a question about their project.
+  is not a question about their project. Print the exact command that resolves each
+  such finding — for example `$init-project notion` — so acting on it costs one
+  paste rather than a guess.
 - Refer to other skills by name, using `$skill-name` in Codex.
 
 ## Phase 1: Preflight
