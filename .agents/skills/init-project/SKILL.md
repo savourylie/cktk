@@ -90,9 +90,21 @@ Accept "all correct" as one answer.
 **The Project Context is a Linear Document, not the project description** — two
 different objects, two different calls. See `references/project-schema.md`. Bind
 the document: fetch it, show its **actual** headings, and ask which ones hold
-mutable execution state. **Expect more than one** — a handoff or current-state
-section, an open-questions section, sometimes a current-structure section. Record
-all of them in `state_sections`. Never hardcode, assume, or invent a section name.
+mutable execution state.
+
+**Apply one test to each heading, and do not count.** For each section ask: would
+closing, reopening, or reassigning a Linear issue make a sentence in here false?
+Yes means it is a state section; no means it is not, however current its name
+sounds. A milestone list that names milestones without stating progress fails. A
+resources or links section fails — it goes stale when a resource moves, not when an
+issue closes. Purpose, invariants, and guardrails fail by construction.
+
+**Never record a section containing repository paths or Notion links**: it points at
+content another source owns and the sync may never edit it.
+
+Recording an extra section "just in case" is worse than missing one. A missed
+section goes stale visibly; an over-recorded one puts an editable licence on prose
+nobody meant to be edited. Never hardcode, assume, or invent a section name.
 
 Read the project description as well, for discovery and for the report, but never
 record it as the Project Context surface and never write to it. A project keeping

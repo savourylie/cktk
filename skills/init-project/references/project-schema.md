@@ -117,7 +117,7 @@ run diagnostics and is never staged.
 | `linear.project_context.enabled` | Whether this project keeps a Project Context document. When `false`, consumers skip every Project Context behaviour. |
 | `linear.project_context.document_id` · `document_slug` · `document_url` | Identify the Linear **Document**. See below — this is not the project description. |
 | `linear.project_context.title` | The document's title, for reporting. |
-| `linear.project_context.state_sections` | Headings of **every** section holding mutable execution state, in document order. **Read from the live document, never hardcoded.** A document usually has more than one: a current-state or handoff section, an open-questions section, sometimes a current-structure section. Recording only one leaves the rest to go stale, which is the failure this contract exists to prevent. Empty array means nothing in the document is syncable. |
+| `linear.project_context.state_sections` | Headings of the sections holding mutable execution state, in document order. **Read from the live document, never hardcoded.** The test for membership is: would closing, reopening, or reassigning a Linear issue make a sentence in that section false? A section naming milestones without stating their progress fails it; so does a links or resources section, and anything containing repository paths or Notion links, which point at content another source owns. Usually one or two sections pass. Empty array means nothing in the document is syncable. |
 | `linear.project_context.last_synced_marker` | The literal prefix of the line a sync updates. `null` when the team has none. |
 | `notion.hub` | The page a reader starts from. |
 | `notion.product_spec` | The page the project treats as its **canonical** product source, when it names one. `null` when it does not. A Linear project description often links it explicitly, and it usually outranks anything in `repository.product_requirements` — record both and record which is canonical. |
@@ -233,6 +233,18 @@ is caught only by the types.
 `append_position` is `"end"` for a log ordered oldest-first and `"start"` for
 newest-first. It is deliberately a fixed position rather than a heading to locate,
 because locating a heading means reading the page — see below.
+
+## Identifier form
+
+**Notion identifiers are recorded as lowercase dashed UUIDs**, the form the Notion
+API returns for a page object — `3a6db72d-09ef-81bd-b8de-e2b323fec816`, never
+`3a6db72d09ef81bdb8dee2b323fec816`. Notion accepts both on input, so an
+unnormalized id works and nothing fails loudly; the cost appears when two
+repositories bind the same page and their recorded ids do not compare equal as
+strings. Normalize on write.
+
+Linear identifiers keep whatever form the Linear API returns: dashed UUIDs for ids,
+the bare slug for `document_slug`.
 
 ## The idempotency marker lives on the Linear issue
 

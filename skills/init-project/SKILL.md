@@ -161,10 +161,27 @@ are different objects edited through different calls — `references/project-sch
 has the comparison. Bind the document.
 
 Fetch the document, show its **actual** headings, and ask which ones hold mutable
-execution state. **Expect more than one** — a current-state or handoff section, an
-open-questions section, sometimes a current-structure section. Record every one of
-them in `state_sections`; recording only the most obvious leaves the rest to go
-stale. Never hardcode a section name, never invent one, and never assume
+execution state.
+
+**Apply one test to each heading, and do not count.** For each section ask: *would
+closing, reopening, or reassigning a Linear issue make a sentence in here false?*
+
+- Yes → it is a state section.
+- No → it is not, however current its name sounds.
+
+Sections that fail the test but tempt a reader: a milestone list naming milestones
+without stating their progress (nothing about a status change falsifies a name); a
+resources or links section (it goes stale when a resource moves, not when an issue
+closes); purpose, invariants, and guardrails (stable by construction).
+
+**Never record a section containing repository paths or Notion links.** Those point
+at content another source owns, which the sync may never edit — recording such a
+section hands it a licence it must not have.
+
+A document usually has one or two sections that pass. It may have exactly one.
+Recording an extra "just in case" is worse than missing one: a missed section goes
+stale visibly, while an over-recorded one puts an editable licence on prose nobody
+meant to be edited. Never hardcode a section name, never invent one, and never assume
 another team's naming.
 
 **Read the project description too**, for discovery context and for the report —
