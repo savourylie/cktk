@@ -329,7 +329,7 @@ Present:
    - the status-write failure from Phase 2 step 10, if one occurred.
 
    Then note that **no completion status was set** — this skill never marks an issue Done — and that nothing is committed until the user picks an option in Phase 9.
-6. **Next step for Linear status:** when the user is ready to mark the issue done (or move it to another state), run `/update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear. This skill only ever moves an issue *into* progress at the start of a run; it never sets a completion state, and does **not** offer to do so as part of landing — unlike the ticket file that `/implement-ticket` can update in-branch, marking work done is an external write and stays a separate, deliberate step.
+6. **Next step for Linear status:** when the user is ready to mark the issue done (or move it to another state), run `/update-ticket-linear <issue_id>` (optionally with an explicit status such as `done`). That skill evaluates acceptance criteria and writes back to Linear. When project bindings exist (`/init-project`), that skill can additionally sync the Linear Project Context document and append a cross-cutting decision to the bound Notion decision log — both asked once per run and defaulting to no, and neither able to fail the status update. This skill only ever moves an issue *into* progress at the start of a run; it never sets a completion state, and does **not** offer to do so as part of landing — unlike the ticket file that `/implement-ticket` can update in-branch, marking work done is an external write and stays a separate, deliberate step.
 
 ### As-Built Comment (opt-in Linear write)
 

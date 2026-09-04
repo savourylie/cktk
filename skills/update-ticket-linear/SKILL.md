@@ -73,6 +73,24 @@ If no status token is provided, record the target as `auto`.
    - No status token → `auto`
    - Known alias or freeform Linear state name → keep as provided (case preserved for freeform names; aliases lowercased)
 
+
+### Load the project bindings
+
+Read `$MAIN_ROOT/.ai/cktk/project.json`. It records where this repository's project
+lives; `skills/init-project/references/project-schema.md` is its normative
+description.
+
+- **Absent** → set `BINDINGS_AVAILABLE=false`, say once that project bindings are
+  not configured and that `/init-project` creates them, and otherwise behave
+  exactly as this skill did before Phases 8 and 9 existed.
+- **`schema_version` higher than 1** → same, naming the version. Never guess at a
+  newer shape.
+- **Present and readable** → set `BINDINGS_AVAILABLE=true`.
+
+**A missing or unreadable bindings file never blocks a status update.** Phases 2
+through 7 do not consult it. Never interrogate the user for a binding mid-command —
+that is the failure this contract exists to remove.
+
 ## Phase 2: Fetch Linear Issue
 
 1. Confirm Linear MCP write-capable tools are present. If not, stop with the setup hint.
@@ -183,7 +201,166 @@ Skip unless the resolved target is a completed-type state (`done` alias or equiv
    d. If cascade mapping is unsafe/ambiguous for a dependent, report only; do not force.
 3. Record every issue actually moved for the summary.
 
-## Phase 8: Summary
+## Phase 8: Sync the Linear Project Context
+
+**Skip this phase entirely when** no status was written in Phase 6, or
+`BINDINGS_AVAILABLE=false`, or `linear.project_context.enabled` is false, or its
+`status` is not `validated`, or `preferences.sync_project_context` is `never`.
+
+The Project Context is a **Linear Document**. The project *description* is a
+different object, and writing to it is out of scope for this skill under every
+circumstance.
+
+### 8.1 Consent
+
+Ask once, covering this phase and Phase 9 together, and **default to no**. Honor
+`preferences.sync_project_context` when it is `always` or `never`; a team that
+wants this always-on says so once in `init-project` rather than on every run.
+
+Declining is not a failure. Skip the write and print in Phase 10 the exact patch
+operations that were not applied, so they can be pasted or re-run later.
+
+### 8.2 Decide what the transition falsified
+
+Fetch the bound document by `document_id`. Consider **only** the sections named in
+`state_sections`; everything outside them is out of bounds whatever it says.
+
+Change only what this transition provably falsified:
+
+- The issue's own line, where a state section mentions it.
+- Statements the transition made untrue — an issue called "in progress", "next", or
+  "not started" that is now Done; a "blocked by X" where X just closed; a dependent
+  Phase 7 actually moved.
+- Milestone completion **only where the section states a number in prose**, read
+  from real Linear figures. Percentages move when issues are **added** to a
+  milestone, not only when they complete, so a falling number usually means scope
+  grew rather than work being lost. Where the prose explains a number, the
+  explanation must stay true.
+- A last-synced marker, **only when `last_synced_marker` is not null**. Never
+  invent one — adding an uninvited line to a shared document is exactly the kind of
+  edit this phase's bounds exist to prevent.
+
+**Ambiguous effect means report and change nothing.** This phase has no obligation
+to write. Reading the document and concluding that nothing was falsified is a
+correct outcome, not a failure.
+
+### 8.3 Write with `patch`
+
+`save_document` with the `patch` parameter, never `content` — a whole-content
+replace would rewrite sections this phase may not touch.
+
+Three rules, all load-bearing:
+
+- Every anchor must match the current content **exactly once**, and operations
+  apply in order and **atomically**: one failing operation aborts the whole save,
+  so a stale anchor leaves the document untouched rather than half-edited.
+- **Never anchor on an issue identifier.** Linear stores inline mentions as
+  `<issue id="…" href="…">TAI-5</issue>`, not as the text `TAI-5`, so an anchor
+  taken from an identifier will not match. A plain-text identifier you write
+  becomes mention markup after the save, so it will not match next time either.
+  Draw anchors from ordinary prose.
+- At most 50 operations.
+
+**Linear re-serializes the document on save.** A round trip normalizes malformed
+markdown; bold markers spanning an inline mention have been observed to disappear.
+Content survives, formatting may not. Note this in Phase 10 so a cosmetic diff is
+not read as data loss.
+
+### 8.4 When there is no Project Context
+
+`project_context.enabled` false means this project keeps none. Do not create one
+here and **do not write the project description instead**. Say so once and name
+`/init-project`, which offers to create or migrate one.
+
+## Phase 9: Record a cross-cutting decision in Notion
+
+**Skip entirely when** Phase 8 was skipped for any reason, or
+`notion.decision_log.status` is not `validated`, or `preferences.write_decision_log`
+is `never`.
+
+### 9.1 What qualifies
+
+A decision settled while closing this issue whose reach exceeds the issue itself:
+it changes what another issue must do, moves a product or governance boundary, or
+settles something future versions inherit.
+
+A decision local to this issue belongs in the issue. Never create a second live
+task tracker in Notion, and never copy repository truth into prose that will drift.
+
+### 9.2 The named-referent gate
+
+Whether a decision is cross-cutting is your judgment, made fresh on every run with
+different context each time. So it must be **falsifiable**: a decision qualifies
+only if you can name the concrete thing it affects — another Linear issue
+identifier, or a named product or governance boundary appearing in the Project
+Context or in a bound requirements document.
+
+**If you cannot name a referent, the decision is issue-local. Write nothing.**
+
+Record the referent on the entry. This does not make the judgment correct; it makes
+it checkable by a reader, which is the most that can honestly be offered here.
+
+Stay conservative. A missed decision costs someone a moment's reading. Flagging
+every routine close costs this feature its credibility, and then it gets switched
+off — which costs every future decision.
+
+### 9.3 At most one automatic entry per issue
+
+**Never read the decision log to check for duplicates.** A real log runs to tens of
+thousands of characters and reports no truncation warning, so nothing warns you
+before you have spent the context; and issue identifiers appear throughout such a
+log's prose, so a keyword search is unsound too — finding `TAI-48` somewhere does
+not mean `TAI-48` has an entry.
+
+Instead list this issue's comments and look for the literal prefix
+`cktk:decision-logged`.
+
+- **Present** → an entry already exists. Write nothing; draft into Phase 10 and
+  name the existing entry's URL.
+- **Absent** → eligible, subject to the Phase 8.1 consent.
+
+An entry a human wrote by hand carries no marker, so you may propose a duplicate of
+one. The consent prompt and the Phase 10 report are what keep that visible.
+
+### 9.4 Pre-write check
+
+Re-fetch the log immediately before writing and compare its live shape against the
+binding. For a database that means `properties` **and** `property_types` — a rename
+is caught by the names, a retype only by the types.
+
+Any mismatch → draft into Phase 10, name the failed precondition, write nothing.
+
+### 9.5 The write
+
+Append-only, and only these calls:
+
+- **Database log** — `notion-create-pages` with a `data_source_id` parent.
+- **Page log** — `notion-update-page` with `command: "insert_content"` and
+  `position` taken from `append_position`, at `entry_heading_level`.
+
+`update_content` and `replace_content` are **forbidden by name**. Never edit an
+existing entry, and never one a human wrote.
+
+The entry carries what was decided, the named referent, a backlink to this issue,
+the key `cktk:<ISSUE-ID>:<slug>`, and attribution to this workflow rather than to a
+person.
+
+### 9.6 Then mark the issue
+
+**Only after the Notion write returns successfully**, post a comment on the issue:
+
+```
+cktk:decision-logged <ISSUE-ID> → <notion entry url>
+```
+
+If that comment fails, say so prominently in Phase 10 with the entry's URL: the
+entry exists and its marker does not, so a later run could duplicate it unless
+someone intervenes.
+
+**A failed Notion write never fails the status update.** Phase 6 has already
+succeeded; report the failure and carry on.
+
+## Phase 10: Summary
 
 Report:
 
@@ -230,6 +407,27 @@ Report:
 
 8. Explicit note: **no git commit was created**.
 
+9. **Project Context sync** (Phase 8), whenever bindings were available:
+   - What changed, section by section, showing each patch operation's before and
+     after
+   - What was deliberately left alone that a reader might have expected to change
+   - Anything whose effect was ambiguous, and therefore untouched
+   - When a save occurred, the re-serialization note: Linear normalizes markdown on
+     save, so a cosmetic diff is not data loss
+   - When the phase was skipped or consent declined: why, plus **the exact patch
+     operations that were not applied**, so they can be pasted or re-run
+
+10. **Notion decision log** (Phase 9), whenever bindings were available:
+    - What was written and where, with a link, and the named referent that
+      qualified it
+    - When nothing was written, which of these applied: no decision qualified; a
+      `cktk:decision-logged` marker already existed (name the existing entry); a
+      precondition failed (name it); consent was declined. In the last three cases,
+      print the drafted entry
+    - **Prominently, if the Notion write succeeded but the marker comment failed:**
+      the entry's URL and the fact that a later run could duplicate it until
+      someone intervenes
+
 ## Safety Rules
 
 - **Always** require Linear MCP; never invent Linear HTTP/API workarounds.
@@ -242,3 +440,31 @@ Report:
 - Prefer matching `.worktrees/<issue_id>-*` for evidence when present.
 - If unrelated dirty changes make evaluation impossible, stop and ask.
 - Missing / unresolvable issue → stop.
+
+### Project Context and Notion writes
+
+- **The Linear project description is never written by this skill**, under any
+  circumstance. The Project Context is a Linear **Document**; they are different
+  objects. `/init-project` owns creating or migrating one.
+- **Only the sections named in `state_sections` may be edited**, and only where
+  this transition provably falsified something in them. Purpose, methodology,
+  guardrails, invariants, and architecture contracts appear in a Project Context
+  for navigation; editing them from here would put two sources into conflict.
+- **Never edit Notion-owned or repository-owned content from Linear.** A section
+  carrying repository paths or Notion links is not a sync target even if it is
+  listed; report and skip it.
+- Use `save_document` with `patch` only — never `content`, which would replace
+  sections this skill may not touch. Never anchor on an issue identifier.
+- **Never invent a last-synced marker** where `last_synced_marker` is null.
+- The Notion write is **append-only**: `notion-create-pages`, or
+  `notion-update-page` with `command: "insert_content"`. **`update_content` and
+  `replace_content` are forbidden.** Never edit an existing entry, and never one a
+  human wrote.
+- **Never read the decision log to detect duplicates.** Use the
+  `cktk:decision-logged` marker on the Linear issue.
+- **At most one automatic decision-log entry per issue**, ever.
+- **No automatic write against a binding that is not `validated`**, or whose
+  `preferences` entry is `never`.
+- **A failed Project Context or Notion write never fails the status update.**
+  Phase 6 has already succeeded; report and carry on.
+- Ambiguous effect → report and change nothing. Neither phase is obliged to write.
