@@ -115,20 +115,38 @@ So the probe is offered, never the default, and the offer says so plainly.
 Skipping is safe: the consumer fails soft, reporting and drafting a refused write
 rather than retrying or aborting.
 
-A database log needs two properties many logs lack: a queryable text or URL
-property for the idempotency key, and one for the named referent. Where either is
-missing, describe it and offer to add it. Changing a shared database's schema is
-never automatic; declined, record `read-only` and continue.
+A database log needs only a title property and somewhere for the Linear backlink.
+Key, referent, and date are optional conveniences that nothing queries — duplicate
+detection uses a marker comment on the Linear issue, not a search of the log. You
+may offer to add a missing optional property, but never add one automatically.
+
+A page-shaped log has no properties. Record `append_position` (`end` for
+oldest-first, `start` for newest-first), confirmed from the first and last entry
+headings rather than by reading the whole page.
 
 Anything that does not resolve is recorded `unresolved` with a `reason`, never as
 `validated`.
 
-## Phase 6: Offer to create what is missing
+## Phase 6: Offer to create or move what is missing
 
 Describe exactly what would be created and where, and create it only on an explicit
 yes. Populate **structure only** — never invent purpose statements, guardrails,
 architecture, or milestone names. An empty field the owner fills is correct; a
 plausible invention reads as authoritative and nobody knows it was guessed.
+
+### Project Context sitting in the description
+
+When no Project Context document exists and the description carries context-shaped
+headings or an explicit `# Project Context` title, that project is misconfigured.
+Offer to migrate, defaulting to no: create a Project Context document with
+`save_document` carrying the description's content, **fetch it back to confirm**,
+and only then replace the description with a pointer link. Writing the description
+last means a failure never loses the content. The replacement is a link and nothing
+else; composing a project summary would be inventing product content.
+
+This is the only place this skill writes the project description. Declining leaves
+everything untouched, records `project_context.enabled: false`, and names the
+misconfiguration in the report.
 
 ## Phase 7: Write and report
 
@@ -152,8 +170,9 @@ including `preferences`.
 
 ## Safety rules
 
-- Never write the Linear project description. It is read for discovery and context
-  only; changing it is out of scope for this skill and every consumer.
+- Never write the Linear project description during routine operation. The
+  consented Phase 6 migration is the sole exception; it never runs without an
+  explicit yes and it writes a link, never prose you composed.
 - Never invent product content; structure only.
 - Never record an unvalidated binding as `validated`.
 - Never add or alter a property on a shared Notion database without explicit

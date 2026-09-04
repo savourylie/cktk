@@ -175,10 +175,14 @@ Notion fetch tool returns), `database_url` for humans, `properties`, and
 | Role | Purpose | Required |
 | --- | --- | --- |
 | `title` | The entry's title property. | Yes |
-| `idempotency_key` | Holds `cktk:<ISSUE-ID>:<slug>`. Must be queryable — a text or URL property. | Yes, for automatic writes |
 | `backlink` | The Linear issue URL the decision came from. | Yes |
-| `referent` | The concrete issue or boundary the decision affects. | Yes, for automatic writes |
+| `key` | Holds `cktk:<ISSUE-ID>:<slug>`, for a human scanning the log. **Nothing queries it** — see the marker section below. | Optional |
+| `referent` | The concrete issue or boundary the decision affects. | Optional |
 | `date` | When the decision was made. | Optional |
+
+Only `title` and `backlink` are needed for an automatic write. Where the log is a
+page rather than a database it has no properties at all, and the key, referent, and
+date go into the entry's text instead.
 
 `property_types` maps the **actual property name** to its Notion type. Consumers
 compare names *and* types before writing: a rename is caught by the names, a retype
@@ -191,11 +195,43 @@ is caught only by the types.
   "shape": "page",
   "page_id": "26ab1f9f4c5f80b18d3bd10a6b1d2f4e",
   "page_url": "https://www.notion.so/acme/Decisions-26ab1f9f",
-  "append_under_heading": "## Decisions",
+  "append_position": "end",
+  "entry_heading_level": 2,
   "status": "validated",
-  "write_probe": { "at": "2026-09-04T09:15:00Z", "result": "passed" }
+  "write_probe": { "at": "2026-09-04T09:15:00Z", "result": "not attempted" }
 }
 ```
+
+`append_position` is `"end"` for a log ordered oldest-first and `"start"` for
+newest-first. It is deliberately a fixed position rather than a heading to locate,
+because locating a heading means reading the page — see below.
+
+## The idempotency marker lives on the Linear issue
+
+**Never read the decision log to find out whether an entry already exists.** A real
+log runs to tens of thousands of characters, and it will report neither `truncated`
+nor a non-zero `unknown_block_count`, so nothing warns a consumer before it has
+spent its context on the page. Narrowing by keyword is unsound too: issue
+identifiers appear throughout such a log's prose, so finding `TAI-48` somewhere
+does not mean `TAI-48` has an entry.
+
+Instead, a consumer that writes an entry then posts a comment on the Linear issue:
+
+```
+cktk:decision-logged <ISSUE-ID> → <notion entry url>
+```
+
+and the duplicate check is a search for the literal prefix `cktk:decision-logged`
+in that issue's comments — one cheap call against an issue the run already has
+open, exact rather than heuristic, and independent of the log's size and shape.
+
+Two consequences a consumer must handle rather than hide:
+
+- The marker is written **after** the Notion write returns. If the comment fails,
+  the entry exists without a marker and a later run could duplicate it. Report that
+  loudly, with the entry's URL.
+- An entry a human wrote by hand has no marker, so a run may propose a duplicate of
+  it. Per-run consent and the run's report are what keep that visible.
 
 ## Preferences
 

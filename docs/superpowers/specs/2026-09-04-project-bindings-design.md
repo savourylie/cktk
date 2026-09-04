@@ -117,6 +117,21 @@ is how the manual process already fails — or guess.
     operations, same exactly-once anchor rule, same atomic abort, same 50-operation
     cap — so only the call and the target id change.
 
+11. **The decision-log idempotency marker lives on the Linear issue, not in
+    Notion** (section 4.3). Reading a real 58,000-character log on every run to
+    check for a duplicate is not affordable, and keyword-narrowing is unsound
+    because issue identifiers appear throughout such a log's prose.
+
+12. **`init-project` may migrate a Project Context out of the description**, behind
+    a `y/N` prompt (section 2.5). This is the one place a cktk skill writes the
+    project description, and it is a one-time consented migration rather than
+    routine operation.
+
+13. **Notion is the decision log; the Linear Project Context document's own
+    decision-log section is not a write target.** Some teams keep both. Writing to
+    both would create the divergence this feature exists to prevent, so automation
+    writes one and only one.
+
 ## What this design can and cannot guarantee
 
 The hardening decisions above exist because a first pass over this design claimed
@@ -126,7 +141,7 @@ section is the honest ledger.
 | Claim | Mechanism | What it does not cover |
 | --- | --- | --- |
 | Never edits an existing Notion entry | Only `notion-create-pages` (database) and `notion-update-page` with `command: "insert_content"`, `position: {"type":"end"}` (page) are ever emitted. The destructive command values `update_content` and `replace_content` are named as forbidden. | Nothing. This one is structural. |
-| Never writes a duplicate automatically | At most one automatic entry per issue identifier, enforced by an exact-prefix query. | A second, genuinely distinct decision on the same issue is drafted, not written. Deliberate. |
+| Never writes a duplicate automatically | At most one automatic entry per issue, enforced by a `cktk:decision-logged` marker comment on the Linear issue. | A second, genuinely distinct decision on the same issue is drafted, not written (deliberate); an entry a human logged by hand carries no marker; a marker write that fails after a successful Notion write is reported, not silently retried. |
 | Never writes a partial entry | Both write paths are single calls carrying properties and body together. | Nothing. There is no create-then-populate sequence to strand. |
 | Detects a schema change before writing | Re-fetches the data source and compares recorded property names **and types**. | A property whose name and type are unchanged but whose meaning changed. |
 | A wrong id or path fails at `init-project`, not later | Every binding is fetched and every repository path is stat'd. | **Write permission**, unless the opt-in probe is run. Notion exposes no delete, so proving write access costs an undeletable entry; skipping it costs one clean report on the first real write. |
@@ -276,19 +291,53 @@ and offers to add it — a schema change to a shared database, so never automati
 Declined, it records `status: "read-only"`, and Phase 9 drafts instead of writing
 for that repository from then on.
 
-#### 2.5 Offer to create what is missing
+#### 2.5 Migrating a Project Context out of the description
+
+A project whose Project Context sits in its description is misconfigured (decision
+10). `init-project` detects it — no Project Context document exists, and the
+description carries context-shaped headings or an explicit `# Project Context`
+title — and offers a migration behind a `y/N` prompt defaulting to no:
+
+```
+Redbeak's Project Context looks like it lives in the project description.
+Move it into a Linear Document?
+
+  - creates a document "Project Context" attached to Redbeak, with the
+    description's current content
+  - replaces the description with a link to it
+  - you write the new description yourself; I will not invent one
+
+Move it? [y/N]
+```
+
+On yes: create the document with `save_document` (`project` parameter, `title`,
+`content`), confirm it by fetching it back, and only then replace the description
+with a pointer line. Ordering matters — a failure after the description is cleared
+would lose the content.
+
+**This is the one place a cktk skill writes the project description**, and the
+relaxation is deliberate: the standing rule forbids writing it during *routine
+operation*, which a one-time explicitly consented migration is not. The replacement
+is a link and nothing else. Writing a summary of the project would be inventing
+product content, which section 2.6 forbids.
+
+Declining leaves everything as it is and records `project_context.enabled: false`,
+with the misconfiguration named in the final report so it is not silently
+forgotten.
+
+#### 2.6 Offer to create what is missing
 
 If there is no Linear project or no decision log, describe what is needed and
 create it only on an explicit yes. Populate structure only. Never invent product
 content: an empty field the owner fills is correct, a plausible invention is not.
 
-#### 2.6 Report and re-run
+#### 2.7 Report and re-run
 
 Report what resolved, what did not and why, and what was created. On a re-run,
 detect the existing file and offer per-binding correction — a moved Notion page is
 a one-field fix, not a fresh interrogation.
 
-#### 2.7 Repository hygiene
+#### 2.8 Repository hygiene
 
 `.ai/cktk/delegation/` is currently excluded from version control by convention
 only; the implement skills instruct "never stage them" but nothing enforces it.
@@ -402,27 +451,45 @@ The named referent is recorded on the entry in the `referent` property.
 This does not make the judgment correct. It makes it falsifiable: a reader can
 check whether the named issue exists and whether it is genuinely affected.
 
-#### 4.3 Idempotency: at most one automatic entry per issue
+#### 4.3 Idempotency: the marker lives on the Linear issue
 
-The key is `cktk:<ISSUE-ID>:<slug>`. The `<slug>` is model-generated and therefore
-not stable across runs, so **the duplicate check never depends on it** — it exists
-only so a human scanning the log can tell two keys apart at a glance. The check
-queries for entries whose key begins with the exact prefix `cktk:<ISSUE-ID>:`,
-which is deterministic.
+The obvious check — read the decision log and look for this issue — does not
+survive contact with a real log. The one this design was validated against is a
+single Notion page of roughly 58,000 characters, and it reports neither `truncated`
+nor a non-zero `unknown_block_count`, so the section 4.4 preconditions do not fire.
+A scan would simply consume the whole page on every run. Narrowing by keyword does
+not help either: issue identifiers appear throughout that log's prose, so "TAI-48
+appears somewhere" is true for issues that have no entry of their own.
 
-- **Zero hits** — eligible for an automatic write, subject to consent.
-- **One or more hits** — never write automatically. Draft the entry into the
-  Phase 10 summary and let a human decide.
+**So the marker does not live in Notion.** After a successful write, Phase 9 posts a
+comment on the Linear issue:
 
-An earlier draft of this design proposed writing when the new decision "is clearly
-distinct" from existing ones. That reintroduces the unstable judgment at the one
-point where a wrong call is unrecoverable: judging "distinct" incorrectly produces
-a duplicate in a shared document. One automatic entry per issue is a rule that can
-actually be kept.
+```
+cktk:decision-logged <ISSUE-ID> → <notion entry url>
+```
 
-There is no upsert, so the check is query-then-write with a race window of seconds.
-The trigger is a human running a slash command; concurrent runs against one issue
-are not a realistic case, and the window is stated rather than papered over.
+The check is then: list the issue's comments — one cheap call against an issue the
+run already has open — and look for the literal prefix `cktk:decision-logged`.
+
+- **Absent** — eligible for an automatic write, subject to consent.
+- **Present** — never write automatically. Draft into the Phase 10 summary, naming
+  the already-logged entry's URL, and let a human decide.
+
+This is exact rather than heuristic, costs nothing that scales with the log, and is
+independent of the log's size, shape, and property schema. It also earns its keep
+in the other direction: a reader of the issue can now reach the decision it
+produced.
+
+**Two failure modes, both stated rather than papered over.** If the Notion write
+succeeds and the marker comment then fails, a later run can write a second entry —
+so a failed marker write is reported loudly, with the Notion URL, rather than
+swallowed. And a decision a human logged by hand carries no marker, so the run may
+propose a duplicate of it; the named-referent gate, the per-run consent, and the
+Phase 10 report are what keep that visible.
+
+The entry still carries `cktk:<ISSUE-ID>:<slug>` as its recorded key, for a human
+scanning the log and for any later reconciliation. Nothing depends on the slug
+being stable.
 
 #### 4.4 Pre-write schema check
 
@@ -431,21 +498,31 @@ against `properties` **and** `property_types`. Comparing names alone catches a
 rename but misses a retype — a `text` property changed to `select` keeps its name,
 passes a name-only check, then fails or coerces badly at write time.
 
-Any mismatch, any binding not `validated`, or a `notion-fetch` that reports
-`truncated` or a non-zero `unknown_block_count` on a page-shaped log (which makes
-"the key is absent" unsound) means: draft into the summary, name the failed
-precondition, write nothing.
+Any mismatch, or any binding that is not `validated`, means: draft into the
+summary, name the failed precondition, write nothing.
+
+**The log is never read before writing.** Idempotency comes from the Linear-side
+marker (4.3), and the entry is appended at a fixed end of the log rather than under
+a located heading, so nothing in this phase scales with the log's size. That is
+what makes a 58,000-character decision log a non-issue instead of a context
+budget.
 
 #### 4.5 The write
 
 - **Database** — `notion-create-pages` with a `data_source_id` parent. Cannot
   modify a sibling row.
-- **Page** — `notion-update-page`, `command: "insert_content"`,
-  `position: {"type":"end"}`. Cannot reach existing blocks.
+- **Page** — `notion-update-page`, `command: "insert_content"`, with `position`
+  taken from the binding's `append_position` (`end` for a log ordered oldest-first,
+  `start` for newest-first). Cannot reach existing blocks.
 
-Every entry is backlinked to its Linear issue, carries its idempotency key and
-named referent, and is attributed to the workflow rather than to a person. A failed
-Notion write is reported and never fails the status update.
+Every entry is backlinked to its Linear issue, carries its key and named referent,
+and is attributed to the workflow rather than to a person. A failed Notion write is
+reported and never fails the status update.
+
+**Then, and only after the Notion write returns successfully**, post the
+`cktk:decision-logged` marker comment on the Linear issue. If that comment fails,
+report it prominently with the Notion entry's URL: the entry exists, the marker
+does not, and a later run could duplicate it unless a human intervenes.
 
 ### 5. Consent
 
@@ -464,6 +541,11 @@ were not applied.
 - A carve-out for the project-description write naming only the sections it may
   touch, sourced from the bindings.
 - Notion-owned and repository-owned content is never edited from Linear.
+- The Linear project **description** is never written during routine operation.
+  `init-project`'s consented migration (section 2.5) is the sole exception, and it
+  never runs without an explicit yes.
+- The Project Context document's own decision-log section, where a team keeps one,
+  is never written by automation. Notion is the single decision-log target.
 - The Notion write is append-only: only `notion-create-pages` and
   `insert_content` at `position: end` are permitted; `update_content` and
   `replace_content` are forbidden by name.

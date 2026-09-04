@@ -34,7 +34,11 @@ MCP and Notion MCP at runtime.
 - Before writing a call to another skill, read the callee's preconditions
   (AGENTS.md rule 6).
 - The contract file is `.ai/cktk/project.json`, `schema_version: 1`.
-- Idempotency key format: `cktk:<ISSUE-ID>:<slug>`.
+- Duplicate detection uses a `cktk:decision-logged <ISSUE-ID> → <url>` marker
+  comment on the Linear issue. **Never read the decision log to check for
+  duplicates** — a real log runs to tens of thousands of characters and reports no
+  truncation warning. Entries still carry `cktk:<ISSUE-ID>:<slug>` for humans;
+  nothing queries it.
 - The Project Context is a Linear **Document** (`save_document`), never the project
   description (`save_project`). The description is read-only and out of scope.
 - Linear documents are listed by **project id**; a team-scoped query returns empty
@@ -223,6 +227,10 @@ workspace:
 - [ ] A re-run after moving the Notion page corrects one field without redoing the
       whole flow.
 - [ ] The written file matches `references/project-schema.md` exactly.
+- [ ] Running in a project whose Project Context sits in the description (Redbeak)
+      offers the `y/N` migration; declining changes nothing and reports the
+      misconfiguration; accepting creates the document, confirms it by fetching it
+      back, and only then replaces the description with a pointer.
 
 ---
 
@@ -249,9 +257,12 @@ re-serialization caveat and, on declined consent, prints the patch operations.
 
 ### Task 9: Phase 9 — Notion decision log
 
-Per spec §4. The named-referent gate, the one-entry-per-issue prefix query, the
-name-and-type pre-write schema check, and the two permitted write calls. Drafts
-into the summary whenever a precondition fails.
+Per spec §4. The named-referent gate; the one-entry-per-issue check against the
+Linear-side marker comment; the name-and-type pre-write schema check; the two
+permitted write calls, appending at `append_position` rather than under a located
+heading. Posts the marker comment only after the Notion write returns, and reports
+loudly with the entry URL if that comment fails. Drafts into the summary whenever a
+precondition fails.
 
 ### Task 10: Safety Rules, Phase 10 summary, and ripples
 

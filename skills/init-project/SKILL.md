@@ -177,16 +177,20 @@ write is reported and drafted into that run's summary, never retried and never
 fatal. So the cost of not probing is one clean report, not a 2am outage — which is
 a smaller cost than an undeletable row in a live decision log.
 
-### 5.2 Two properties a database log may not have
+### 5.2 What a database log actually needs
 
-An automatic decision-log write needs two properties that many logs do not have:
-one queryable text or URL property to hold the idempotency key, and one to hold the
-named referent. See `references/project-schema.md` for their roles.
+Only a title property and somewhere to put the Linear backlink. The key, referent,
+and date are optional conveniences — **nothing queries them**, because duplicate
+detection uses a marker on the Linear issue rather than a search of the log. See
+`references/project-schema.md`.
 
-Where either is missing, describe it and **offer to add it**. This changes the
-schema of a database other people use, so it is never automatic. Declined, record
-`status: "read-only"` and continue — the log is still readable, just not writable
-by automation.
+Where a useful optional property is missing, you may describe it and offer to add
+it, but never add one automatically: that changes the schema of a database other
+people use. Declining costs nothing that matters.
+
+A page-shaped log has no properties at all. Record `append_position` — `end` for a
+log ordered oldest-first, `start` for newest-first — and confirm it by reading the
+first and last entry headings, not the whole page.
 
 ### 5.3 Recording failure
 
@@ -194,10 +198,43 @@ Anything that does not resolve is recorded `unresolved` with a `reason`. Never
 record it as `validated`, and never silently drop it. Report every failure in
 Phase 7 with what you tried.
 
-## Phase 6: Offer to create what is missing
+## Phase 6: Offer to create or move what is missing
 
 If there is no Linear project, or no decision log, describe exactly what would be
 created and where, and create it **only on an explicit yes**.
+
+### 6.1 Project Context sitting in the description
+
+Detect it: there is no Project Context document, and the description carries
+context-shaped headings or an explicit `# Project Context` title. That project is
+misconfigured. Offer a migration, defaulting to no:
+
+```
+Redbeak's Project Context looks like it lives in the project description.
+Move it into a Linear Document?
+
+  - creates a document "Project Context" attached to Redbeak, carrying the
+    description's current content
+  - replaces the description with a link to it
+  - you write the new description yourself; I will not invent one
+
+Move it? [y/N]
+```
+
+On yes, in this order: create the document with `save_document` (`project`,
+`title`, `content`), **fetch it back to confirm it exists**, and only then replace
+the description with a pointer line. A failure after clearing the description would
+lose the content, so the description is written last and never first.
+
+The replacement is a link and nothing else. Writing a project summary would be
+inventing product content.
+
+**This is the only place this skill writes the project description**, and it never
+happens without an explicit yes. Declining leaves everything untouched, records
+`project_context.enabled: false`, and names the misconfiguration in the report so
+it is not silently forgotten.
+
+
 
 **Populate structure only.** A heading, a property, an empty section. Never invent
 product content — no purpose statements, no guardrails, no architecture, no
@@ -248,9 +285,10 @@ correction, re-validate only what changed, and preserve everything else includin
 
 ## Safety Rules
 
-- **Never write the Linear project description.** It is read for discovery and
-  context only. Changing it is out of scope for this skill and for every consumer
-  of this contract.
+- **Never write the Linear project description during routine operation.** It is
+  read for discovery and context. The consented migration in Phase 6.1 is the sole
+  exception, it never runs without an explicit yes, and it writes a link — never
+  prose you composed.
 - **Never invent product content.** Structure only, when creating anything.
 - **Never record an unvalidated binding as `validated`.** The three status values
   are defined in `references/project-schema.md`.
