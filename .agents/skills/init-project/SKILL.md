@@ -29,7 +29,15 @@ anything. It is the normative description; this document does not duplicate it.
   represent the candidates clearly. Otherwise ask a concise numbered prose question
   and accept a number or a label.
 - Never assume an option limit or an automatically supplied "Other" choice.
-- Ask at most one question at a time and wait for the answer.
+- Ask only about things that are actually wrong. A binding that validates cleanly
+  needs no question, and a re-run over a healthy section should ask nothing at all.
+- When several genuine questions arise, ask them together in one round rather than
+  one at a time. This is a setup flow, and a user answering prompts in sequence,
+  each waiting on the last, gives up before the end.
+- A `linear` / `notion` / `repository` argument is a **hard scope**. Report findings
+  outside it in the closing report; never turn one into a question. The user
+  already stated the scope by typing it, and asking them to adjudicate your scoping
+  is not a question about their project.
 - Refer to other skills by name, using `$skill-name` in Codex.
 
 ## Phase 1: Preflight

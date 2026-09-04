@@ -31,10 +31,31 @@ user facing an empty questionnaire will not.
 | Invocation | Meaning |
 | --- | --- |
 | (empty) | Full flow. On a re-run, offers per-binding correction first. |
-| `linear` \| `notion` \| `repository` | Re-validate and correct just that section. |
+| `linear` \| `notion` \| `repository` | Re-validate and correct just that section. Findings outside it are reported, never asked about — see below. |
 | `--show` | Print the current bindings and their statuses. Write nothing. |
 
 Anything else → stop with an unrecognized-arguments error.
+
+
+## A section argument is a hard scope
+
+`linear`, `notion`, and `repository` scope the whole run. Within the named section,
+validate and correct. Outside it, **report and stop there** — name the finding in
+the closing report and let the user decide whether to run that section next.
+
+**Never turn an out-of-scope finding into a question.** "I noticed X is missing,
+should I fix it anyway?" is a prompt that makes the user adjudicate your scoping
+instead of answering something about their project. They already told you the
+scope by typing it.
+
+**Only ask about things that are actually wrong.** A binding that validates cleanly
+needs no question. A re-run over a healthy section should ask nothing at all and
+finish in one step — that is what "a small correction, not a fresh interrogation"
+means in practice.
+
+When you do have several genuine questions within scope, ask them together in one
+round rather than one at a time. This is a setup flow; a user answering four
+prompts in sequence, each waiting on the last, gives up before the end.
 
 ## Phase 1: Preflight
 
