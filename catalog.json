@@ -5,6 +5,11 @@
   "author": "Calvin Ku",
   "skills": [
     {
+      "name": "init-project",
+      "path": ".agent/skills/init-project",
+      "description": "Bind this repository to its Linear project and Notion workspace — discovers candidates from README/PRD/design docs, validates every binding against the live services including a consented write probe, and writes a committed .ai/cktk/project.json that other skills read"
+    },
+    {
       "name": "create-tickets",
       "path": ".agent/skills/create-tickets",
       "description": "Generate development tickets from a PRD, feature catalog, or Plan Mode plan, with optional design inputs — files, directories, URLs, PDF, PPTX, or HTML (including Claude Design handoff bundles)"

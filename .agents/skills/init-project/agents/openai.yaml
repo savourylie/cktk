@@ -1,0 +1,7 @@
+interface:
+  display_name: "Init Project"
+  short_description: "Bind this repo to its Linear project and Notion workspace"
+  default_prompt: "Use $init-project to discover, confirm, and validate where this repository's project lives — its Linear team and project, its Notion hub and decision log, and the repository paths holding requirements — then write a committed .ai/cktk/project.json. Validate every binding against the live services including a consented write probe, and never record an unvalidated binding as confirmed."
+
+policy:
+  allow_implicit_invocation: false
