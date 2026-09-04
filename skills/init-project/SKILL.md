@@ -129,17 +129,35 @@ inside an unrelated command.**
 ### 5.1 Fetching proves read access only
 
 A connector with no write permission on the decision log passes every check above
-and fails weeks later, inside a command that was doing something else. That is
-precisely the failure this skill exists to prevent.
+and fails later, inside a command that was doing something else.
 
-So, with **explicit consent**, perform a **write probe**: create a clearly labeled
-probe entry in the decision log, confirm it appears, then archive or delete it.
-Record the outcome in `write_probe`.
+A **write probe** would close that gap, but it cannot clean up after itself. The
+Notion MCP exposes `notion-create-pages`, `notion-update-page`,
+`notion-move-pages`, and `notion-duplicate-page` — and **none of them deletes or
+archives a page**. In a decision log that already holds real entries, a probe
+leaves permanent litter that a human must remove by hand in Notion.
 
-- Probe passes → `status: "validated"`.
-- Probe fails or the user declines → `status: "read-only"`, and set
+So the probe is **offered, never the default**, and the offer states the residue
+plainly rather than burying it:
+
+> I can verify write access by creating one entry titled
+> `cktk write probe — safe to delete`. I cannot remove it afterwards: the Notion
+> tools available here have no delete. You would delete it by hand. Verify now,
+> or skip and let the first real write be the test?
+
+- **Skipped — the default** → `status: "validated"`,
+  `write_probe: { "result": "not attempted" }`.
+- **Passed** → `status: "validated"`, `write_probe: { "result": "passed",
+  "cleanup": "<url of the probe entry>" }`. Tell the user to delete it, and give
+  them the link.
+- **Refused by Notion** → `status: "read-only"` and
   `preferences.write_decision_log: "never"`. A preference must never authorize a
   write the binding cannot support.
+
+**Skipping is safe.** The consumer of this binding already fails soft: a refused
+write is reported and drafted into that run's summary, never retried and never
+fatal. So the cost of not probing is one clean report, not a 2am outage — which is
+a smaller cost than an undeletable row in a live decision log.
 
 ### 5.2 Two properties a database log may not have
 
@@ -219,8 +237,10 @@ correction, re-validate only what changed, and preserve everything else includin
   consent**, and never alter one that already exists.
 - **Never write the contract file when every binding is `unresolved`.**
 - **Never overwrite a file whose `schema_version` is higher than you know.**
-- The write probe creates exactly one entry and removes it. It never touches an
-  entry it did not create.
+- The write probe is opt-in, creates exactly one entry, and never touches an entry
+  it did not create. Never claim it will be cleaned up automatically — no
+  available Notion tool deletes or archives a page. Always report its URL so the
+  user can remove it.
 - Never ask for a raw id when the service can be listed.
 - Never invent HTTP, API-key, CLI, or browser fallbacks for Linear or Notion.
 - Do not create a git commit. The user commits the bindings file themselves.

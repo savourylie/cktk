@@ -84,8 +84,11 @@ is how the manual process already fails — or guess.
 
 6. **At most one automatic Notion entry per issue, ever** (hardening, section 4.3).
 
-7. **`init-project` proves write access, not just read access** (hardening,
-   section 2.4).
+7. **The write probe is opt-in and states its residue** (hardening, section 2.4).
+   An earlier draft made it mandatory and promised to delete the probe entry
+   afterwards. The Notion MCP has no delete and no archive operation, so that
+   promise was unimplementable; against a decision log with real entries it would
+   have left permanent litter.
 
 8. **The sync is not atomic with the status change, and says so** (section 3.5).
 
@@ -103,7 +106,7 @@ claimed more than the underlying APIs deliver. This section is the honest ledger
 | Never writes a duplicate automatically | At most one automatic entry per issue identifier, enforced by an exact-prefix query. | A second, genuinely distinct decision on the same issue is drafted, not written. Deliberate. |
 | Never writes a partial entry | Both write paths are single calls carrying properties and body together. | Nothing. There is no create-then-populate sequence to strand. |
 | Detects a schema change before writing | Re-fetches the data source and compares recorded property names **and types**. | A property whose name and type are unchanged but whose meaning changed. |
-| A typo fails at `init-project`, not later | Every binding is fetched, and the decision log is write-probed. | A permission revoked between `init-project` and a later run. Caught then, and reported rather than retried. |
+| A wrong id or path fails at `init-project`, not later | Every binding is fetched and every repository path is stat'd. | **Write permission**, unless the opt-in probe is run. Notion exposes no delete, so proving write access costs an undeletable entry; skipping it costs one clean report on the first real write. |
 | The Project Context is kept true | `save_project` `patch`, applied after the status write and the cascade. | **Not guaranteed.** The sync cannot be atomic with the status change; see 3.5. The promise is "usually syncs, always reports". |
 | Cross-cutting decisions are detected | A named-referent gate; see 4.2. | **Not guaranteed.** This is model judgment on every run. The gate makes the judgment falsifiable, not correct. |
 
@@ -211,21 +214,34 @@ prefilled fields finishes; a user facing an empty questionnaire does not. The
 Project Context section names are read from the fetched description and offered as
 choices — never hardcoded, never invented.
 
-#### 2.4 Validate, including write access
+#### 2.4 Validate
 
 Fetch the Linear project. Fetch the Notion hub and decision log. Confirm the
 decision log's live properties match what is about to be recorded. Stat every
 repository path.
 
-**Fetching proves read access only.** The stated requirement is that a typo fails
-here rather than at 2am inside an unrelated command, and a read-only fetch does not
-meet it: a connector with no write permission on the decision log passes every
-check and fails weeks later. So `init-project` additionally performs a **write
-probe** — with explicit consent, it creates a probe entry in the decision log and
-then archives or deletes it, recording the outcome in `write_probe`.
+**Fetching proves read access only**, and the requirement was that a typo fail here
+rather than at 2am inside an unrelated command. A wrong id, a wrong URL, a missing
+path, or a renamed property all fail here. **Write permission does not**, and it
+cannot be made to without a cost worth naming.
 
-Declining the probe is allowed and records `status: "read-only"`. Section 4 refuses
-to auto-write against any binding that is not `validated`.
+A write probe would prove it, but the Notion MCP exposes no delete and no archive
+operation — `notion-create-pages`, `notion-update-page`, `notion-move-pages`, and
+`notion-duplicate-page` are the write surface, and none removes a page. A probe
+entry is therefore permanent until a human deletes it in Notion. In a decision log
+that already holds real entries, that is a worse outcome than the problem.
+
+So the probe is **offered, never the default**, and the offer states the residue.
+Skipped (the default) records `write_probe: { "result": "not attempted" }` and
+leaves `status: "validated"`. Passed records the probe entry's URL so the user can
+remove it. Refused by Notion records `status: "read-only"` and
+`preferences.write_decision_log: "never"`.
+
+**Skipping is safe because section 4 already fails soft.** A refused Notion write
+is drafted into the run summary and reported, never retried and never fatal. The
+cost of not probing is one clean report on the first real write. Section 4 refuses
+to auto-write only against `read-only` and `unresolved` bindings — never merely
+because write access is unproven.
 
 **A database-shaped log needs two properties that may not exist**: one queryable
 text or URL property to hold the idempotency key (section 4.3) and one to hold the

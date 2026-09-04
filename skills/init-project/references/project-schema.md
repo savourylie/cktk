@@ -67,7 +67,7 @@ run diagnostics and is never staged.
         "Decided": "date"
       },
       "status": "validated",
-      "write_probe": { "at": "2026-09-04T09:15:00Z", "result": "passed" }
+      "write_probe": { "at": "2026-09-04T09:15:00Z", "result": "not attempted" }
     }
   },
   "repository": {
@@ -109,9 +109,25 @@ it describes so the two cannot drift apart.
 
 | Value | Meaning | What a consumer may do |
 | --- | --- | --- |
-| `validated` | Resolved by a live fetch. For `decision_log`, a write probe also succeeded. | Anything the skill permits. |
-| `read-only` | The fetch succeeded, but write access was refused or the probe was declined. | Read it. **Never write to it.** Report instead. |
+| `validated` | Resolved by a live fetch. **Does not imply write access** — see `write_probe`. | Anything the skill permits, failing soft if a write is refused. |
+| `read-only` | A write was attempted and refused, or the user declared the binding read-only. | Read it. **Never write to it.** Report instead. |
 | `unresolved` | Could not be fetched. Carries a sibling `reason` string. | Nothing. Treat as absent. |
+
+### `write_probe`
+
+Write access is proven only by writing, and the Notion MCP has **no delete or
+archive operation** — a probe entry cannot be cleaned up programmatically. So the
+probe is offered, never default, and its outcome is recorded separately from
+`status`:
+
+| `write_probe.result` | Meaning |
+| --- | --- |
+| `"not attempted"` | The default. The binding resolved; write access is unproven and the first real write is the test. |
+| `"passed"` | An entry was created successfully. It is still there — `write_probe.cleanup` names it so a human can delete it. |
+| `"failed"` | Notion refused the write. The binding's `status` is `read-only`. |
+
+A consumer must not treat `"not attempted"` as a reason to refuse. It writes, and
+reports cleanly if the write is refused.
 
 **An unvalidated binding is never recorded as if it were confirmed.** A skill that
 finds `read-only` or `unresolved` degrades to reporting; it does not retry, and it
