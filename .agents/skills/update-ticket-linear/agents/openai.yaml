@@ -1,7 +1,7 @@
 interface:
   display_name: "Update Ticket (Linear)"
-  short_description: "Update a Linear issue status after AC evaluation"
-  default_prompt: "Evaluate acceptance criteria for the Linear issue (using a matching linear worktree when present), update Linear state via MCP, cascade unblocked relations when safe, and do not commit git changes."
+  short_description: "Update Linear from evidence without redundant confirmation"
+  default_prompt: "Use $update-ticket-linear to reconcile the issue and affected dependencies, mark Done directly when evidence is sufficient, and handle independently authorized document follow-up without git commits."
 
 policy:
   allow_implicit_invocation: false

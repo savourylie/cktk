@@ -1,7 +1,7 @@
 interface:
   display_name: "Update Ticket"
-  short_description: "Change a ticket status, checking matching worktrees"
-  default_prompt: "Update the requested ticket status, checking a matching .worktrees checkout when present, refresh docs/tickets/INDEX.md, and commit the documentation changes."
+  short_description: "Verify ticket status and commit scoped tracker updates"
+  default_prompt: "Use $update-ticket to reconcile the selected ticket and its tracker in the correct checkout, mark Done directly when evidence is sufficient, and commit only the intended document changes."
 
 policy:
   allow_implicit_invocation: false

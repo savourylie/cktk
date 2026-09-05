@@ -57,12 +57,12 @@
     {
       "name": "update-ticket",
       "path": ".agent/skills/update-ticket",
-      "description": "Update ticket status, checking matching worktrees, cascade dependencies, and refresh INDEX.md (docs/tickets twin of update-ticket-linear)"
+      "description": "Reconcile local ticket status and dependencies from evidence, mark Done without redundant confirmation, and commit only scoped tracker changes in the selected checkout"
     },
     {
       "name": "update-ticket-linear",
       "path": ".agent/skills/update-ticket-linear",
-      "description": "Update a Linear issue status after AC evaluation, checking matching linear worktrees (requires Linear MCP; Linear twin of update-ticket)"
+      "description": "Reconcile a Linear issue and affected dependencies from evidence, mark Done without redundant confirmation, and handle independently authorized project-document follow-up without git commits"
     },
     {
       "name": "quiz-ticket",

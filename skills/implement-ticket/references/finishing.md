@@ -28,9 +28,9 @@ That workflow commits only when needed, then pushes and creates or reuses the ma
 
 ## Tracker updates
 
-Run the matching update skill only for an authorized status action, passing the exact ticket/issue and requested mode. Confirm acceptance evidence first. Do not use an explicit `done` argument to bypass unmet or unverified criteria; required manual acceptance needs the user's acceptance or an explicit project rule.
+Run the matching update skill for an authorized status action, passing the exact ticket/issue, requested mode, and existing evidence. When the outcome is supported and required acceptance is confirmed, mark Done directly without another approval question. Clarify only a material contradiction or consequential gap; an explicit `done` argument alone does not resolve one. Reuse applicable verification and previously confirmed acceptance.
 
-`update-ticket` edits local ticket metadata and `INDEX.md` and creates its own documentation commit. Call it before staging implementation files so that commit cannot absorb already-staged code; preserve unrelated staging. `update-ticket-linear` does not commit code. Its Project Context and Notion writes have their own authorization and binding requirements; an implementation or issue-status request does not automatically authorize them.
+`update-ticket` reconciles local ticket metadata and `INDEX.md`, then uses `commit-ticket` for a scoped documentation commit that preserves already-staged code and unrelated work. There is no required ordering relative to staging implementation files. `update-ticket-linear` does not commit code. Project Context and Notion follow-up each honor their own bindings, preferences, and existing authorization; a missing optional consent never holds an otherwise supported Done transition.
 
 Keep updates on the implementation branch before any requested merge/cleanup so local evidence is still available and local tracker changes are included. If the user chose a different ordering, follow it deliberately and report any remaining work. Post an as-built comment only when separately authorized, avoiding a duplicate summary if the update workflow already supplies it.
 

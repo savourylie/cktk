@@ -39,7 +39,7 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 | `clarify-ticket` · `clarify-ticket-linear` | Interactively clarify a ticket's details, blind spots, and risks against the codebase before implementation | Read-only: never edits tickets, INDEX.md, Linear, or git |
 | `implement-ticket` · `implement-ticket-linear` | Implement a ticket in its project business context, trace direct and indirect ticket relationships, clarify conflicting definitions, and verify the result; supports `worktree` and final `via codex\|claude\|grok` delegation | Default: implementation, review, and summary; further actions follow existing user authorization. Linear Backlog issues are valid inputs. The automatic Todo → In Progress transition occurs only after context and workspace readiness; completion updates use the matching update skill |
 | `review-ticket` | Review uncommitted changes, branch diffs, PR diffs, single commits, or ticket/Linear-issue implementations for bugs and scope gaps | Linear issue mode requires Linear MCP |
-| `update-ticket` · `update-ticket-linear` | Change a ticket/issue status, check matching worktree implementations, and cascade dependency/blocked markers | docs twin refreshes INDEX.md and commits the doc update; Linear twin evaluates acceptance criteria first and creates no git commit. With bindings from `init-project`, the Linear twin also syncs the Project Context document and appends cross-cutting decisions to the Notion decision log — each asked once, defaulting to no, and neither able to fail the status update |
+| `update-ticket` · `update-ticket-linear` | Reconcile status and affected dependencies from business context and acceptance evidence, in the selected checkout | Clear completion moves directly to Done without another confirmation. The docs twin commits only its tracker changes via `commit-ticket`; the Linear twin creates no git commit. Bound Project Context and Notion follow-ups use independent preferences and authorization |
 | `quiz-ticket` · `quiz-ticket-linear` | Quiz your understanding of an implemented ticket from its implementation diff, or produce a stakeholder explainer with `explain` | Read-only against the repo and Linear |
 
 ### Git workflow
@@ -286,8 +286,8 @@ The default assessment reads sources and replies in the conversation. It uses `.
 /review-ticket --ticket TAI-90                # Same, resolving the default main/master base
 /review-ticket abc1234                       # Review a single commit
 
-/update-ticket TICKET-003 done               # Mark done; checks .worktrees/003-slug if present
-/update-ticket-linear ENG-42                 # Auto-eval acceptance criteria; mark Done when safe
+/update-ticket TICKET-003 done               # Verify completion and commit scoped tracker changes
+/update-ticket-linear ENG-42                 # Mark Done directly when the outcome is established
 /update-ticket-linear ENG-42 in-progress     # Move a Linear issue to In Progress
 
 /quiz-ticket 007                             # Quiz your understanding of an implemented ticket (read-only)
@@ -329,6 +329,17 @@ $implement-ticket-linear ENG-42 worktree dev
 Both skills default to implementation, verification, review, and a summary. They carry forward existing authorization for commits, PRs, merges, and tracker updates without forcing another landing menu. A missing ticket ID may be resolved from unambiguous conversation or branch context; it never starts the entire backlog. Batches require an explicit scope.
 
 The optional final `via <executor>` clause supports `codex`, `claude`, and `grok`. The selected CLI receives the agreed business context and implements only in the chosen ticket checkout. The invoking host independently verifies and performs ticket-specific review before authorized follow-up. Delegation, workspace, and finishing details live in shared references and are read when needed.
+
+Both update skills reuse the ticket's business context, selected checkout/base, and applicable verification. When the outcome is clear and required acceptance is confirmed, auto mode and an explicit Done request complete without another confirmation. They ask only about a material conflict or missing evidence; a missing formal checklist is fine when the required outcome is otherwise clear and verified. Custom Linear completion states use the same standard, and multiword state names are supported.
+
+```text
+$update-ticket
+$update-ticket 003 done
+$update-ticket-linear ENG-42
+$update-ticket-linear ENG-42 In Progress
+```
+
+An already-matching status still allows stale dependency/index data and known unfinished operations to be reconciled. The local skill commits only its intended tracker changes via `commit-ticket`, preserving staged code and other edits. The Linear skill keeps Project Context sync and Notion decision logging independent, each honoring its own binding, preference, and prior authorization. Optional document consent or failure does not delay a supported Done transition. Detailed rules are shared references loaded for the relevant operation.
 
 ### Git and worktrees
 
