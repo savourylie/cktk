@@ -46,7 +46,7 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 
 | Skill(s) | What it does | Notes |
 |---|---|---|
-| `commit-ticket` | Create a single git commit from the intended repo changes | |
+| `commit-ticket` | Stage intended pending changes and create one documented git commit, for ticket work or ad hoc edits | Includes unstaged changes and relevant new files by default; uses Conventional Commits with an explanatory body for substantive changes. No ticket ID required |
 | `commit-push-pr` | Create one commit, push the branch, and open a pull request | |
 | `create-worktree` · `create-worktree-linear` | Create git worktrees for one or more tickets under `.worktrees/NNN-slug/` or Linear issues under `.worktrees/ENG-42-slug/`, each on its own branch off a chosen base | Linear twin requires Linear MCP and makes no Linear writes — not even the Todo → In Progress transition `implement-ticket-linear` performs |
 | `merge-worktree` · `merge-worktree-linear` | Merge ticket or Linear issue worktree branches back into their base, then remove the worktree and delete the local branch | Cleanup halves of the two create skills. The Linear twin is the one `-linear` skill that needs no Linear MCP — everything it reads is on disk |
@@ -333,7 +333,7 @@ The optional final `via <executor>` clause supports `codex`, `claude`, and `grok
 ### Git and worktrees
 
 ```text
-/commit-ticket                        # Commit current changes
+/commit-ticket                        # Stage and commit intended changes; no ticket required
 /commit-push-pr                       # Commit, push, and open a PR
 /create-worktree 7                    # Worktree for ticket 007 off origin/main
 /create-worktree 7 8 9 dev            # Several tickets at once, based on origin/dev
@@ -343,6 +343,16 @@ The optional final `via <executor>` clause supports `codex`, `claude`, and `grok
 /merge-worktree-linear ENG-42         # Merge ENG-42 back, remove worktree, delete branch
 /merge-worktree-linear ENG-42 no-cleanup    # Merge and remove the worktree, but keep the branch
 ```
+
+`commit-ticket` works with or without a ticket. It stages intended unstaged edits, deletions, and new files before committing, alongside any in-scope staged changes. A general request uses the current checkout's pending changes unless the conversation defines a narrower scope or known exclusions. Explicit staged-only or path-limited requests are respected, and unrelated staging and working-tree changes are preserved.
+
+```text
+$commit-ticket
+$commit-ticket commit the pending typo and layout fixes
+$commit-ticket commit only the currently staged changes
+```
+
+Messages default to [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/), following repository requirements and explicit user messages. This skill additionally requires an explanatory body for substantive changes: motivation, resulting behavior, important decisions, and relevant verification evidence. Tiny self-explanatory corrections can use a subject alone. Ticket references and scope are optional; no fixed body headings or line count are imposed.
 
 ### Agent handoff
 

@@ -82,7 +82,7 @@
     {
       "name": "commit-ticket",
       "path": ".agent/skills/commit-ticket",
-      "description": "Create a single git commit from current changes"
+      "description": "Stage intended pending changes and create one documented Conventional Commit for ticket work or ad hoc edits; includes unstaged changes and relevant new files, with an explanatory body for substantive changes"
     },
     {
       "name": "commit-push-pr",

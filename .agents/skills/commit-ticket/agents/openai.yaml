@@ -1,8 +1,7 @@
 interface:
   display_name: "Commit Ticket"
-  short_description: "Stage the intended changes and create one git commit"
-  default_prompt: "Inspect the current git state, stage the intended changes, and create a single commit."
+  short_description: "Stage changes and create a documented conventional commit"
+  default_prompt: "Use $commit-ticket to stage the intended pending changes, including unstaged edits and new files, and create one commit with a Conventional Commits message explaining its purpose and behavior. No ticket is required."
 
 policy:
   allow_implicit_invocation: false
-
