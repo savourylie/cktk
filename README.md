@@ -35,6 +35,7 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 | `init-project` | Record where this repository's project lives — Linear team and project, Notion hub and decision log, and the repository paths holding requirements — into a committed `.ai/cktk/project.json` that other skills read | Discovers candidates from README/PRD/design docs before asking; validates every binding against the live services, including a consented write probe; never records an unvalidated binding as confirmed. Re-runnable for single-field corrections |
 | `project-advisor` | Assess overall project direction across Notion, Linear, and repo evidence; recommend strategic trade-offs and tactical next steps, discuss alternatives, and revisit earlier decisions | Uses existing `init-project` bindings; continues with available evidence when a source is missing. Advisory by default; saves a dated discussion/decision record on request |
 | `create-tickets` | Generate dev tickets into `docs/tickets/` from a PRD, a features catalog, or a Plan Mode plan (plus optional design/UX/reference documents), with dependency ordering and an INDEX.md tracker | |
+| `create-tickets-linear` | Create Linear issues from requirements, a feature catalog, or a conversation or saved plan, with acceptance criteria and native dependency relations | Uses explicit destinations or validated project bindings; checks existing coverage and reconciles partial creation before retrying. Requires Linear MCP; preserves existing issues |
 | `clarify-ticket` · `clarify-ticket-linear` | Interactively clarify a ticket's details, blind spots, and risks against the codebase before implementation | Read-only: never edits tickets, INDEX.md, Linear, or git |
 | `implement-ticket` · `implement-ticket-linear` | Implement a ticket end to end on its own branch with code review and manual testing instructions, then offer to merge it, open a PR, commit only, or leave it; optional `worktree` isolation and final `via codex\|claude\|grok` implementation delegation | The selected CLI implements only; the invoking host independently verifies and reviews before landing. The docs twin appends as-built notes and can run `update-ticket` during landing; the Linear twin moves Todo to In Progress before implementation and can post one opt-in as-built comment, but never sets a completion status |
 | `review-ticket` | Review uncommitted changes, branch diffs, PR diffs, single commits, or ticket/Linear-issue implementations for bugs and scope gaps | Linear issue mode requires Linear MCP |
@@ -145,9 +146,9 @@ Codex Desktop can also install skills directly from this GitHub repo via `$skill
 
 `codex-handoff`, `grok-handoff`, `opencode-handoff`, and `takeover` are not compatible with archive-based or sparse-checkout `$skill-installer` installation because their Codex folders use repository-relative symlinks to shared scripts under `skills/`. Install those four through the repo-local or user-global full-tree symlink methods above.
 
-`project-advisor` also requires the full-tree methods: its shared references live under `skills/project-advisor/`, and source discovery reads the sibling `init-project` bindings contract.
+`project-advisor` and `create-tickets-linear` also require the full-tree methods: their shared references live under `skills/`, and binding-aware source discovery reads the sibling `init-project` bindings contract.
 
-To install the remaining installer-compatible skills, use one request listing their paths (excluding the four handoff skills and `project-advisor`):
+To install the remaining installer-compatible skills, use one request listing their paths (excluding the four handoff skills, `project-advisor`, and `create-tickets-linear`):
 
 ```text
 $skill-installer install from https://github.com/savourylie/cktk with these paths:
@@ -207,7 +208,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in init-project project-advisor create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree create-worktree-linear merge-worktree merge-worktree-linear feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover clarify debrief-result interact-html readme-builder update-agents design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
+for s in init-project project-advisor create-tickets create-tickets-linear implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree create-worktree-linear merge-worktree merge-worktree-linear feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover clarify debrief-result interact-html readme-builder update-agents design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills
@@ -251,12 +252,17 @@ The default assessment reads sources and replies in the conversation. It uses `.
 /init-project notion                         # Re-validate and correct just the Notion bindings
 /init-project --show                         # Print the current bindings and their statuses
 
-/create-tickets PRD:docs/PRD.md              # Generate tickets from a PRD
-/create-tickets PRD:docs/PRD.md DESIGN:docs/DESIGN.md UX:docs/UX.md
-/create-tickets PRD:docs/PRD.md DESIGN:https://api.anthropic.com/v1/design/h/abc123   # Claude Design URL; also accepts folders, PDFs, PPTX
-/create-tickets FEATURES:docs/FEATURES.md    # Append new features to an existing project
-/create-tickets PLAN                         # Break the current Plan Mode plan into tickets (or PLAN:<path> for a saved plan file)
-/create-tickets                              # Auto-detects the PRD
+/create-tickets PRD: docs/PRD.md              # Create tickets, or append to an existing backlog
+/create-tickets PRD:docs/PRD.md DESIGN: system-design/ UX: docs/UX.md
+/create-tickets FEATURES: docs/FEATURES.md    # Ticket only work not already implemented or ticketed
+/create-tickets PLAN                         # Use the plan identified in this conversation
+/create-tickets PLAN: "docs/plans/account recovery.md"
+/create-tickets append tickets for the recovery flow from docs/PRD.md
+/create-tickets                              # Discover the PRD when no source is supplied
+
+/create-tickets-linear PRD: docs/PRD.md TEAM: ENG PROJECT: "Account Platform"
+/create-tickets-linear FEATURES: docs/FEATURES.md  # Use the bound Linear destination
+/create-tickets-linear PLAN                       # Create issues from this conversation's plan
 
 /clarify-ticket 007                          # Read ticket, analyze vs. code, discuss risks (read-only)
 /clarify-ticket-linear ENG-42                # Same for a Linear issue (requires Linear MCP)
@@ -288,6 +294,24 @@ The default assessment reads sources and replies in the conversation. It uses `.
 /quiz-ticket 007 explain                     # Stakeholder explainer instead of a quiz
 /quiz-ticket-linear ENG-42                   # Same for a Linear issue; `explain` works here too
 ```
+
+For Codex, invoke ticket creation explicitly:
+
+```text
+$create-tickets PRD: docs/PRD.md DESIGN: system-design/
+$create-tickets FEATURES:docs/FEATURES.md
+$create-tickets PLAN
+$create-tickets append tickets for the recovery flow from docs/PRD.md
+
+$create-tickets-linear PRD: docs/PRD.md TEAM: ENG PROJECT: "Account Platform"
+$create-tickets-linear FEATURES:docs/FEATURES.md
+$create-tickets-linear PLAN
+$create-tickets-linear draft recovery-flow issues for the bound Linear project
+```
+
+`create-tickets` accepts natural language, `KEY:value` and `KEY: value`, and quoted paths with spaces. PRDs, catalogs, and plans can seed a new tracker or extend an existing one. Existing tickets are preserved by default; replacement requires authorization. Ticket boundaries follow coherent, verifiable outcomes. Separate checkpoints are added where integration, risk, or user acceptance warrants a gate.
+
+`create-tickets-linear` uses the same breakdown principles, with Linear-assigned identifiers, team workflow states, and native blocking relations. Explicit team/project choices take precedence over compatible validated `.ai/cktk/project.json` bindings. It checks existing coverage before creating, preserves existing issue content and status, and reports partial success so a retry can reconcile what already exists. Draft requests make no Linear writes; an authorized creation request proceeds without a second approval round. It does not create a local ticket tracker.
 
 The optional `via <executor>` clause is final and supports `codex`, `claude`,
 and `grok` for both ticket skill families. The selected CLI edits the pinned

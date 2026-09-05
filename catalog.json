@@ -20,6 +20,11 @@
       "description": "Generate development tickets from a PRD, feature catalog, or Plan Mode plan, with optional design inputs — files, directories, URLs, PDF, PPTX, or HTML (including Claude Design handoff bundles)"
     },
     {
+      "name": "create-tickets-linear",
+      "path": ".agent/skills/create-tickets-linear",
+      "description": "Create Linear issues from requirements, a feature catalog, or a plan, with acceptance criteria, native blocking relations, existing-work deduplication, and recovery from partial creation"
+    },
+    {
       "name": "implement-ticket",
       "path": ".agent/skills/implement-ticket",
       "description": "Implement a specific ticket on its own branch with code review, then offer to merge, open a PR, commit only, or leave it; optionally use an isolated worktree or delegate implementation via Codex, Claude Code, or Grok Build CLI (docs/tickets twin of implement-ticket-linear)"

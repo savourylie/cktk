@@ -1,0 +1,7 @@
+interface:
+  display_name: "Create Tickets (Linear)"
+  short_description: "Create Linear issues from requirements, features, or plans"
+  default_prompt: "Use $create-tickets-linear to turn the provided requirements, feature catalog, or plan into Linear issues in the selected team/project, with acceptance criteria and dependency relations."
+
+policy:
+  allow_implicit_invocation: true

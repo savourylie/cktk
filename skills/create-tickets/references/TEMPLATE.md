@@ -1,58 +1,55 @@
+# Ticket format
+
+Use `NNN-kebab-case-title.md` and the structure below. Replace example text with the actual ticket. Keep Status, Dependencies, Description, Acceptance Criteria, and Testing. Include the other sections only when they add useful context.
+
+Choose one status: `pending`, `in-progress`, `done`, `deferred`, or `blocked`. New tickets are `pending` when there are no unfinished prerequisites, otherwise `blocked`.
+
+Dependencies use `- Requires: None` or individual IDs such as `- Requires: #001 ✅, #002`. Add ` ✅` only to prerequisites recorded as `done`; this marker is used by status-update skills to unblock dependents. Mirror the same IDs and markers in the index.
+
+```markdown
 # [TICKET-NNN] Title
 
 ## Status
-`pending` | `in-progress` | `done` | `deferred` | `blocked`
+`pending`
 
 ## Dependencies
-- Requires: #NNN, #NNN (or "None")
+- Requires: None
 
 ## Description
-Explain what this ticket accomplishes and why it matters at this point in the sequence:
-- What is being built or verified
-- Why it comes at this position (what it unlocks or depends on)
-- The most critical aspect or risk, if any
-
-1 paragraph for straightforward tickets; up to 2–3 short paragraphs when context is needed (e.g., tickets that gate progress, bridge multiple concerns, or have non-obvious sequencing).
+The outcome, why it matters, and any context needed to understand its scope.
 
 ## Acceptance Criteria
-- [ ] Criterion 1 — a specific, testable statement
-- [ ] Criterion 2
-- [ ] Criterion 3
+- [ ] An observable, testable completion condition.
 
 ## Design Reference
-> Relevant sections from design inputs. Can cite DESIGN.md headings, directory file paths (`system-design/screenshots/hero.png`), page references (`design.pdf p.4`), or Claude Design artifact IDs. Delete this section for non-UI tickets.
-
-- **Tokens**: § Tokens > Colors, Typography
-- **Components**: § Components > Buttons
-- **Layout**: § Layout > Section Patterns > Hero
+Relevant design sections, supplied URLs, file paths, or document pages.
 
 ## Visual Reference
-> Describe what the user should see when this ticket is done. Delete for non-UI tickets.
-
-Example: "The landing page hero section is visible at `/`. Left side shows the heading in Outfit 800 with a yellow circle behind it. Right side shows a placeholder image with blob clip-path. A dot-grid pattern fills the background. The primary CTA button uses the Candy Button style and responds to hover/active with shadow shifts."
+What the user should see or experience, including relevant interaction states.
 
 ## References
-> Existing code or documents to imitate, each with a note on what to take from it. Delete this section when the project has no relevant exemplar.
-
-- `src/components/SettingsModal.tsx` — focus trap and escape handling to reuse for the new modal
-- `docs/DESIGN.md` § Forms — validation error copy pattern
+- An existing code or document path — the specific pattern or constraint to take from it.
 
 ## Implementation Notes
-- Key files to create or modify
-- Architectural decisions or assumptions made
-- Gotchas or edge cases to watch for
+- Required constraints: agreed decisions or project requirements.
+- Suggested approach: useful implementation options that may be adjusted.
 
 ## Testing
-- How to verify this ticket is complete (e.g., `npm run dev` and navigate to `/`, run `npm test`, visual check in browser)
+How to verify acceptance: relevant commands, interactions, and expected results.
+```
 
----
+Acceptance criteria cover the necessary behavior without a numerical quota. Description length follows the context needed. For UI work, include applicable design sources and observable visual or interaction outcomes; do not invent a design reference when none was supplied.
 
-## Checkpoint Ticket Variant
+Verify paths cited as existing references. Identify proposed new files as proposals in Implementation Notes. Keep established constraints separate from suggestions, and omit speculative steps or empty sections.
 
-Checkpoint tickets use the same structure with these modifications:
+## Checkpoint variant
 
-- **Header**: `# [TICKET-NNN] TEST: Checkpoint N — What's Being Tested` or `# [TICKET-NNN] TEST: Phase N Checkpoint — Phase Summary`
-- **Description**: What tests to execute, that this is a gate, and what must pass before proceeding. 2–3 paragraphs: context on what was just built, what this checkpoint verifies, and what is gated by it.
-- **Acceptance Criteria**: Specific pass/fail test cases — not code changes. Each criterion is a concrete verification (e.g., "Navigate to `/` — page loads with no console errors").
-- **Implementation Notes**: "This is a manual test execution ticket — no code changes unless bugs are found during testing." Include common failure modes, test commands, and environment setup.
-- **Testing**: The full verification checklist — this section IS the ticket's primary deliverable. Summarize what must pass and where results should be recorded.
+Create a checkpoint only when the breakdown calls for a separate verification gate.
+
+- **Filename:** `NNN-test-checkpoint-N-kebab-description.md` or `NNN-test-phaseN-checkpoint.md`.
+- **Header:** `# [TICKET-NNN] TEST: Checkpoint N — What's Being Tested` or `# [TICKET-NNN] TEST: Phase N Checkpoint — Phase Summary`.
+- **Description:** Why this needs separate verification, what it covers, and which work waits for the result.
+- **Dependencies:** The tickets whose outcomes are required for the verification.
+- **Acceptance Criteria:** Observable pass/fail results.
+- **Testing:** Suitable automated checks, manual checks, or both, including necessary setup and where results should be recorded. Specify any user acceptance required.
+- **Implementation Notes:** Relevant test setup, constraints, or missing verification support when useful. Do not assume every checkpoint is manual or that it cannot include test code.

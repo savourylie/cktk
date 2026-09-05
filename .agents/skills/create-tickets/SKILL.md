@@ -1,126 +1,67 @@
 ---
 name: create-tickets
-description: "Generate dev tickets from requirements documents, extend an existing project with new features, or break a Plan Mode plan into tickets. Use when the user provides a PRD, product spec, or requirements doc and wants tickets created; provides a FEATURES catalog to add new features to an existing project; has just written or points at a Plan Mode plan and wants it broken into tickets; or asks to break down requirements or a plan into development work items. Prefer explicit invocation with $create-tickets."
+description: "Turn requirements, a feature catalog, or a conversation or saved plan into development tickets under docs/tickets/, with dependencies and an INDEX.md tracker. Use for creating or extending a ticket backlog. Prefer explicit invocation with $create-tickets."
 ---
 
-**Argument:** `$ARGUMENTS`
+Create tickets with clear completion criteria and preserve the conventions that implementation and status-update skills consume. Let the work determine its decomposition.
 
-Turn a PRD or FEATURES catalog (and optional design/UX/reference inputs) into well-ordered development tickets, or extend an existing ticket project with new features.
+## Understand the inputs and intended operation
 
-## Inputs
+Interpret the text after `$create-tickets` with the user's current request and conversation. Accept natural language and the familiar case-insensitive aliases:
 
-Arguments are key-value pairs separated by spaces:
+- `PRD: <path>` for requirements and `FEATURES: <path>` for a feature catalog.
+- `PLAN` for the plan identified in this conversation, or `PLAN: <path>` for a saved plan.
+- `DESIGN:`, `UX:`, and `MISC:` for supplementary context; each accepts multiple files, directories, or URLs.
 
-- `PRD: <file_path>` — exactly one path to the product requirements document (auto-detected if omitted; mutually exclusive with `FEATURES:`)
-- `FEATURES: <file_path>` — exactly one path to a feature catalog; appends new tickets to an existing project (mutually exclusive with `PRD:`)
-- `PLAN` or `PLAN: <file_path>` — break a Plan Mode plan into tickets. Bare `PLAN` uses the plan from the current conversation; `PLAN: <path>` reads a saved plan file. Mutually exclusive with `PRD:`/`FEATURES:`
-- `DESIGN: <input> [<input> …]` — one or more design inputs: file path, directory path, or URL
-- `UX: <input> [<input> …]` — one or more UX specification inputs: file path, directory path, or URL
-- `MISC: <input> [<input> …]` — one or more additional reference inputs: file path, directory path, or URL
+Both `KEY:value` and `KEY: value` are valid; preserve quoted paths with spaces. Combine complementary sources and clarify conflicts only when they materially change scope. For a conversation plan with a known saved path, read that file fresh. Do not guess a plan by searching a global plans directory for the latest file.
 
-## Phase 1: Gather Inputs
+If the user has supplied no requirements through the request or conversation, look for the highest-numbered `docs/tickets/PRDv*.md`, then `docs/tickets/PRD.md`, then `docs/PRD.md`. Ask for the missing source if none resolves.
 
-1. Parse `$ARGUMENTS`: tokenize on whitespace. Tokens exactly matching `PRD:`, `FEATURES:`, `DESIGN:`, `UX:`, `MISC:`, or `PLAN`/`PLAN:` (case-insensitive; colon optional only for `PLAN`) open a new section; all subsequent non-key tokens append to that section. `PRD:` and `FEATURES:` accept exactly one value each; if more than one of `PRD:`/`FEATURES:`/`PLAN` is passed, error and stop ("pass exactly one"). `PLAN` accepts zero or one value — bare `PLAN` means use the plan from the current conversation; one path reads that file; more than one is an error. `DESIGN:`, `UX:`, and `MISC:` accept one or more inputs. A key other than `PLAN` with no values is an error.
+Source type does not determine whether this is a new project. Create a new tracker if there are no tickets; otherwise default to append unless the user requested replacement. Replacing a set requires authorization for the affected existing tickets. When that is missing, prepare the proposed replacement and identify the files affected before asking; preserve source documents and unrelated files. Honor an operation already chosen in the conversation without asking again.
 
-2. **Mode** (`PRD:`/`FEATURES:`/`PLAN` are mutually exclusive): if `PLAN` is present → PLAN mode; else if `FEATURES:` is present → FEATURES mode (append); else → PRD mode (greenfield).
+```text
+$create-tickets PRD: docs/PRD.md DESIGN: system-design/
+$create-tickets FEATURES:docs/FEATURES.md
+$create-tickets PLAN: "docs/plans/account recovery.md"
+$create-tickets append tickets for the recovery flow from docs/PRD.md
+```
 
-3. **PLAN mode** — obtain the plan: `PLAN: <path>` reads that file (error and stop if missing); bare `PLAN` uses the implementation plan most recently produced in the current conversation (if it was saved to a `~/.claude/plans/*.md` path referenced this session, read that file fresh; if no plan is evident, ask the user to pass `PLAN: <path>` or create a plan first, and stop — do **not** scan `~/.claude/plans/`). Create `docs/tickets/` if absent; if `NNN-*.md` files already exist, handle like PRD mode: overwrite (restart at 001), append (continue from `max_num + 1` at the existing width), or abort.
+## Establish scope and existing coverage
 
-4. **PRD mode** — if no `PRD:` given, auto-detect:
-   a. Glob `docs/tickets/PRDv*.md` → highest version number
-   b. Fall back to `docs/tickets/PRD.md`
-   c. Fall back to `docs/PRD.md`
-   d. Nothing found → error and stop
+Follow applicable `AGENTS.md` instructions and relevant project documentation. Read the requested requirements; use the host's available document, browser, and image capabilities for supplementary sources. Start directory exploration from an index or design notes and inspect relevant visual evidence. Report the actual reason a source could not be read. Proceed with a disclosed gap only if it does not materially affect the ticket scope or acceptance.
 
-5. **PRD mode** — create `docs/tickets/` if it does not exist. If `NNN-*.md` ticket files already exist, ask: overwrite (restart at 001), append (continue from `max_num + 1`), or abort.
+For an existing backlog, begin with `docs/tickets/INDEX.md` and inspect related tickets and code. Expand as needed to resolve overlap and dependencies. Do not require a full reread of every ticket body. A missing index can be reconstructed from unambiguous ticket files; conflicting state needs clarification.
 
-6. **FEATURES mode** — verify the `FEATURES:` file exists, `docs/tickets/` contains at least one `NNN-*.md` file, and `docs/tickets/INDEX.md` exists. Error and stop if any check fails. Detect numbering width and `max_num` from existing files; new tickets start at `max_num + 1` with the same zero-padding width.
+Keep these distinctions when deciding what to add:
 
-7. Read all inputs plus `CLAUDE.md` at the project root if present. In FEATURES mode and PLAN+Append, also read every existing `docs/tickets/NNN-*.md` and `docs/tickets/INDEX.md`.
+- **Implemented:** use recorded completion and relevant code evidence where needed; ticket prose alone is not proof.
+- **Ticketed but unfinished:** reuse that coverage and reference its ticket ID when it is a prerequisite.
+- **Uncovered or partially covered:** create only the missing work.
 
-   **Input Types** — for each value in a DESIGN, UX, or MISC list:
+If the requested work is fully covered, explain the coverage without creating redundant tickets.
 
-   | Pattern | How to read |
-   |---|---|
-   | Starts with `http://` or `https://` | WebFetch. On 4xx or empty body: print "Claude Design share URLs are session-gated — export the handoff bundle to `./system-design/` and re-run, or pass a PDF or HTML export instead." and stop. |
-   | Directory path | Enumerate children; read `.md`, `.txt`, `.html`, `.json`, `.css`, `.svg`, `.png/.jpg/.jpeg/.webp`. For a Claude Design handoff bundle: `*.md` first, then `*.html`, then `screenshots/` images, then `*.json`/`*.css`. Read images multimodally. Skip unknown binaries with a one-line note. |
-   | `.md`, `.txt`, `.html`, `.json`, `.css`, `.svg` | Read as text. |
-   | `.pdf` | Read; page through in 10-page chunks if >10 pages. |
-   | `.pptx` | Delegate to `document-skills:pptx`; if unavailable, stop with "Re-export as PDF or HTML and re-run." |
-   | `.png`, `.jpg`, `.jpeg`, `.webp` | Read multimodally. |
-   | Non-existent file path | Error and stop. |
+## Choose ticket boundaries and verification
 
-## Phase 2: Analyze & Plan
+Aim for one coherent, reviewable outcome per ticket, verifiable after its prerequisites. Coupled implementation and tests may span several layers or files. Split when outcomes can ship independently or dependencies and risks merit separate handling. There is no required file count, workday size, criterion count, or number of tickets.
 
-Read all inputs. Identify features, infrastructure concerns, design constraints, open questions (note as assumptions), and out-of-scope items.
+Keep the user's scope and agreed plan decisions. Bootstrap only missing foundations. Use phases or themes when useful, without imposing Foundation/Core/Polish. Describe observable acceptance and proportionate verification; distinguish required constraints from suggested implementation details so the implementing agent can adapt its approach.
 
-Build a dependency graph:
-1. What must exist first? (scaffolding, tokens, data models)
-2. What depends on what?
-3. What can be parallelized?
+Document reasonable assumptions; resolve missing decisions that would materially change scope, architecture, or acceptance before writing the affected tickets.
 
-**PRD mode**: group into phases: Foundation → Core Features → Polish & QA.
+Use a separate checkpoint for an integration boundary, significant risk, or a user acceptance gate when individual ticket checks are insufficient. Explain the additional verification and its dependents. Only work that needs the gate should depend on it. Checkpoints can use automated checks, manual checks, or both; no fixed interval or final checkpoint is required. Existing gates remain intact during append.
 
-**FEATURES mode**: build an inventory of what existing tickets already deliver. Walk the FEATURES catalog feature-by-feature: classify each as "already covered" (skip), "partially covered" (ticket only the gap), or "not covered" (new tickets). New tickets may depend on existing ones by their existing number.
+## Produce compatible files
 
-**PLAN mode**: the plan is usually already decomposed (`## Approach`, `## Files`, `## Verification`, `## Out of scope`). Map its units of work into tickets rather than re-deriving from scratch; honor its out-of-scope list; base testing/checkpoint criteria on its verification section. Scale the ticket count and checkpoints to the plan's size (a small plan → a few tickets + at most one checkpoint; don't force Foundation/Core/Polish), and do not create a scaffolding ticket unless the plan bootstraps a brand-new project. In PLAN+Append, also apply the FEATURES-mode gap logic (skip already-built work; reference existing tickets by number).
+Read [references/TEMPLATE.md](references/TEMPLATE.md) and [references/INDEX.md](references/INDEX.md) for the shared ticket and tracker formats.
 
-Plan checkpoint placement (both modes):
-- **Feature checkpoints** after each group of 2–5 tickets that deliver a testable outcome
-- **Phase checkpoints** at the end of each phase (gate to next phase)
-- **Final end-to-end checkpoint** as the very last ticket in PRD mode; continue the checkpoint sequence in FEATURES mode and PLAN+Append; in PLAN mode scale to the plan (a single end-to-end checkpoint for a small plan)
-- Checkpoints are dependencies: subsequent tickets require the checkpoint
+Write under `docs/tickets/`. New and authorized replacement sets start at `001` with three-digit padding. On append, scan numeric prefixes matching `^(\d+)-.+\.md$`; continue after the highest number with that filename's padding width. Preserve existing IDs, filenames, and references. Continue numbered checkpoints after the highest existing `Checkpoint N`, or start at 0; phase checkpoint labels use their phase numbers.
 
-## Phase 3: Write Ticket Files
+Append changes only new ticket files, new index rows or sections, summary counts, and the update date. Preserve existing tickets and index rows, statuses, notes, and commentary. Set each new ticket's initial status and completed-dependency markers according to the templates.
 
-Read `./references/TEMPLATE.md` for the format.
+## Check the result
 
-Each ticket = one focused day of work. File naming: `NNN-kebab-case-title.md` in `docs/tickets/`. Use 3-digit padding in PRD+Overwrite and greenfield PLAN; preserve detected width in FEATURES mode, PRD+Append, and PLAN+Append. In PLAN mode there is no scaffolding first ticket unless the project is genuinely new.
+Validate source coverage and avoid duplicate work. Review new tickets for coherent scope, concrete acceptance, meaningful verification, and valid reference paths. Inspect IDs and dependency edges across the tracker for missing targets and cycles; load additional ticket detail only where needed. Confirm new statuses and dependency markers, index links, and accurate totals.
 
-Rules:
-- Header: `# [TICKET-NNN] Title`
-- Status: `pending` (deps met) or `blocked` (deps unmet)
-- Dependencies: `- Requires: #NNN, #NNN` or `- Requires: None`
-- Acceptance criteria: 2–3 minimum, specific and testable
-- Design/Visual Reference: include for UI tickets, delete for non-UI
-- References: existing code or documents to imitate, each with a note on what to take from it; populate in FEATURES/PLAN modes and from provided design/UX inputs; verify paths exist; delete when there is no exemplar
-- Implementation Notes: key files, decisions, gotchas
-- Testing: how to verify completion
+Correct newly created tickets and necessary index updates. Report unrelated old inconsistencies without rewriting them; resolve existing ambiguity first if it prevents valid numbering or dependencies.
 
-### Checkpoint Tickets
-
-Read `./references/TEMPLATE.md` — "Checkpoint Ticket Variant" section. For each checkpoint from Phase 2:
-
-- Filename: `NNN-test-checkpoint-N-kebab.md` or `NNN-test-phaseN-checkpoint.md`
-- Header: `# [TICKET-NNN] TEST: Checkpoint N — Title` or `# [TICKET-NNN] TEST: Phase N Checkpoint — Title`
-- Description: what tests to run, that it's a gate, 2–3 paragraphs with context
-- Acceptance criteria: pass/fail test cases, not code changes
-- Implementation notes: "Manual test execution ticket — no code changes unless bugs found"
-- Dependencies: last implementation ticket(s) in the group being tested
-- Number checkpoints sequentially across the project (Checkpoint 0, 1, 2...)
-
-## Phase 4: Write INDEX.md
-
-Read `./references/INDEX.md` for the format.
-
-**PRD or PLAN greenfield (or PRD+Overwrite)**: generate `docs/tickets/INDEX.md` from scratch with today's date, summary table (emoji status markers), phase tables (number, linked title, backtick-wrapped status, dependencies, notes), checkpoint rows in bold with `Gate: Phase N` in Notes, and a status key.
-
-**FEATURES mode (or PRD+Append / PLAN+Append)**: do **not** overwrite `INDEX.md`. Merge new rows: preserve all existing rows/statuses; extend the last phase table or add a new `## Phase N — [theme]` section above the Status Key; recount the Summary; update the date (with an optional parenthetical like `(added TICKET-015 through TICKET-021)`).
-
-## Phase 5: Self-Review
-
-Review ALL tickets for:
-1. Dependency ordering issues (circular, missing, or non-existent deps)
-2. Missing acceptance criteria (<2 or vague)
-3. Scope creep (>3 files or >5 criteria → split)
-4. Gaps (PRD/FEATURES entries with no ticket, missing infrastructure)
-5. Checkpoint coverage (every phase has one, final ticket is a checkpoint in PRD mode, gate deps correct, criteria are pass/fail)
-6. Consistency (template format, status correctness, INDEX accuracy, checkpoint rows bold with `Gate:` notes, every `## References` path exists in the repo)
-7. **Append-mode checks** (FEATURES mode, PRD+Append, and PLAN+Append): new tickets continue from `max_num + 1` with the detected width; no existing files modified; INDEX merged not rewritten; no duplicate coverage.
-8. **PLAN-mode coverage** (PLAN mode): every actionable item in the plan's Approach/Files is ticketed; nothing the plan put out of scope was ticketed; no scaffolding ticket for an existing project.
-
-Fix any problems found. Update both ticket files and INDEX.md.
-
-## Phase 6: Summary
-
-Report: mode (PRD greenfield, FEATURES append, or PLAN — for PLAN, note whether the plan came from this conversation or a file path), ticket count (implementation + checkpoint), phase grouping with checkpoint gates, assumptions made, path to INDEX.md. In FEATURES mode, list which FEATURES catalog entries were skipped (already covered by existing tickets). Suggest `$implement-ticket 001` for greenfield or `$implement-ticket <first new number>` for append.
+Finish with the source and create/append/replace operation, new count and ID range, reasons for any checkpoints, skipped implemented or already-ticketed work, material assumptions or evidence gaps, a link to `INDEX.md`, and tickets ready to start. Explicitly report when no new tickets were needed.
