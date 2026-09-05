@@ -102,6 +102,13 @@ is how the manual process already fails — or guess.
 9. **Schema drift detection compares property types, not only names**
    (section 4.4).
 
+9a. **A run that writes no status still reaches Phase 8** (section 3.7). The status
+    write is one-way, so without this a sync whose patch was wrong, or whose
+    consent was declined, could never be retried through this command — the
+    idempotent stop would end the run before the sync. This is the recovery hole
+    decision 2 accepted on the assumption that printing the patch was enough
+    compensation; a live run showed it was not.
+
 10. **The sync target is the Project Context document, not the project
     description.** Verified against a live workspace after the first pass was
     written: the description held only stable intent — goal, guardrails, success
@@ -415,6 +422,16 @@ Only content the transition provably affects:
   are **added** to a milestone, not only when they complete, so a falling
   percentage usually means scope grew rather than work being lost. Where the
   document explains a number, the explanation must stay truthful.
+
+  **Every stated figure is checked, not only the one belonging to this issue's
+  milestone** — and a figure used as part of an anchor is still checked. A first
+  live run corrected one percentage and left another wrong in the same sentence,
+  having used the stale number as anchor text without ever verifying it.
+
+- **Amend rather than replace.** Where a sentence is falsified only in part — "A, B
+  and C have not started" and only B is done — the fix carves out the exception and
+  keeps the true remainder. Replacing the sentence with a different
+  characterisation loses information the document had before the sync.
 - A "last synced" marker, **only where one already exists.** When
   `last_synced_marker` is `null` the document has none, and the sync does not
   invent one: adding a line to a shared document nobody asked for is exactly the
@@ -462,7 +479,22 @@ This cannot be fixed by reordering; the two writes are separate API calls agains
 separate objects. The skill documents the promise as "usually syncs, always
 reports".
 
-#### 3.6 No Project Context exists
+#### 3.6 A run that writes no status
+
+When the issue already holds the target state, Phase 5 reports the transition as
+idempotent and skips the status write and the cascade — but the run continues into
+this phase. The question changes from *what did this transition falsify?* to *what
+does the document state about this issue, its blockers, or its milestones that
+Linear now contradicts?* The bounds, anchor rules, consent, and the obligation to
+leave ambiguity alone are all unchanged.
+
+The decision-log phase of section 4 is skipped in such a run: a sync-only pass
+settles no decision, so there is nothing for it to record.
+
+This makes a repeat invocation converge the document rather than be a no-op, and it
+is the only route back to a sync after a declined consent or a bad patch.
+
+#### 3.7 No Project Context exists
 
 Offer to create a minimal Project Context **document**: state section, current
 phase, next checkpoint, and the last-synced marker. Never invent purpose,

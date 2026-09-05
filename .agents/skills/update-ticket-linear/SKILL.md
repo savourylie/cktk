@@ -44,7 +44,11 @@ Not accepted: multi-issue batches, title-only search, commit flags, empty “nex
    - Current branch `^linear-([A-Za-z]+-\d+)-` → issue id; `WORK_DIR=$CURRENT_ROOT`
    - Else registered `$MAIN_ROOT/.worktrees/*` whose branch matches `^linear-([A-Za-z]+-\d+)-` and has uncommitted changes or commits beyond base
    - 1 candidate → use it; 2+ → ask; 0 → stop and request an id
-4. Normalize to `issue_id` (TEAM-NUM uppercase, or extract from URL).
+4. Normalize to `issue_id` (TEAM-NUM uppercase, or extract from URL). If the issue
+   already holds the target state, report idempotent and stop **only when
+   `BINDINGS_AVAILABLE=false`**; otherwise skip Phases 6 and 7 and continue to
+   Phase 8, so a repeat invocation converges the Project Context instead of being a
+   no-op.
 5. Validate: unknown extra tokens → stop.
 6. Read `$MAIN_ROOT/.ai/cktk/project.json` — the project bindings, described
    normatively in `init-project`'s `references/project-schema.md`. Absent, or a
@@ -112,9 +116,16 @@ When the new state is completed-type:
 
 ## Phase 8: Sync the Linear Project Context
 
-Skip entirely when no status was written, `BINDINGS_AVAILABLE=false`,
-`linear.project_context.enabled` is false, its `status` is not `validated`, or
-`preferences.sync_project_context` is `never`.
+Skip entirely when `BINDINGS_AVAILABLE=false`, `linear.project_context.enabled` is
+false, its `status` is not `validated`, or `preferences.sync_project_context` is
+`never`.
+
+**A run that wrote no status still reaches this phase.** When the issue was already
+in the target state, report the transition as idempotent, skip Phases 6 and 7, and
+continue here — the question becomes *what does the document state about this
+issue, its blockers, or its milestones that Linear now contradicts?* Without this a
+sync could never be retried: the status write is one-way, so a run whose patch was
+wrong or whose consent was declined would have no way back.
 
 The Project Context is a Linear **Document**. The project *description* is a
 different object and this skill never writes it.
@@ -129,8 +140,21 @@ untrue ("in progress" now Done, "blocked by X" where X just closed, a dependent
 Phase 7 moved), a milestone number stated in prose (read the real figure from
 Linear; a falling percentage usually means issues were added, not that work was
 lost), and a last-synced marker **only where `last_synced_marker` is not null**.
-Never invent one. **Ambiguous effect means report and change nothing** — this phase
-is never obliged to write.
+Never invent one.
+
+**Check every figure the section states, not only this issue's milestone** — one
+status change can move several, and a figure you use as part of an anchor is still
+a figure you must verify. Reading a number closely enough to match on it and then
+writing it back unchanged is the easiest way to leave a known-wrong number in
+place.
+
+**Prefer a carve-out to a replacement.** "A, B and C have not started" where only B
+is done becomes "…have not started, apart from B" — replacing the sentence with a
+different characterisation drops the true remainder and the document loses
+information it had before the sync.
+
+**Ambiguous effect means report and change nothing** — this phase is never obliged
+to write.
 
 **Write:** `save_document` with `patch`, never `content`. Every anchor must match
 exactly once, operations apply atomically so a stale anchor aborts the whole save
@@ -145,7 +169,8 @@ description instead. Name `$init-project`.
 ## Phase 9: Record a cross-cutting decision in Notion
 
 Skip when Phase 8 was skipped for any reason, `notion.decision_log.status` is not
-`validated`, or `preferences.write_decision_log` is `never`.
+`validated`, `preferences.write_decision_log` is `never`, or **no status was written
+in this run** — a sync-only pass settles no decision.
 
 **Qualifies:** a decision settled while closing this issue whose reach exceeds it —
 it changes what another issue must do, moves a product or governance boundary, or

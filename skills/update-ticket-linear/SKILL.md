@@ -108,7 +108,7 @@ that is the failure this contract exists to remove.
 5. Compute worktree handles (always):
    - Path: `$MAIN_ROOT/.worktrees/<issue_id>-<slug>`
    - Branch: `linear-<issue_id>-<slug>`
-6. If current state already matches the explicit target (after mapping in Phase 5), report idempotent and **stop**. For `auto`, continue to evaluation.
+6. If current state already matches the explicit target (after mapping in Phase 5), report idempotent; **stop only when `BINDINGS_AVAILABLE=false`**, otherwise carry on to Phase 8 per the rule there. For `auto`, continue to evaluation.
 
 ## Phase 3: Resolve Working Directory
 
@@ -180,7 +180,11 @@ Present before writing Linear:
      | `blocked` | State whose name contains Block (case-insensitive); if none, stop and list states |
      | `deferred` | State matching Deferred, Canceled, or Cancelled; if none, stop and list states |
 3. If mapping is ambiguous (multiple equally good matches), list candidates and ask.
-4. If the issue is already in `target_state_name`, report and **stop** (idempotent).
+4. If the issue is already in `target_state_name`, report the transition as
+   idempotent. **Stop here only when `BINDINGS_AVAILABLE=false`**; otherwise skip
+   Phases 6 and 7 and continue to Phase 8, which can still reconcile a Project
+   Context that has drifted. A repeat invocation should converge the document
+   rather than be a no-op.
 
 ## Phase 6: Update Linear
 
@@ -203,9 +207,20 @@ Skip unless the resolved target is a completed-type state (`done` alias or equiv
 
 ## Phase 8: Sync the Linear Project Context
 
-**Skip this phase entirely when** no status was written in Phase 6, or
-`BINDINGS_AVAILABLE=false`, or `linear.project_context.enabled` is false, or its
-`status` is not `validated`, or `preferences.sync_project_context` is `never`.
+**Skip this phase entirely when** `BINDINGS_AVAILABLE=false`, or
+`linear.project_context.enabled` is false, or its `status` is not `validated`, or
+`preferences.sync_project_context` is `never`.
+
+**A run that wrote no status still reaches this phase.** When the issue was already
+in the target state, Phase 5 reports the transition as idempotent but does not end
+the run: the question here simply changes from *what did this transition falsify?*
+to *what does the document state about this issue, its blockers, or its milestones
+that Linear now contradicts?* Everything else — the bounds, the anchor rules,
+consent, and the obligation to leave ambiguity alone — is unchanged.
+
+Without this, a sync could never be retried. The status write is one-way, so a run
+whose patch was wrong, or whose consent was declined, would have no way back to
+this phase through this command.
 
 The Project Context is a **Linear Document**. The project *description* is a
 different object, and writing to it is out of scope for this skill under every
@@ -236,9 +251,23 @@ Change only what this transition provably falsified:
   milestone, not only when they complete, so a falling number usually means scope
   grew rather than work being lost. Where the prose explains a number, the
   explanation must stay true.
+
+  **Check every stated figure in the section, not only the milestone this issue
+  belongs to.** One status change can move several milestones, and a number that
+  was already stale stays stale unless someone looks. In particular, **a figure you
+  are using as part of an anchor is still a figure you must verify** — reading a
+  number closely enough to match on it and then writing it back unchanged is the
+  easiest way to leave a known-wrong number in place.
 - A last-synced marker, **only when `last_synced_marker` is not null**. Never
   invent one — adding an uninvited line to a shared document is exactly the kind of
   edit this phase's bounds exist to prevent.
+
+**Prefer a carve-out to a replacement.** When a sentence is falsified only in part
+— "A, B and C have not started" where only B is now done — amend it to preserve
+what is still true: "…have not started, apart from B." Replacing the sentence with
+a different characterisation drops the true remainder, so the document loses
+information it had before the sync. Change the smallest span that makes the
+sentence true again.
 
 **Ambiguous effect means report and change nothing.** This phase has no obligation
 to write. Reading the document and concluding that nothing was falsified is a
@@ -276,7 +305,8 @@ here and **do not write the project description instead**. Say so once and name
 
 **Skip entirely when** Phase 8 was skipped for any reason, or
 `notion.decision_log.status` is not `validated`, or `preferences.write_decision_log`
-is `never`.
+is `never`, **or no status was written in this run** — a sync-only pass settles no
+decision, so there is nothing for it to record.
 
 ### 9.1 What qualifies
 
