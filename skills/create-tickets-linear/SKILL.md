@@ -1,14 +1,13 @@
 ---
 name: create-tickets-linear
 description: "Create development issues in Linear from requirements, a feature catalog, or a conversation or saved plan. Use when the user wants work broken into Linear tickets or added to a Linear backlog, with acceptance criteria and dependency relations."
-user-invocable: true
 ---
 
 Turn the requested work into coherent, verifiable Linear issues. Linear owns the identifiers, workflow states, and dependency graph; do not generate a parallel `docs/tickets/` tracker or `INDEX.md`.
 
 ## Resolve the source and destination
 
-Interpret `$ARGUMENTS` with the current conversation. Accept natural language and case-insensitive aliases, with or without a space after the colon. Respect quoted values containing spaces.
+Interpret the invocation arguments with the current conversation. Accept natural language and case-insensitive aliases, with or without a space after the colon. Respect quoted values containing spaces.
 
 | Input | Meaning |
 | --- | --- |
@@ -26,11 +25,13 @@ Missing bindings do not prevent planning. Use explicit inputs or live discovery;
 
 If requirements were not supplied, use the bound canonical source when available, then `docs/PRD.md`. Ask for missing requirements if none resolves. Read relevant source content with available document, URL, and image tools; start directory exploration from its index or design notes. Report access failures and continue only where missing content does not materially affect the issues.
 
+Examples below show skill names and arguments; use the invoking agent's skill mechanism.
+
 ```text
-/create-tickets-linear PRD: docs/PRD.md TEAM: ENG PROJECT: "Account Platform"
-/create-tickets-linear FEATURES:docs/FEATURES.md
-/create-tickets-linear PLAN
-/create-tickets-linear append issues for account recovery to the bound Linear project
+create-tickets-linear PRD: docs/PRD.md TEAM: ENG PROJECT: "Account Platform"
+create-tickets-linear FEATURES:docs/FEATURES.md
+create-tickets-linear PLAN
+create-tickets-linear append issues for account recovery to the bound Linear project
 ```
 
 ## Establish coverage and shape the work

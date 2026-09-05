@@ -8,7 +8,6 @@ grok_exporter="$root/skills/grok-handoff/scripts/grok-handoff.sh"
 opencode_exporter="$root/skills/opencode-handoff/scripts/opencode-handoff.sh"
 finder="$root/skills/takeover/scripts/find-handoff.sh"
 installer="$root/scripts/install-global-handoff-tools.sh"
-all_agent_installer="$root/scripts/install-all-agent-skills.sh"
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/cktk-handoff-test.XXXXXX")"
 tmp="$(cd "$tmp" && pwd -P)"
 tests=0
@@ -620,97 +619,8 @@ fi
   fail "installer changed an unrelated symlink"
 pass "global installer is safe, idempotent, and PATH-aware"
 
-all_agents_home="$tmp/all-agents-home"
-all_agents_codex_home="$tmp/all-agents-codex"
-all_agents_project="$tmp/all-agents-project"
-mkdir -p "$all_agents_home" "$all_agents_codex_home/skills"
-init_repo "$all_agents_project"
-printf 'do not touch\n' >"$all_agents_codex_home/skills/private-skill.txt"
-HOME="$all_agents_home" CODEX_HOME="$all_agents_codex_home" PROJECT_ROOT="$all_agents_project" PATH="/usr/bin:/bin" \
-  "$all_agent_installer" >"$tmp/all-agents.out" 2>"$tmp/all-agents.err"
-assert_symlink "$all_agents_home/.local/bin/codex-handoff"
-assert_symlink "$all_agents_home/.local/bin/grok-handoff"
-assert_symlink "$all_agents_home/.local/bin/opencode-handoff"
-assert_symlink "$all_agents_home/.local/bin/cktk-takeover"
-[[ "$(readlink "$all_agents_home/.local/bin/codex-handoff")" = "$exporter" ]] ||
-  fail "all-agent installer pointed codex-handoff at the wrong exporter"
-[[ "$(readlink "$all_agents_home/.local/bin/grok-handoff")" = "$grok_exporter" ]] ||
-  fail "all-agent installer pointed grok-handoff at the wrong exporter"
-[[ "$(readlink "$all_agents_home/.local/bin/opencode-handoff")" = "$opencode_exporter" ]] ||
-  fail "all-agent installer pointed opencode-handoff at the wrong exporter"
-[[ "$(readlink "$all_agents_home/.local/bin/cktk-takeover")" = "$finder" ]] ||
-  fail "all-agent installer pointed cktk-takeover at the wrong finder"
-assert_symlink "$all_agents_codex_home/skills/takeover"
-assert_symlink "$all_agents_codex_home/skills/codex-handoff"
-assert_symlink "$all_agents_codex_home/skills/grok-handoff"
-assert_symlink "$all_agents_codex_home/skills/opencode-handoff"
-[[ "$(readlink "$all_agents_codex_home/skills/takeover")" = "$root/.agents/skills/takeover" ]] ||
-  fail "Codex takeover symlink points to the wrong skill"
-[[ "$(readlink "$all_agents_codex_home/skills/codex-handoff")" = "$root/.agents/skills/codex-handoff" ]] ||
-  fail "Codex codex-handoff symlink points to the wrong skill"
-[[ "$(readlink "$all_agents_codex_home/skills/grok-handoff")" = "$root/.agents/skills/grok-handoff" ]] ||
-  fail "Codex grok-handoff symlink points to the wrong skill"
-[[ "$(readlink "$all_agents_codex_home/skills/opencode-handoff")" = "$root/.agents/skills/opencode-handoff" ]] ||
-  fail "Codex opencode-handoff symlink points to the wrong skill"
-assert_contains "$all_agents_codex_home/skills/private-skill.txt" "do not touch"
-assert_symlink "$all_agents_home/.agent/skills"
-[[ "$(readlink "$all_agents_home/.agent/skills")" = "$root/.agent/skills" ]] ||
-  fail "Antigravity global skills symlink points to the wrong tree"
-assert_contains "$tmp/all-agents.out" "Codex skills"
-assert_contains "$tmp/all-agents.out" "Antigravity skills"
-assert_contains "$tmp/all-agents.out" "Shell helpers"
-assert_contains "$all_agents_project/.gitignore" ".ai/handoffs/"
-HOME="$all_agents_home" CODEX_HOME="$all_agents_codex_home" PATH="/usr/bin:/bin" \
-  "$all_agent_installer" >"$tmp/all-agents-again.out" 2>"$tmp/all-agents-again.err"
-stale_home="$tmp/stale-agents-home"
-stale_codex_home="$tmp/stale-codex"
-stale_tree="$tmp/stale-cktk/.agent/skills"
-mkdir -p \
-  "$stale_home/.agent" \
-  "$stale_codex_home/skills/cktk-upgrade" \
-  "$stale_codex_home/skills/implement-ticket" \
-  "$stale_tree/cktk-upgrade"
-printf -- '---\nname: cktk-upgrade\ndescription: stale fixture\n---\n' \
-  >"$stale_tree/cktk-upgrade/SKILL.md"
-printf -- '---\nname: cktk-upgrade\ndescription: stale Codex fixture\n---\n' \
-  >"$stale_codex_home/skills/cktk-upgrade/SKILL.md"
-printf -- '---\nname: implement-ticket\ndescription: stale Codex fixture\n---\n' \
-  >"$stale_codex_home/skills/implement-ticket/SKILL.md"
-ln -s "$stale_tree" "$stale_home/.agent/skills"
-HOME="$stale_home" CODEX_HOME="$stale_codex_home" PATH="/usr/bin:/bin" \
-  "$all_agent_installer" >"$tmp/stale-agents.out" 2>"$tmp/stale-agents.err"
-assert_symlink "$stale_codex_home/skills/cktk-upgrade"
-assert_symlink "$stale_codex_home/skills/implement-ticket"
-assert_symlink "$stale_codex_home/skills/implement-ticket-linear"
-[[ "$(readlink "$stale_codex_home/skills/cktk-upgrade")" = "$root/.agents/skills/cktk-upgrade" ]] ||
-  fail "stale Codex cktk-upgrade copy was not linked to the active tree"
-[[ "$(readlink "$stale_codex_home/skills/implement-ticket-linear")" = "$root/.agents/skills/implement-ticket-linear" ]] ||
-  fail "new Codex skill was not installed while migrating stale copies"
-assert_symlink "$stale_home/.agent/skills"
-[[ "$(readlink "$stale_home/.agent/skills")" = "$root/.agent/skills" ]] ||
-  fail "stale Antigravity skills symlink was not updated to the active cktk tree"
-pass "all-agent installer reconciles global Codex, Antigravity, and shell surfaces"
-
-bootstrap_home="$tmp/bootstrap-home"
-bootstrap_codex_home="$tmp/bootstrap-codex"
-mkdir -p \
-  "$bootstrap_home" \
-  "$bootstrap_codex_home/skills/cktk-upgrade" \
-  "$bootstrap_codex_home/skills/cinematic-design-system"
-printf -- '---\nname: cktk-upgrade\ndescription: stale bootstrap fixture\n---\n' \
-  >"$bootstrap_codex_home/skills/cktk-upgrade/SKILL.md"
-printf -- '---\nname: private-cinematic\ndescription: unrelated fixture\n---\n' \
-  >"$bootstrap_codex_home/skills/cinematic-design-system/SKILL.md"
-if HOME="$bootstrap_home" CODEX_HOME="$bootstrap_codex_home" PATH="/usr/bin:/bin" \
-  "$all_agent_installer" >"$tmp/bootstrap.out" 2>"$tmp/bootstrap.err"; then
-  fail "all-agent installer ignored an unrelated Codex skill conflict"
-fi
-assert_symlink "$bootstrap_codex_home/skills/cktk-upgrade"
-[[ "$(readlink "$bootstrap_codex_home/skills/cktk-upgrade")" = "$root/.agents/skills/cktk-upgrade" ]] ||
-  fail "installer did not repair cktk-upgrade before a later skill conflict"
-assert_contains "$bootstrap_codex_home/skills/cinematic-design-system/SKILL.md" "private-cinematic"
-assert_contains "$tmp/bootstrap.err" "refusing to replace non-cktk skill directory"
-pass "all-agent installer repairs cktk-upgrade before later skill conflicts"
+python3 "$root/scripts/test-agent-skills.py"
+pass "all-agent installer preserves provenance, scope, and shared payloads"
 
 for skill in codex-handoff grok-handoff opencode-handoff takeover; do
   assert_file "$root/skills/$skill/SKILL.md"
@@ -784,17 +694,13 @@ assert_contains "$root/.gitignore" ".ai/handoffs/"
 for upgrade_skill in \
   "$root/skills/cktk-upgrade/SKILL.md" \
   "$root/.agents/skills/cktk-upgrade/SKILL.md"; do
-  assert_contains "$upgrade_skill" "Already up to date"
-  assert_contains "$upgrade_skill" "install-all-agent-skills.sh"
-  assert_contains "$upgrade_skill" "automatically"
-  assert_contains "$upgrade_skill" "claude plugin marketplace update cktk"
-  assert_contains "$upgrade_skill" "claude plugin update cktk@cktk"
-  assert_contains "$upgrade_skill" "/reload-plugins"
-  assert_contains "$upgrade_skill" "Codex must be restarted"
-  assert_not_contains "$upgrade_skill" "Apply recommended setup?"
-  assert_not_contains "$upgrade_skill" "CACHE_PATH"
-  assert_not_contains "$upgrade_skill" "rsync -a"
+  assert_file "$(dirname "$upgrade_skill")/references/upgrade.md"
 done
+upgrade_flow="$root/skills/cktk-upgrade/references/upgrade.md"
+assert_contains "$upgrade_flow" "install-all-agent-skills.sh"
+assert_contains "$upgrade_flow" "agent-skills.py doctor --runtime"
+assert_not_contains "$upgrade_flow" "Codex must be restarted"
+assert_not_contains "$upgrade_flow" "rsync -a"
 pass "documentation and release metadata register the MVP"
 
 printf '1..%d\n' "$tests"

@@ -1,7 +1,6 @@
 ---
 name: implement-ticket
-description: "Implement a docs/tickets ticket in its project business context, with validation and review. Supports worktree isolation and optional implementation delegation via codex, claude, or grok. Use for /implement-ticket or requests to implement a local development ticket."
-user-invocable: true
+description: "Implement a docs/tickets ticket in its project business context, with validation and review. Supports worktree isolation and optional implementation delegation via codex, claude, or grok. Use for implement-ticket or requests to implement a local development ticket."
 ---
 
 # Implement a Ticket
@@ -10,7 +9,7 @@ Implement the requested ticket as part of the project's business workflow. By de
 
 ## Inputs and scope
 
-Accept `<ticket> [worktree] [base] [via <executor>]` from `$ARGUMENTS` or the user's request.
+Accept `<ticket> [worktree] [base] [via <executor>]` from the invocation arguments or the user's request.
 
 - Normalize `7`, `007`, `#7`, and `TICKET-007` to `007`. With no explicit ID, use an unambiguous ticket already identified in the conversation or the current ticket branch; otherwise ask. An empty invocation never starts the whole backlog.
 - Preserve `<ticket>`, `<ticket> <base>`, `<ticket> worktree`, and `<ticket> worktree <base>`. The `worktree` keyword is case-insensitive and remains an explicit request for an isolated checkout.
@@ -40,7 +39,7 @@ When `via` is requested, use the bundled `scripts/run-ticket-executor.sh` throug
 
 - Run the checks required by the repository or ticket, plus those justified by the affected behavior. Distinguish failures introduced here from pre-existing failures or unavailable checks.
 - Review the complete ticket change against acceptance criteria, the agreed business rules, and effects on related tickets. Use the [review rubric](../review-ticket/references/review-guidelines.md).
-- For delegated implementation or an explicitly requested skill review, read and invoke [review-ticket](../review-ticket/SKILL.md) with bare `NNN`, in the ticket checkout. That mode checks uncommitted changes against the ticket. For resumed committed work, also review the relevant branch diff against a known base with the same ticket context; do not mistake an empty uncommitted diff for a full review.
+- For delegated implementation or an explicitly requested skill review, resolve `review-ticket` using [workspace setup](references/workspace.md#calls-across-skills), then read and invoke it with bare `NNN`, in the ticket checkout. That mode checks uncommitted changes against the ticket. For resumed committed work, also review the relevant branch diff against a known base with the same ticket context; do not mistake an empty uncommitted diff for a full review.
 - Fix issues introduced by this work and rerun the affected checks. Repeat broader checks when a change or finding warrants it. Report unresolved problems and incomplete acceptance evidence without claiming completion.
 
 ## Deliver and authorized follow-up

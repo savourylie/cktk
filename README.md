@@ -1,6 +1,6 @@
 # cktk
 
-Software development and UI design workflow skills for OpenAI Codex, Claude Code, Antigravity, and OpenCode.
+Software development and UI design workflow skills for OpenAI Codex, Claude Code, Grok Build, Antigravity, and OpenCode.
 
 cktk ships these workflows as **skills** — Markdown files with frontmatter that the host agent loads on demand. There is no runtime or build step: cloning or installing the skill set makes it discoverable to your agent of choice.
 
@@ -18,11 +18,11 @@ cktk ships these workflows as **skills** — Markdown files with frontmatter tha
 
 This repo intentionally carries three skill trees:
 
-- `skills/` is the Claude-facing tree (canonical).
-- `.agents/skills/` is the Codex-facing tree and the repo-local OpenCode-compatible tree.
+- `skills/` is the canonical tree, including agent-neutral ticket lifecycle workflows.
+- `.agents/skills/` links portable folders to the canonical tree and retains native Codex documents for unmigrated skills.
 - `.agent/skills/` is the Antigravity-facing tree.
 
-The Claude and Codex trees share support files where possible, but they do not share `SKILL.md` files. The Codex skills are rewritten to match Codex conventions and use host-neutral workflow language so OpenCode can load them from `.agents/skills/`. The Antigravity tree uses symlinks directly to `skills/`. The all-agent installer also links the canonical skills under OpenCode's global config directory, where repo-local `.agents/skills/` definitions take precedence.
+Skills marked `portable: true` in `catalog.json` share the entire folder, including `SKILL.md`, resources, and optional `agents/openai.yaml`. Unmigrated skills still have distinct Codex instructions and share support resources through symlinks. Antigravity links directly to `skills/`. The installer and doctor keep local agent entries tied to the selected checkout; discovery precedence is checked through the host instead of assumed.
 
 ## Skills
 
@@ -98,129 +98,69 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 
 ## Install
 
-Pick your agent:
+### One source across coding agents
 
-### Claude Code
+The eight ticket lifecycle skills (`create-tickets`, `create-tickets-linear`, both `implement-ticket` variants, `commit-ticket`, `commit-push-pr`, and both `update-ticket` variants) have one agent-neutral source under `skills/`. Their `.agents/skills/` and `.agent/skills/` entries link to those folders. Codex UI metadata stays in `agents/openai.yaml`; workflow instructions are never copied or generated per agent. `catalog.json` marks this set with `portable: true`. Other skills retain their existing native documents until individually reviewed.
+
+For daily use across agents, choose one **full checkout** and link it:
+
+```sh
+git clone https://github.com/savourylie/cktk.git /absolute/path/to/cktk
+bash /absolute/path/to/cktk/scripts/install-all-agent-skills.sh --mode linked
+python3 /absolute/path/to/cktk/scripts/agent-skills.py doctor --runtime
+```
+
+Use an existing checkout instead of cloning again when developing these skills. Editing a shared source immediately changes the files every linked agent reads; an already-running session may need to reload its skill registry or start a new session.
+
+| Agent | Linked installation |
+| --- | --- |
+| Codex | Portable skills in `~/.agents/skills`; remaining native skills in `${CODEX_HOME:-$HOME/.codex}/skills` |
+| Claude Code | Personal skills in `~/.claude/skills`, all linked to the selected checkout |
+| Grok Build | Shared `~/.agents/skills` and Claude-compatible skill discovery |
+| OpenCode | Shared `~/.agents/skills`; remaining skills in `${OPENCODE_HOME:-$HOME/.config/opencode}/skills` |
+| Antigravity | `${AGENT_HOME:-$HOME/.agent}/skills` linked to the selected tree |
+
+The installer also reconciles the four handoff shell helpers in `~/.local/bin`. It records the chosen checkout and mode in `~/.local/share/cktk/install.json`, so `$cktk-upgrade` keeps using that source. No background service or file-copy sync is needed. Pass `--project-root /path/to/project` only when you also want the handoff/interactions ignore rules added to that project's `.gitignore`. `--home /temporary/path` gives an isolated installation for testing and ignores agent-home environment overrides.
+
+Existing cktk links can be repointed; identical copies are backed up. An unknown folder or foreign link is a conflict, even when its skill name matches. The installer checks all planned paths before changing them. Preserve and review older unverified copies before replacing them; a name alone is not proof of ownership.
+
+If migrating from the Claude marketplace plugin, first verify the personal skill links, then disable only the old cktk plugin in its installed scope:
+
+```sh
+claude plugin list --json
+claude plugin disable cktk@cktk --scope user
+python3 /absolute/path/to/cktk/scripts/agent-skills.py doctor --runtime
+```
+
+Use the actual scope shown by the CLI, and the matching project directory for project/local scope. This preserves the installed plugin for switching back later and prevents Grok's compatibility import from loading an older cktk cache. Other plugins remain enabled. Claude may need `/reload-plugins` after the change.
+
+Claude personal skills use `/skill-name`; plugin mode uses `/cktk:skill-name`. Codex uses `$skill-name`, and Grok/OpenCode can load the named skill through their skill mechanism. Arguments and the eight shared workflows stay the same.
+
+`doctor` reports the registered source, Git revision, dirty state, payload hash, and broken/different/duplicate links. `--runtime` additionally checks enabled Claude plugins and available Grok/OpenCode inventories from the current project. It distinguishes same-source aliases from another cktk version and reports unrelated same-name skills without deleting them. CLI inspection failures remain unverified; filesystem checks cannot prove what an already-running model has loaded. For an unambiguous invocation when another plugin uses the same name, identify cktk and its skill path explicitly.
+
+### Claude marketplace releases
+
+For a Claude-managed release instead of a linked development checkout:
 
 ```text
 /plugin marketplace add savourylie/cktk
 /plugin install cktk@cktk
 ```
 
-The marketplace intentionally uses Git commit versions, so Claude Code can recognize every new cktk commit as an update instead of waiting for a manually bumped package version.
+Then reconcile other agents from that marketplace's full checkout with `scripts/install-all-agent-skills.sh --mode plugin`. In this mode Claude owns its cache; the other agents link to the marketplace checkout. `$cktk-upgrade` updates the marketplace and installed plugin scopes through Claude's CLI, reconciles links even when already current, and checks that the plugin payload matches the source. The marketplace uses Git commit versions. Do not edit plugin caches or maintain a separate per-agent release.
 
-### Codex (repo-local)
+### Repository-local discovery and complete payloads
 
-Codex discovers repo-local skills from `.agents/skills/` when you launch Codex inside the repo or a child directory — clone this repo and nothing else is required.
-
-To use this skill set from another repo without copying it, symlink the Codex tree into that repo:
+Codex discovers `.agents/skills/` when launched inside this repo. To expose that tree in another repository:
 
 ```sh
 mkdir -p /path/to/target-repo/.agents
 ln -s /absolute/path/to/cktk/.agents/skills /path/to/target-repo/.agents/skills
 ```
 
-### Codex (user-global)
+OpenCode and Grok also support shared skills; Claude uses `.claude/skills/`, and Antigravity uses `.agent/skills/`. Global linked installation is usually simpler than maintaining project-specific links. Check the host's current discovery rules when adding another agent: [Codex](https://learn.chatgpt.com/docs/build-skills), [Claude Code](https://code.claude.com/docs/en/skills), [Grok Build](https://docs.x.ai/build/features/skills-plugins-marketplaces), and [OpenCode](https://opencode.ai/docs/skills).
 
-To make the skills available across repos, run the all-agent installer from a full cktk checkout:
-
-```sh
-bash /absolute/path/to/cktk/scripts/install-all-agent-skills.sh
-```
-
-The installer symlinks cktk skill folders into `${CODEX_HOME:-$HOME/.codex}/skills` without replacing unrelated skills. It also reconciles Antigravity and OpenCode global skills plus the handoff shell helpers. `$cktk-upgrade` runs this installer automatically after every successful version check.
-
-#### Repair older copied Codex installs
-
-Codex installations created before the all-agent reconciliation workflow may still have standalone copied skills under `~/.codex/skills`. Their old `$cktk-upgrade` can update the Claude marketplace checkout but cannot replace itself, because Codex loaded those old instructions before the update. Bootstrap those installs once from the current marketplace checkout:
-
-```sh
-env -u PROJECT_ROOT bash "$HOME/.claude/plugins/marketplaces/cktk/scripts/install-all-agent-skills.sh"
-```
-
-Then restart Codex. The installer replaces recognized cktk skill copies with links to the current checkout; future `$cktk-upgrade` runs reconcile all supported agent installs automatically.
-
-### Codex ($skill-installer)
-
-Codex Desktop can also install skills directly from this GitHub repo via `$skill-installer`. After any installer-based install, restart Codex if the new skills do not appear immediately.
-
-`codex-handoff`, `grok-handoff`, `opencode-handoff`, and `takeover` are not compatible with archive-based or sparse-checkout `$skill-installer` installation because their Codex folders use repository-relative symlinks to shared scripts under `skills/`. Install those four through the repo-local or user-global full-tree symlink methods above.
-
-`project-advisor`, `create-tickets-linear`, `implement-ticket`, and `implement-ticket-linear` also require the full-tree methods: their shared references live under `skills/`, and binding-aware source discovery reads the sibling `init-project` bindings contract.
-
-To install the remaining installer-compatible skills, use one request listing their paths (excluding the four handoff skills, `project-advisor`, `create-tickets-linear`, and the two implement skills):
-
-```text
-$skill-installer install from https://github.com/savourylie/cktk with these paths:
-.agents/skills/create-tickets
-.agents/skills/commit-ticket
-.agents/skills/commit-push-pr
-.agents/skills/create-worktree
-.agents/skills/create-worktree-linear
-.agents/skills/merge-worktree
-.agents/skills/merge-worktree-linear
-.agents/skills/feature-catalog
-.agents/skills/clarify-ticket
-.agents/skills/clarify-ticket-linear
-.agents/skills/review-ticket
-.agents/skills/update-ticket
-.agents/skills/update-ticket-linear
-.agents/skills/quiz-ticket
-.agents/skills/quiz-ticket-linear
-.agents/skills/clarify
-.agents/skills/debrief-result
-.agents/skills/interact-html
-.agents/skills/cktk-upgrade
-.agents/skills/readme-builder
-.agents/skills/update-agents
-.agents/skills/design-system-extractor
-.agents/skills/design-system-web-applier
-.agents/skills/design-system-mobile-applier
-.agents/skills/wcag-accessibility-checker
-.agents/skills/ux-design
-.agents/skills/ux-redesign
-.agents/skills/cinematic-design-system
-.agents/skills/gen-image-codex
-.agents/skills/gen-image-agy
-```
-
-To install a single skill, use its GitHub directory URL — `https://github.com/savourylie/cktk/tree/main/.agents/skills/<skill-name>` with any path from the list above, for example:
-
-```text
-$skill-installer install https://github.com/savourylie/cktk/tree/main/.agents/skills/create-tickets
-```
-
-### Antigravity
-
-Clone the repo into your project or add it as a submodule — skills are discovered automatically from `.agent/skills/`:
-
-```bash
-git clone https://github.com/savourylie/cktk.git .cktk
-# or
-git submodule add https://github.com/savourylie/cktk.git .cktk
-```
-
-Or install skills directly from GitHub:
-
-```bash
-curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
-  | tar xz --strip-components=1 -C /tmp cktk-main/skills
-mkdir -p .agent/skills
-for s in init-project project-advisor create-tickets create-tickets-linear implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree create-worktree-linear merge-worktree merge-worktree-linear feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover clarify debrief-result interact-html readme-builder update-agents design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
-  cp -r /tmp/skills/$s .agent/skills/
-done
-rm -rf /tmp/skills
-```
-
-For user-global Antigravity skills from a full cktk checkout, run:
-
-```bash
-bash /absolute/path/to/cktk/scripts/install-all-agent-skills.sh
-```
-
-### OpenCode
-
-OpenCode discovers the repo-local `.agents/skills/` tree automatically. `scripts/install-all-agent-skills.sh` also links the canonical skills under OpenCode's global config directory, where repo-local `.agents/skills/` definitions take precedence.
+The portable workflows, handoff tools, and binding-aware skills are not compatible with archive-based or sparse single-folder installs: they need shared resources and sibling skill contracts. Keep the full checkout, including `skills/`, `.agents/skills/`, `.agent/skills/`, `catalog.json`, and `scripts/`. Copying only `SKILL.md` can silently lose metadata, delegation scripts, or business-context references.
 
 ## Usage
 
@@ -473,12 +413,12 @@ See [`skills/design-system-extractor/references/token-schema.md`](skills/design-
 
 ## Project Structure
 
-These ticket-management skills expect a project to provide:
+Local ticket workflows use:
 
-- `docs/PRD.md` — product requirements document
-- `docs/DESIGN.md` — architecture and design document
 - `docs/tickets/INDEX.md` — ticket index with status tracking
-- `docs/tickets/TICKET-NNN.md` — individual ticket files
+- `docs/tickets/NNN-<slug>.md` — individual ticket files
+
+Requirements, design decisions, and business context come from the request and relevant project sources; fixed PRD/design filenames are not prerequisites for implementation. Linear workflows use live issues and relations instead of local ticket files.
 
 The UX design skills expect:
 
@@ -494,11 +434,13 @@ See [`AGENTS.md`](AGENTS.md) for the three-tree maintenance rules: every skill i
 
 ## Validation
 
-Run the cross-agent skill validation script after changing skill content or layout. It checks Claude/Codex parity, exact Antigravity symlinks, OpenAI metadata, and the portable clarification contracts:
+Run the cross-agent skill validation script after changing skill content or layout. It checks tree parity, portable source identity, resource links, OpenAI metadata, and existing workflow contracts:
 
 ```sh
 ./scripts/check-codex-skills.sh
 ```
+
+Installer changes use `python3 scripts/test-agent-skills.py` with isolated homes. Run `bash scripts/test-ticket-delegation.sh` when changing the executor adapter, and `bash scripts/test-handoff-tools.sh` for handoff/installation integration. No test calls a live coding model or ticket service.
 
 ## License
 

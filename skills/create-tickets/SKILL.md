@@ -1,14 +1,13 @@
 ---
 name: create-tickets
 description: "Create or append development tickets in docs/tickets/ from requirements, a feature catalog, or a conversation or saved plan, with dependencies and an INDEX.md tracker. Use when the user wants requirements or a plan turned into tickets."
-user-invocable: true
 ---
 
 Turn the requested work into coherent, verifiable tickets that fit the project and its existing backlog. Adapt the breakdown to the work; preserve the ticket conventions used by downstream skills.
 
 ## Resolve the request
 
-Read `$ARGUMENTS` together with the current conversation. Natural-language requests and these existing aliases are supported; keys are case-insensitive, and both `PRD:path` and `PRD: path` work. Respect quoted paths containing spaces.
+Read the invocation arguments together with the current conversation. Natural-language requests and these existing aliases are supported; keys are case-insensitive, and both `PRD:path` and `PRD: path` work. Respect quoted paths containing spaces.
 
 | Input | Meaning |
 | --- | --- |
@@ -29,16 +28,18 @@ Choose the operation independently of the source type:
 
 Existing authorization carries forward; do not repeat an overwrite/append/abort prompt after the user has already chosen.
 
+Examples below show skill names and arguments; use the invoking agent's skill mechanism.
+
 ```text
-/create-tickets PRD: docs/PRD.md DESIGN: system-design/
-/create-tickets FEATURES:docs/FEATURES.md
-/create-tickets PLAN: "docs/plans/account recovery.md"
-/create-tickets append tickets for the recovery flow from docs/PRD.md
+create-tickets PRD: docs/PRD.md DESIGN: system-design/
+create-tickets FEATURES:docs/FEATURES.md
+create-tickets PLAN: "docs/plans/account recovery.md"
+create-tickets append tickets for the recovery flow from docs/PRD.md
 ```
 
 ## Gather enough context
 
-Read the source requirements and applicable project instructions, including `CLAUDE.md`. For directories, begin with the index or design notes and follow relevant references. Use the available tools for documents, URLs, and images; inspect visual evidence when it affects scope or acceptance. Report actual access or extraction failures. Continue with disclosed limitations only when missing material does not materially affect the tickets.
+Read the source requirements and applicable project instructions, including applicable `AGENTS.md` / `CLAUDE.md`. For directories, begin with the index or design notes and follow relevant references. Use the available tools for documents, URLs, and images; inspect visual evidence when it affects scope or acceptance. Report actual access or extraction failures. Continue with disclosed limitations only when missing material does not materially affect the tickets.
 
 For existing projects, read `docs/tickets/INDEX.md` first, then relevant tickets and code. Expand the search when coverage or dependencies remain unclear; there is no requirement to read every old ticket body. If the index is missing, reconstruct it from ticket files when their state is unambiguous; otherwise clarify the conflicting state.
 

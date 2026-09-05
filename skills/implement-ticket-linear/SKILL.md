@@ -1,7 +1,6 @@
 ---
 name: implement-ticket-linear
-description: "Implement a Linear issue in its project business context, including issues in Backlog, with validation and review. Supports worktree isolation and optional delegation via codex, claude, or grok. Requires Linear MCP. Use for /implement-ticket-linear or requests to implement a Linear issue."
-user-invocable: true
+description: "Implement a Linear issue in its project business context, including issues in Backlog, with validation and review. Supports worktree isolation and optional delegation via codex, claude, or grok. Requires Linear MCP. Use for implement-ticket-linear or requests to implement a Linear issue."
 ---
 
 # Implement a Linear Issue
@@ -10,7 +9,7 @@ Deliver the issue's business outcome using Linear as the ticket source. The defa
 
 ## Inputs and access
 
-Accept `<issue> [worktree] [base] [via <executor>]` from `$ARGUMENTS` or the user's request. Resolve an exact issue identifier such as `ENG-42` or a Linear issue URL; normalize the team key to uppercase. If omitted, use a unique issue from the conversation or current issue branch, otherwise ask. Do not select arbitrary backlog work.
+Accept `<issue> [worktree] [base] [via <executor>]` from the invocation arguments or the user's request. Resolve an exact issue identifier such as `ENG-42` or a Linear issue URL; normalize the team key to uppercase. If omitted, use a unique issue from the conversation or current issue branch, otherwise ask. Do not select arbitrary backlog work.
 
 Preserve `<issue>`, `<issue> <base>`, `<issue> worktree`, and `<issue> worktree <base>`. The case-insensitive `worktree` keyword requests isolation; its default base remains `main`. Current-checkout mode defaults to current HEAD. An explicit base must resolve.
 
@@ -43,7 +42,7 @@ Use an explicit working directory on every shell call and absolute paths for fil
 
 Implement the agreed business behavior. Select tests by the changed behavior and risk, honoring required repository and issue checks. For `via`, use the bundled `scripts/run-ticket-executor.sh` through [delegation](references/delegation.md), including the resolved business context in its task input.
 
-Review the whole issue change against acceptance criteria, agreed business rules, and effects on related issues, using the [review rubric](../review-ticket/references/review-guidelines.md). For delegated work or an explicitly requested skill review, read [review-ticket](../review-ticket/SKILL.md) and invoke it with the canonical issue URL in the issue checkout: URL mode unambiguously reviews uncommitted work against Linear. For committed work on a resumed branch, use `--ticket <ID> --base <base>` as well; that mode excludes uncommitted edits.
+Review the whole issue change against acceptance criteria, agreed business rules, and effects on related issues, using the [review rubric](../review-ticket/references/review-guidelines.md). For delegated work or an explicitly requested skill review, resolve `review-ticket` using [workspace setup](references/workspace.md#calls-across-skills), read its instructions, and invoke it with the canonical issue URL in the issue checkout: URL mode unambiguously reviews uncommitted work against Linear. For committed work on a resumed branch, use `--ticket <ID> --base <base>` as well; that mode excludes uncommitted edits.
 
 Fix problems introduced here and rerun affected checks. Broaden verification when new changes or findings warrant it. Distinguish existing failures and unavailable checks, and keep unmet or manual acceptance visible rather than claiming completion.
 

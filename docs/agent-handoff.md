@@ -27,7 +27,7 @@ Install shell helpers once so you can still export when the source agent is rate
 bash /absolute/path/to/cktk/scripts/install-all-agent-skills.sh
 ```
 
-That adds `codex-handoff`, `grok-handoff`, `opencode-handoff`, and `cktk-takeover` under `~/.local/bin`, and also reconciles global Codex / Antigravity / OpenCode skill links. `$cktk-upgrade` and `/cktk-upgrade` run this setup automatically after a successful version check.
+That adds `codex-handoff`, `grok-handoff`, `opencode-handoff`, and `cktk-takeover` under `~/.local/bin`, and reconciles agent skill links from the selected checkout. The source and linked/plugin mode are recorded for future upgrades; see [installation and migration](../README.md#install) for Claude/Grok compatibility and old-plugin handling. `$cktk-upgrade` and `/cktk-upgrade` run reconciliation automatically after a successful version check.
 
 If `~/.local/bin` is not on your PATH:
 

@@ -1,7 +1,6 @@
 ---
 name: commit-ticket
-description: "Stage intended changes and create one well-documented git commit, for ticket work or ad hoc edits. Includes unstaged changes and new files in scope. Use for /commit-ticket, commit changes, commit this, or create a commit."
-user-invocable: true
+description: "Stage intended changes and create one well-documented git commit, for ticket work or ad hoc edits. Includes unstaged changes and new files in scope. Use for commit-ticket, commit changes, commit this, or create a commit."
 ---
 
 # Stage and Commit Changes

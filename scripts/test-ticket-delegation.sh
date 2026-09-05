@@ -208,6 +208,24 @@ assert_contains "$tmp/same-host.stderr" \
 assert_not_exists "$tmp/same-host.fake.log"
 pass "delegation back to the invoking host is rejected"
 
+# Other hosts can use the existing validated executor boundary.
+for invoking_agent in opencode antigravity; do
+  FAKE_AGENT_MODE=success \
+  FAKE_AGENT_EXIT_CODE=0 \
+  FAKE_AGENT_CHANGE_FILE="$repo/$invoking_agent-change.txt" \
+    run_case "$invoking_agent-host" 0 "$test_path" \
+      --host "$invoking_agent" \
+      --executor claude \
+      --work-dir "$repo" \
+      --task-file "$task_file" \
+      --record-file "$tmp/$invoking_agent-host.json" \
+      --timeout-seconds 5
+  assert_json_field "$tmp/$invoking_agent-host.json" host "$invoking_agent"
+  assert_json_field "$tmp/$invoking_agent-host.json" executor claude
+  assert_json_field "$tmp/$invoking_agent-host.json" status completed
+done
+pass "OpenCode and Antigravity hosts can use supported executors"
+
 # CLI discovery occurs before a task package or process is created.
 run_case missing-cli 4 "$system_path" \
   --host codex \

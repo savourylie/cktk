@@ -1,7 +1,6 @@
 ---
 name: update-ticket-linear
-description: "Update a Linear issue from verified evidence, reconcile affected dependencies, and optionally sync bound project documents. Supports existing branches/worktrees and custom workflow states. Requires Linear MCP. Use for /update-ticket-linear or update Linear status."
-user-invocable: true
+description: "Update a Linear issue from verified evidence, reconcile affected dependencies, and optionally sync bound project documents. Supports existing branches/worktrees and custom workflow states. Requires Linear MCP. Use for update-ticket-linear or update Linear status."
 ---
 
 # Update a Linear Issue

@@ -6,7 +6,7 @@ usage() {
   cat >&2 <<'EOF'
 Usage:
   run-ticket-executor.sh \
-    --host <codex|claude|grok> \
+    --host <invoking-agent-id> \
     --executor <codex|claude|grok> \
     --work-dir <absolute-dir> \
     --task-file <absolute-file> \
@@ -129,10 +129,7 @@ done
 [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] ||
   die 2 "timeout seconds must be a positive integer"
 
-case "$host" in
-  codex|claude|grok) ;;
-  *) die 2 "unsupported host: $host" ;;
-esac
+[[ "$host" =~ ^[a-z][a-z0-9-]*$ ]] || die 2 "invalid host identifier: $host"
 
 case "$executor" in
   codex|claude|grok) ;;

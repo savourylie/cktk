@@ -6,9 +6,9 @@ Read only for `via <executor>`. Delegation is single-ticket implementation; the 
 
 Parse the final `via <executor>` clause before interpreting the base branch. Accept `codex`, `claude`, or `grok` case-insensitively. Reject a duplicate `via`, a missing or unknown executor, tokens after the executor, or ambiguous multi-ticket delegation. Do not reinterpret an invalid executor as a base branch.
 
-Determine `current_host` from the invoking runtime (`codex`, `claude`, or `grok`), not installed CLIs. An unsupported host must be reported. If executor equals current host, ask the user to omit `via` for native implementation. Do not silently choose a different executor.
+Determine `current_host` from the invoking runtime, not installed CLIs. Use `codex`, `claude`, or `grok` for those hosts; another identified host may use its lowercase identifier, such as `opencode` or `antigravity`. The host is a label, not another executor choice: `via` still supports only the three validated CLIs. If executor equals current host, ask the user to omit `via` for native implementation. Do not silently choose a different executor.
 
-Resolve `scripts/run-ticket-executor.sh` from the installed skill directory, never from the target project's code. In a Claude plugin install, use that plugin's skill directory; in Codex use the active Codex skill directory and its shared script link. Check adapter and target CLI availability before starting workspace or Linear-state mutations. The adapter owns supported command templates and version validation; inspect it when the installed version needs checking.
+Resolve `scripts/run-ticket-executor.sh` from the loaded skill's real directory, following installation symlinks, never from the target project's code. Check adapter and target CLI availability before starting workspace or Linear-state mutations. The adapter owns supported command templates and version validation; inspect it when the installed version needs checking.
 
 ## Package the agreed task
 

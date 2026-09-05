@@ -1,7 +1,6 @@
 ---
 name: update-ticket
-description: "Evaluate and update a local ticket status, reconcile dependencies and INDEX.md, and commit the scoped documentation changes. Supports existing branches and worktrees. Use for /update-ticket, mark ticket done, or update ticket status."
-user-invocable: true
+description: "Evaluate and update a local ticket status, reconcile dependencies and INDEX.md, and commit the scoped documentation changes. Supports existing branches and worktrees. Use for update-ticket, mark ticket done, or update ticket status."
 ---
 
 # Update a Local Ticket

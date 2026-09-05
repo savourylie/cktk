@@ -14,7 +14,7 @@ Before any action, present enough of the implementation and verification result 
 | Update Linear | Exact issue, evidence from `WORK_DIR` | `update-ticket-linear <issue_id> [status]` |
 | Merge and optionally clean up | `MAIN_ROOT`, after ticket commits | `merge-worktree` / `merge-worktree-linear` for compatible worktrees, or a local branch merge |
 
-Read the active host's callee before invoking it. Provide the work directory, expected branch, exact identity, and requested scope explicitly. Recheck these before writes. Do not rely on a prior `cd` or on a skill inheriting its caller's working directory.
+Resolve each callee from the same source checkout using [calls across skills](workspace.md#calls-across-skills), and read the active host's document before invoking it. Provide the work directory, expected branch, exact identity, and requested scope explicitly. Recheck these before writes. Do not rely on a prior `cd` or on a skill inheriting its caller's working directory.
 
 Inspect staged and unstaged changes against the recorded baseline. Only ticket-owned changes and authorized workflow preparation belong in its commits. Existing staged files and delegation diagnostics must not be swept in. A callee that cannot preserve this scope must not be invoked as though all dirty files belonged to the ticket.
 

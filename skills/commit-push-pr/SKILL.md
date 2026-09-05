@@ -1,7 +1,6 @@
 ---
 name: commit-push-pr
-description: "Commit pending work when needed, push the intended branch, and create or reuse a GitHub pull request. Supports ticket work, ad hoc edits, and already-committed branches. Use for /commit-push-pr or requests to push work and open a PR."
-user-invocable: true
+description: "Commit pending work when needed, push the intended branch, and create or reuse a GitHub pull request. Supports ticket work, ad hoc edits, and already-committed branches. Use for commit-push-pr or requests to push work and open a PR."
 ---
 
 # Prepare Changes for a Pull Request
@@ -14,7 +13,7 @@ Read applicable repository instructions. Resolve the checkout and scope from the
 
 Resolve the push destination and PR repository, head, and base from explicit instructions and the implementation context, then an existing PR or unambiguous repository configuration. Accept these as task context without requiring a positional argument format. Do not hard-code `origin` or `main`, or treat the head branch's own remote tracking ref as the PR base. Clarify only a target that remains ambiguous or conflicts with the request.
 
-If work needs publishing while on the target base or repository default branch, safely create a topic branch from the intended work before committing or publishing. Follow the user's branch name or repository naming convention; preserve the original branch and unrelated work. An existing feature branch does not need to be renamed or recreated.
+If work needs publishing while on the target base or repository default branch, safely create a topic branch from the intended work before committing or publishing. Follow the user's branch name, then applicable repository or host naming conventions; preserve the original branch and unrelated work. An existing feature branch does not need to be renamed or recreated.
 
 Inspect local changes, commits relative to the intended base, the remote branch, and existing PRs with available authenticated GitHub tooling. Verify remote access and the intended destination before publishing. Missing tools or access should produce a concrete blocker, not a request to repeat an already-authorized action.
 

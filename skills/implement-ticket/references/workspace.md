@@ -46,6 +46,8 @@ After setup, verify `WORK_DIR`, its current branch, the ticket evidence, and the
 
 ## Calls across skills
 
+Resolve the source checkout from this skill's real filesystem path, following installation symlinks; do not use the ticket project's cwd. In that same cktk checkout, Codex reads callees from `.agents/skills/<name>/SKILL.md`; other hosts read `skills/<name>/SKILL.md`. Portable folders resolve to the same source. Unmigrated helpers such as `review-ticket`, `create-worktree`, and `merge-worktree` still have host-specific preconditions, so a relative link into the canonical tree is not a substitute for selecting the correct callee. If a host's skill tool cannot select that source, read and follow the selected document directly with the supplied arguments.
+
 Read the called skill's active host document for its refusals, side effects, and argument modes. Supply the absolute work directory, expected branch, exact ticket identity, and authorized operation. Check directory and branch before any mutation; do not assume invocation inherits a previous shell's cwd.
 
 Implementation, validation, review, ticket notes, commits, and PRs operate on `WORK_DIR`. Switching to the merge base, merging, and worktree removal operate from `MAIN_ROOT`. Never switch all finishing operations to the main checkout indiscriminately. If the host cannot reliably target a sub-skill at the selected checkout, do not run it against a guessed directory.

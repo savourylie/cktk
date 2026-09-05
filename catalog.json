@@ -17,17 +17,20 @@
     {
       "name": "create-tickets",
       "path": ".agent/skills/create-tickets",
-      "description": "Generate development tickets from a PRD, feature catalog, or Plan Mode plan, with optional design inputs — files, directories, URLs, PDF, PPTX, or HTML (including Claude Design handoff bundles)"
+      "description": "Generate development tickets from a PRD, feature catalog, or Plan Mode plan, with optional design inputs — files, directories, URLs, PDF, PPTX, or HTML (including Claude Design handoff bundles)",
+      "portable": true
     },
     {
       "name": "create-tickets-linear",
       "path": ".agent/skills/create-tickets-linear",
-      "description": "Create Linear issues from requirements, a feature catalog, or a plan, with acceptance criteria, native blocking relations, existing-work deduplication, and recovery from partial creation"
+      "description": "Create Linear issues from requirements, a feature catalog, or a plan, with acceptance criteria, native blocking relations, existing-work deduplication, and recovery from partial creation",
+      "portable": true
     },
     {
       "name": "implement-ticket",
       "path": ".agent/skills/implement-ticket",
-      "description": "Implement a local ticket in its project business context, trace direct and indirect ticket relationships, clarify conflicting definitions, and verify the result; supports worktree isolation, optional CLI delegation, and authorized lifecycle follow-up"
+      "description": "Implement a local ticket in its project business context, trace direct and indirect ticket relationships, clarify conflicting definitions, and verify the result; supports worktree isolation, optional CLI delegation, and authorized lifecycle follow-up",
+      "portable": true
     },
     {
       "name": "clarify-ticket",
@@ -47,7 +50,8 @@
     {
       "name": "implement-ticket-linear",
       "path": ".agent/skills/implement-ticket-linear",
-      "description": "Implement a Linear issue, including from Backlog, with project business context, direct and indirect ticket relationships, conflict clarification, and verification; supports worktree isolation, optional CLI delegation, and authorized lifecycle follow-up (requires Linear MCP)"
+      "description": "Implement a Linear issue, including from Backlog, with project business context, direct and indirect ticket relationships, conflict clarification, and verification; supports worktree isolation, optional CLI delegation, and authorized lifecycle follow-up (requires Linear MCP)",
+      "portable": true
     },
     {
       "name": "review-ticket",
@@ -57,12 +61,14 @@
     {
       "name": "update-ticket",
       "path": ".agent/skills/update-ticket",
-      "description": "Reconcile local ticket status and dependencies from evidence, mark Done without redundant confirmation, and commit only scoped tracker changes in the selected checkout"
+      "description": "Reconcile local ticket status and dependencies from evidence, mark Done without redundant confirmation, and commit only scoped tracker changes in the selected checkout",
+      "portable": true
     },
     {
       "name": "update-ticket-linear",
       "path": ".agent/skills/update-ticket-linear",
-      "description": "Reconcile a Linear issue and affected dependencies from evidence, mark Done without redundant confirmation, and handle independently authorized project-document follow-up without git commits"
+      "description": "Reconcile a Linear issue and affected dependencies from evidence, mark Done without redundant confirmation, and handle independently authorized project-document follow-up without git commits",
+      "portable": true
     },
     {
       "name": "quiz-ticket",
@@ -82,12 +88,14 @@
     {
       "name": "commit-ticket",
       "path": ".agent/skills/commit-ticket",
-      "description": "Stage intended pending changes and create one documented Conventional Commit for ticket work or ad hoc edits; includes unstaged changes and relevant new files, with an explanatory body for substantive changes"
+      "description": "Stage intended pending changes and create one documented Conventional Commit for ticket work or ad hoc edits; includes unstaged changes and relevant new files, with an explanatory body for substantive changes",
+      "portable": true
     },
     {
       "name": "commit-push-pr",
       "path": ".agent/skills/commit-push-pr",
-      "description": "Commit intended work when needed, push the selected branch, and create or reuse a GitHub PR covering the complete change; supports already-committed work and preserves worktree/head/base context"
+      "description": "Commit intended work when needed, push the selected branch, and create or reuse a GitHub PR covering the complete change; supports already-committed work and preserves worktree/head/base context",
+      "portable": true
     },
     {
       "name": "create-worktree",

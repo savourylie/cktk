@@ -19,7 +19,7 @@ fail() {
 
 load_skill_names() {
   local dir="$1"
-  find "$dir" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort
+  find -L "$dir" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort
 }
 
 load_symlink_names() {
@@ -282,6 +282,12 @@ for skill in "${claude_skills[@]}"; do
     fail "wrong Antigravity symlink target for $skill: $(readlink "$antigravity_skill")"
   fi
 
+  if [[ -L "$codex_skill" ]]; then
+    # Portable folders expose the entire canonical payload, including metadata.
+    [[ "$(readlink "$codex_skill")" = "../../skills/$skill" ]] || fail "wrong portable folder link: $codex_skill"
+    continue
+  fi
+
   for shared in references scripts assets; do
     claude_shared="$claude_root/$skill/$shared"
     codex_shared="$codex_skill/$shared"
@@ -364,9 +370,6 @@ validate_implement_contract() {
   # exact prose. Behavioral decisions are checked with isolated task scenarios.
   for skill in implement-ticket implement-ticket-linear; do
     for skill_md in "$claude_root/$skill/SKILL.md" "$codex_root/$skill/SKILL.md"; do
-      if [[ -L "$skill_md" ]]; then
-        fail "implement entry points must be separate host-native documents: $skill_md"
-      fi
       for reference in business-context.md workspace.md delegation.md finishing.md; do
         require_literal "$skill_md" "(references/$reference)"
       done
@@ -612,6 +615,11 @@ validate_ticket_delegation_contract
 validate_worktree_linear_contract
 validate_review_ticket_contract
 validate_update_agents_contract
+
+# Catalog declarations, sole-source identity, metadata, and every portable link.
+if ! python3 "$root/scripts/check-portable-skills.py"; then
+  failed=1
+fi
 
 if [[ "$failed" -ne 0 ]]; then
   exit 1
