@@ -1,0 +1,7 @@
+interface:
+  display_name: "Project Advisor"
+  short_description: "Discuss project direction and evidence-backed priorities"
+  default_prompt: "Use $project-advisor to assess this project across Notion, Linear, and the repository, recommend strategic trade-offs and concrete next steps, and discuss the most important decision with me."
+
+policy:
+  allow_implicit_invocation: true

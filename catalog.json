@@ -10,6 +10,11 @@
       "description": "Bind this repository to its Linear project and Notion workspace — discovers candidates from README/PRD/design docs, validates every binding against the live services including a consented write probe, and writes a committed .ai/cktk/project.json that other skills read"
     },
     {
+      "name": "project-advisor",
+      "path": ".agent/skills/project-advisor",
+      "description": "Assess project direction across Notion, Linear, and repository evidence, recommend strategic trade-offs and tactical next steps, discuss alternatives, and revisit earlier decisions — advisory by default, with decision records saved on request"
+    },
+    {
       "name": "create-tickets",
       "path": ".agent/skills/create-tickets",
       "description": "Generate development tickets from a PRD, feature catalog, or Plan Mode plan, with optional design inputs — files, directories, URLs, PDF, PPTX, or HTML (including Claude Design handoff bundles)"

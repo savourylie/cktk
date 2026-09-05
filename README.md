@@ -33,6 +33,7 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 | Skill(s) | What it does | Notes |
 |---|---|---|
 | `init-project` | Record where this repository's project lives — Linear team and project, Notion hub and decision log, and the repository paths holding requirements — into a committed `.ai/cktk/project.json` that other skills read | Discovers candidates from README/PRD/design docs before asking; validates every binding against the live services, including a consented write probe; never records an unvalidated binding as confirmed. Re-runnable for single-field corrections |
+| `project-advisor` | Assess overall project direction across Notion, Linear, and repo evidence; recommend strategic trade-offs and tactical next steps, discuss alternatives, and revisit earlier decisions | Uses existing `init-project` bindings; continues with available evidence when a source is missing. Advisory by default; saves a dated discussion/decision record on request |
 | `create-tickets` | Generate dev tickets into `docs/tickets/` from a PRD, a features catalog, or a Plan Mode plan (plus optional design/UX/reference documents), with dependency ordering and an INDEX.md tracker | |
 | `clarify-ticket` · `clarify-ticket-linear` | Interactively clarify a ticket's details, blind spots, and risks against the codebase before implementation | Read-only: never edits tickets, INDEX.md, Linear, or git |
 | `implement-ticket` · `implement-ticket-linear` | Implement a ticket end to end on its own branch with code review and manual testing instructions, then offer to merge it, open a PR, commit only, or leave it; optional `worktree` isolation and final `via codex\|claude\|grok` implementation delegation | The selected CLI implements only; the invoking host independently verifies and reviews before landing. The docs twin appends as-built notes and can run `update-ticket` during landing; the Linear twin moves Todo to In Progress before implementation and can post one opt-in as-built comment, but never sets a completion status |
@@ -144,7 +145,9 @@ Codex Desktop can also install skills directly from this GitHub repo via `$skill
 
 `codex-handoff`, `grok-handoff`, `opencode-handoff`, and `takeover` are not compatible with archive-based or sparse-checkout `$skill-installer` installation because their Codex folders use repository-relative symlinks to shared scripts under `skills/`. Install those four through the repo-local or user-global full-tree symlink methods above.
 
-To install everything, use one installer request listing every installer-compatible skill path (all skills except the four handoff skills):
+`project-advisor` also requires the full-tree methods: its shared references live under `skills/project-advisor/`, and source discovery reads the sibling `init-project` bindings contract.
+
+To install the remaining installer-compatible skills, use one request listing their paths (excluding the four handoff skills and `project-advisor`):
 
 ```text
 $skill-installer install from https://github.com/savourylie/cktk with these paths:
@@ -204,7 +207,7 @@ Or install skills directly from GitHub:
 curl -sL https://github.com/savourylie/cktk/archive/refs/heads/main.tar.gz \
   | tar xz --strip-components=1 -C /tmp cktk-main/skills
 mkdir -p .agent/skills
-for s in init-project create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree create-worktree-linear merge-worktree merge-worktree-linear feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover clarify debrief-result interact-html readme-builder update-agents design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
+for s in init-project project-advisor create-tickets implement-ticket clarify-ticket clarify-ticket-linear implement-ticket-linear review-ticket update-ticket update-ticket-linear quiz-ticket quiz-ticket-linear commit-ticket commit-push-pr create-worktree create-worktree-linear merge-worktree merge-worktree-linear feature-catalog cktk-upgrade codex-handoff grok-handoff opencode-handoff takeover clarify debrief-result interact-html readme-builder update-agents design-system-extractor design-system-web-applier design-system-mobile-applier wcag-accessibility-checker ux-design ux-redesign cinematic-design-system gen-image-codex gen-image-agy; do
   cp -r /tmp/skills/$s .agent/skills/
 done
 rm -rf /tmp/skills
@@ -222,7 +225,24 @@ OpenCode discovers the repo-local `.agents/skills/` tree automatically. `scripts
 
 ## Usage
 
-All commands below use Claude Code's `/name` syntax. In **Codex**, invoke the same skill as `$name` with identical arguments (e.g. `/implement-ticket 003 worktree` → `$implement-ticket 003 worktree`). In **OpenCode**, skills load through the skill mechanism rather than slash commands — name the skill in the request, e.g. "Use clarify-ticket for TICKET-007." or "Use quiz-ticket-linear for ENG-42." In **Antigravity**, skills are discovered from `.agent/skills/` and matched by description.
+Unless labeled as Codex examples, commands below use Claude Code's `/name` syntax. In **Codex**, invoke the same skill as `$name` with identical arguments (e.g. `/implement-ticket 003 worktree` → `$implement-ticket 003 worktree`). In **OpenCode**, skills load through the skill mechanism rather than slash commands — name the skill in the request, e.g. "Use clarify-ticket for TICKET-007." or "Use quiz-ticket-linear for ENG-42." In **Antigravity**, skills are discovered from `.agent/skills/` and matched by description.
+
+### Project direction and priorities
+
+`project-advisor` connects goals, required capabilities, work allocation, implementation, and verified outcomes. It identifies consequential gaps, recommends what to focus on or defer, and turns that direction into concrete next actions with completion or learning criteria. Follow-up discussion revises the advice as constraints change.
+
+Codex examples (use `/project-advisor` in Claude Code):
+
+```text
+$project-advisor
+$project-advisor 接下來兩週應該優先做什麼？
+$project-advisor 相較上次，有哪些變化值得重新考慮方向？
+$project-advisor 把剛才的討論與我採納的決策保存下來
+```
+
+The default assessment reads sources and replies in the conversation. It uses `.ai/cktk/project.json` when configured, reports source conflicts and coverage limits, and distinguishes reported ticket completion, implementation, testing, deployment, and observed user outcomes. A request to save creates a dated record under `.ai/cktk/advisor/` in the main checkout unless another destination is specified; it preserves proposed versus adopted decisions and revisit conditions, without staging or committing. Earlier records are refreshed against current sources before their conclusions are reused. With no baseline, it assesses the present and says comparison is unavailable.
+
+`debrief-result` explains one just-delivered result; `project-advisor` evaluates broader direction and priorities. Accepting advice does not automatically create tickets or change Notion/Linear. An explicit execution request carries the chosen decision into the relevant execution workflow.
 
 ### Ticket lifecycle
 
@@ -344,7 +364,7 @@ host-native workflow.
 
 Two notes on host behavior:
 
-- **Codex triggering policy:** `review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, `wcag-accessibility-checker`, `interact-html`, `clarify`, and `debrief-result` also include descriptions suitable for Codex's implicit skill matching; every other skill (the write-heavy, handoff, and external-service workflows) is explicit-only in its `agents/openai.yaml` policy. `clarify` is read-only and its trigger is a user saying they did not understand, so implicit matching is the point of it. `debrief-result` is the same pattern for a result whose project-level meaning was left unexplained.
+- **Codex triggering policy:** `review-ticket`, `feature-catalog`, `design-system-extractor`, `design-system-web-applier`, `design-system-mobile-applier`, `wcag-accessibility-checker`, `interact-html`, `clarify`, `debrief-result`, and `project-advisor` also include descriptions suitable for Codex's implicit skill matching; every other skill (the write-heavy, handoff, and external-service workflows) is explicit-only in its `agents/openai.yaml` policy. `clarify` is read-only and its trigger is a user saying they did not understand, so implicit matching is the point of it. `debrief-result` is the same pattern for a result whose project-level meaning was left unexplained. `project-advisor` matches project direction and prioritization discussions; writes require a save or execution request.
 - The clarification and quiz skills use host-neutral questions and follow-up wording. They do not assume Claude's `/skill` syntax, Codex's `$skill` syntax, or a particular structured-choice tool.
 
 ## Agent Handoff
