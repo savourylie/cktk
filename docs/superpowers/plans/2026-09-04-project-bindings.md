@@ -245,9 +245,11 @@ and passed; five defects it surfaced were fixed in cc809da, 06046e9, 8f03ef1,
 
 ---
 
-## Part B — consuming the bindings (blocked on Task 6)
+## Part B — consuming the bindings
 
-### Task 7: Phase 1 binding load and phase renumbering
+Tasks 7-10 implemented 2026-09-05 in e8c970b. Task 11 (dry run) is open.
+
+### Task 7 — DONE: Phase 1 binding load and phase renumbering
 
 **Files:**
 - Modify: `skills/update-ticket-linear/SKILL.md` — Phase 1, and Phase 8 heading
@@ -257,7 +259,7 @@ and passed; five defects it surfaced were fixed in cc809da, 06046e9, 8f03ef1,
 Phase 1 loads `.ai/cktk/project.json`; missing, unreadable, or a higher
 `schema_version` is recorded and the run continues. Never blocks a status update.
 
-### Task 8: Phase 8 — Project Context sync
+### Task 8 — DONE: Phase 8 — Project Context sync
 
 Per spec §3. `save_document` with `patch`, targeting the bound Project Context
 document — **not** `save_project` and not the project description. Anchors from
@@ -266,7 +268,7 @@ ordinary prose, never from issue-identifier substrings, which serialize as
 written, bindings are absent, or `project_context.enabled` is false. Reports the
 re-serialization caveat and, on declined consent, prints the patch operations.
 
-### Task 9: Phase 9 — Notion decision log
+### Task 9 — DONE: Phase 9 — Notion decision log
 
 Per spec §4. The named-referent gate; the one-entry-per-issue check against the
 Linear-side marker comment; the name-and-type pre-write schema check; the two
@@ -275,7 +277,7 @@ heading. Posts the marker comment only after the Notion write returns, and repor
 loudly with the entry URL if that comment fails. Drafts into the summary whenever a
 precondition fails.
 
-### Task 10: Safety Rules, Phase 10 summary, and ripples
+### Task 10 — DONE: Safety Rules, Phase 10 summary, and ripples
 
 **Files:**
 - Modify: both `update-ticket-linear` trees — Safety Rules and the Phase 10 summary

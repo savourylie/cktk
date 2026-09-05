@@ -189,16 +189,16 @@ prominently with the entry URL: a later run could duplicate it.
 3. AC evaluation (if any), comment/description outcomes
 4. Unblocked / ready issues list (annotate auto-moves)
 5. Explicit note: **no git commit**
-5a. **Project Context sync:** what changed section by section with before/after,
+6. **Project Context sync:** what changed section by section with before/after,
    what was deliberately left alone, what was ambiguous and therefore untouched,
    the re-serialization note when a save occurred, and — when skipped or declined —
    why, plus the exact unapplied patch operations
-5b. **Notion decision log:** what was written and where with a link and its named
+7. **Notion decision log:** what was written and where with a link and its named
    referent; or why nothing was (no decision qualified, a marker already existed,
    a precondition failed, consent declined) with the drafted entry printed. If the
    Notion write succeeded but the marker comment failed, say so prominently with
    the entry URL
-6. If completed in a matching linear worktree, point at `$merge-worktree-linear <issue_id>` to land it (base defaults to main; pass another as a second argument), and give the manual `git checkout <base>` / `git merge linear-<issue_id>-<slug>` fallback — `$merge-worktree` itself only understands markdown `TICKET-NNN` worktrees:
+8. If completed in a matching linear worktree, point at `$merge-worktree-linear <issue_id>` to land it (base defaults to main; pass another as a second argument), and give the manual `git checkout <base>` / `git merge linear-<issue_id>-<slug>` fallback — `$merge-worktree` itself only understands markdown `TICKET-NNN` worktrees:
 
 ```bash
 git checkout <base>
