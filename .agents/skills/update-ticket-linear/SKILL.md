@@ -148,6 +148,13 @@ a figure you must verify. Reading a number closely enough to match on it and the
 writing it back unchanged is the easiest way to leave a known-wrong number in
 place.
 
+**A changed figure can strand the sentence explaining it** — "both fell because ten
+design tickets joined their denominators" stops explaining anything once the number
+rises, without ever becoming false. **Do not rewrite it**; reconstructing a
+rationale you did not witness is inventing content. Quote it in the summary with
+the figure it no longer matches and let a human decide. Silence is the only wrong
+answer.
+
 **Prefer a carve-out to a replacement.** "A, B and C have not started" where only B
 is done becomes "…have not started, apart from B" — replacing the sentence with a
 different characterisation drops the true remainder and the document loses
@@ -160,7 +167,9 @@ to write.
 exactly once, operations apply atomically so a stale anchor aborts the whole save
 cleanly, and at most 50 apply. **Never anchor on an issue identifier** — Linear
 stores mentions as `<issue id="…" href="…">TAI-5</issue>` markup, so such an anchor
-will not match, and one you write will not match next run either. Linear
+will not match. When replacement text must name an issue, write an explicit
+markdown link rather than a bare identifier: a link survives the save as a link,
+while bare text is converted to mention markup. Linear
 re-serializes on save; note in the summary that a cosmetic diff is not data loss.
 
 If `project_context.enabled` is false, do not create one and do not write the
@@ -216,6 +225,8 @@ prominently with the entry URL: a later run could duplicate it.
 5. Explicit note: **no git commit**
 6. **Project Context sync:** what changed section by section with before/after,
    what was deliberately left alone, what was ambiguous and therefore untouched,
+   any explanation stranded by a figure that changed (quoted, with the number it no
+   longer matches),
    the re-serialization note when a save occurred, and — when skipped or declined —
    why, plus the exact unapplied patch operations
 7. **Notion decision log:** what was written and where with a link and its named

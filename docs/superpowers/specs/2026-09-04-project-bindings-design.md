@@ -428,6 +428,15 @@ Only content the transition provably affects:
   live run corrected one percentage and left another wrong in the same sentence,
   having used the stale number as anchor text without ever verifying it.
 
+  **A changed figure can strand the sentence that explains it**, and the sync
+  reports rather than repairs. "Both fell because ten design tickets joined their
+  denominators" stops explaining anything once one of those numbers rises, without
+  ever becoming false — it is dated, and true of a moment that has passed.
+  Rewriting it would mean reconstructing a rationale nobody witnessed, so the
+  summary quotes it instead and a human decides. This is where "leave ambiguity
+  alone" and "an explanation must stay truthful" meet: the resolution is an
+  obligation to report, not a licence to edit.
+
 - **Amend rather than replace.** Where a sentence is falsified only in part — "A, B
   and C have not started" and only B is done — the fix carves out the exception and
   keeps the true remainder. Replacing the sentence with a different

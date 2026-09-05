@@ -258,6 +258,18 @@ Change only what this transition provably falsified:
   are using as part of an anchor is still a figure you must verify** — reading a
   number closely enough to match on it and then writing it back unchanged is the
   easiest way to leave a known-wrong number in place.
+
+  **A changed figure can strand the sentence that explains it.** Prose beside a
+  number often says why the number is what it is — "both fell because ten design
+  tickets joined their denominators". Change the number and that explanation may
+  stop explaining anything without ever becoming false: it may be dated, or true of
+  a moment that has passed.
+
+  **Do not rewrite it.** Reconstructing a rationale you did not witness is
+  inventing content. **Name it in the summary instead**, quoting the sentence and
+  the figure it no longer matches, and let a human decide. Silence is the only
+  wrong answer: an unmentioned stranded explanation is how a document fills with
+  prose that reads as current and is not.
 - A last-synced marker, **only when `last_synced_marker` is not null**. Never
   invent one — adding an uninvited line to a shared document is exactly the kind of
   edit this phase's bounds exist to prevent.
@@ -287,7 +299,9 @@ Three rules, all load-bearing:
   `<issue id="…" href="…">TAI-5</issue>`, not as the text `TAI-5`, so an anchor
   taken from an identifier will not match. A plain-text identifier you write
   becomes mention markup after the save, so it will not match next time either.
-  Draw anchors from ordinary prose.
+  Draw anchors from ordinary prose. When replacement text must name an issue,
+  write it as an explicit markdown link rather than a bare identifier: a link
+  survives the save as a link, while bare text is converted to mention markup.
 - At most 50 operations.
 
 **Linear re-serializes the document on save.** A round trip normalizes malformed
@@ -442,6 +456,8 @@ Report:
      after
    - What was deliberately left alone that a reader might have expected to change
    - Anything whose effect was ambiguous, and therefore untouched
+   - **Any explanation stranded by a figure you changed** — quote the sentence and
+     say which number it no longer matches
    - When a save occurred, the re-serialization note: Linear normalizes markdown on
      save, so a cosmetic diff is not data loss
    - When the phase was skipped or consent declined: why, plus **the exact patch
