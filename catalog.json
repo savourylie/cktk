@@ -87,7 +87,7 @@
     {
       "name": "commit-push-pr",
       "path": ".agent/skills/commit-push-pr",
-      "description": "Create commit, push branch, and open a pull request"
+      "description": "Commit intended work when needed, push the selected branch, and create or reuse a GitHub PR covering the complete change; supports already-committed work and preserves worktree/head/base context"
     },
     {
       "name": "create-worktree",

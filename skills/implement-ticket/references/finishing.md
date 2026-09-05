@@ -9,7 +9,7 @@ Before any action, present enough of the implementation and verification result 
 | Action | Working context | Relevant skill |
 | --- | --- | --- |
 | Commit code and local as-built notes | Verified ticket `WORK_DIR` and branch | `commit-ticket` |
-| Push/open a PR | Ticket `WORK_DIR`, with exact head and base | `commit-push-pr` when its commit precondition applies |
+| Push/open a PR | Ticket `WORK_DIR`, with exact head and base | `commit-push-pr`, for pending or already-committed work |
 | Update local tracker | Ticket `WORK_DIR` | `update-ticket NNN <status>` |
 | Update Linear | Exact issue, evidence from `WORK_DIR` | `update-ticket-linear <issue_id> [status]` |
 | Merge and optionally clean up | `MAIN_ROOT`, after ticket commits | `merge-worktree` / `merge-worktree-linear` for compatible worktrees, or a local branch merge |
@@ -22,9 +22,9 @@ Inspect staged and unstaged changes against the recorded baseline. Only ticket-o
 
 For a requested commit, invoke `commit-ticket` in the ticket checkout only when there are intended changes to commit. Supply the scope and ticket identity. Do not create empty or duplicate commits or amend history without authorization.
 
-For a PR, verify remote access and the intended target before publishing. Use the known base explicitly; an unknown or ambiguous base needs a decision, and the ticket's own remote branch is not a base. The current `commit-push-pr` skill expects uncommitted changes and does not define a base argument, so do not blindly pass an unsupported positional base.
+For a PR, read and invoke the active host's `commit-push-pr` in the ticket checkout. Supply `WORK_DIR`, the exact repository/head/base and push destination, intended scope, and verification evidence as task context. Use the known base explicitly; resolve an unknown or ambiguous target before publication, and do not treat the ticket's own remote branch as a base.
 
-When that skill applies, provide the exact head/base as task context and ensure the actual PR operation uses them. If it cannot express that target, or the ticket was already committed, carry out the authorized push/PR steps directly with explicit head/base using available git/PR tools; do not manufacture a new change to satisfy a commit-only precondition. Inspect existing PRs before creating another. Respect the same scope, authentication, and history protections; report a permission failure rather than bypassing it.
+That workflow commits only when needed, then pushes and creates or reuses the matching PR. Already-committed tickets use the same path. Preserve prior authorization and let the callee handle remote access, the full PR diff, and recovery from partial progress.
 
 ## Tracker updates
 

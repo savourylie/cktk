@@ -47,7 +47,7 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 | Skill(s) | What it does | Notes |
 |---|---|---|
 | `commit-ticket` | Stage intended pending changes and create one documented git commit, for ticket work or ad hoc edits | Includes unstaged changes and relevant new files by default; uses Conventional Commits with an explanatory body for substantive changes. No ticket ID required |
-| `commit-push-pr` | Create one commit, push the branch, and open a pull request | |
+| `commit-push-pr` | Commit when needed, push the intended branch, and create or reuse a GitHub PR | Uses `commit-ticket` for staging and messages; supports already-committed work and retains worktree/head/base context |
 | `create-worktree` · `create-worktree-linear` | Create git worktrees for one or more tickets under `.worktrees/NNN-slug/` or Linear issues under `.worktrees/ENG-42-slug/`, each on its own branch off a chosen base | Linear twin requires Linear MCP and makes no Linear writes — not even the Todo → In Progress transition `implement-ticket-linear` performs |
 | `merge-worktree` · `merge-worktree-linear` | Merge ticket or Linear issue worktree branches back into their base, then remove the worktree and delete the local branch | Cleanup halves of the two create skills. The Linear twin is the one `-linear` skill that needs no Linear MCP — everything it reads is on disk |
 
@@ -334,7 +334,7 @@ The optional final `via <executor>` clause supports `codex`, `claude`, and `grok
 
 ```text
 /commit-ticket                        # Stage and commit intended changes; no ticket required
-/commit-push-pr                       # Commit, push, and open a PR
+/commit-push-pr                       # Commit if needed, push, and create or reuse a PR
 /create-worktree 7                    # Worktree for ticket 007 off origin/main
 /create-worktree 7 8 9 dev            # Several tickets at once, based on origin/dev
 /merge-worktree 7                     # Merge ticket 007 back, remove worktree, delete branch (same multi-ticket and base args)
@@ -353,6 +353,14 @@ $commit-ticket commit only the currently staged changes
 ```
 
 Messages default to [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/), following repository requirements and explicit user messages. This skill additionally requires an explanatory body for substantive changes: motivation, resulting behavior, important decisions, and relevant verification evidence. Tiny self-explanatory corrections can use a subject alone. Ticket references and scope are optional; no fixed body headings or line count are imposed.
+
+`commit-push-pr` continues from the current state: pending work uses `commit-ticket`, already-committed work proceeds to publishing, and a matching open PR is reused. It preserves the selected worktree and resolves the push destination and PR head/base from the request, implementation context, and repository configuration. The PR description covers the complete branch change and applicable verification, following the repository template and user preferences.
+
+```text
+$commit-push-pr
+$commit-push-pr push the already-committed work and open a PR into dev
+$commit-push-pr use the current worktree and update its existing PR
+```
 
 ### Agent handoff
 
