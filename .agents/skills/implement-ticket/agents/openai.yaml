@@ -1,8 +1,7 @@
 interface:
   display_name: "Implement Ticket"
-  short_description: "Implement backlog tickets from docs/tickets with validation and status updates"
-  default_prompt: "Read the ticket tracker, implement the requested ticket, validate the changes, commit them, and update the ticket status."
+  short_description: "Implement tickets with business context and verification"
+  default_prompt: "Use $implement-ticket to establish the requested ticket's business role and related tickets, clarify conflicting definitions, then implement and verify it in the requested branch or worktree."
 
 policy:
   allow_implicit_invocation: false
-

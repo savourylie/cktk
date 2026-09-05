@@ -357,89 +357,65 @@ validate_interact_contract() {
 validate_implement_contract() {
   local skill
   local skill_md
+  local reference
+  local reference_error
 
-  # The implement twins gained user-facing prompts (the dirty-tree confirm and
-  # the landing menu), so they follow the portable-interaction contract. Unlike
-  # the clarify/quiz entry points they must stay model-invocable — their
-  # "Triggers on:" lists are the point — so no explicit-only or
-  # disable-model-invocation requirements here.
+  # Validate discoverability and resource integrity, not a mandatory menu or
+  # exact prose. Behavioral decisions are checked with isolated task scenarios.
   for skill in implement-ticket implement-ticket-linear; do
     for skill_md in "$claude_root/$skill/SKILL.md" "$codex_root/$skill/SKILL.md"; do
-      require_literal "$skill_md" "Portable interaction"
-      require_literal "$skill_md" "Never assume an option limit"
+      if [[ -L "$skill_md" ]]; then
+        fail "implement entry points must be separate host-native documents: $skill_md"
+      fi
+      for reference in business-context.md workspace.md delegation.md finishing.md; do
+        require_literal "$skill_md" "(references/$reference)"
+      done
       forbid_literal "$skill_md" "AskUserQuestion"
-      # Asserts the landing menu itself, not its heading: implement-ticket's
-      # Codex twin titles the phase "Loop, then Land" rather than "Land the
-      # Work", so a heading-based literal would false-fail it — and a heading
-      # match would survive the menu being deleted anyway.
-      require_literal "$skill_md" "How do you want to land it?"
-      forbid_literal "$skill_md" "branch -D"
-    done
-  done
 
-  # Linear twin only: it moves an unstarted ("Todo") issue to In Progress before
-  # implementing, and reports the current status before doing anything when the
-  # issue is in any other non-terminal state. Both halves are easy to drop in a
-  # rewrite, and the superseded "no Linear status writes" guarantee is easy to
-  # reintroduce by copying from the sibling docs that still describe the old
-  # contract — so assert the behavior and forbid the stale wording.
-  for skill_md in "$claude_root/implement-ticket-linear/SKILL.md" "$codex_root/implement-ticket-linear/SKILL.md"; do
-    require_literal "$skill_md" "Todo → In Progress"
-    require_literal "$skill_md" "(not Todo)"
-    # Type-based classification, not a literal name match: "Todo" and
-    # "In Progress" are only Linear's default names for the unstarted/started
-    # state types, and a renamed workflow would silently skip the transition.
-    require_literal "$skill_md" "list_issue_statuses"
-    require_literal "$skill_md" "unstarted"
-    forbid_stale_claim "$skill_md" "Linear status was not changed"
-    forbid_stale_claim "$skill_md" "never changes Linear status"
-    forbid_stale_claim "$skill_md" "only permitted write"
+      if ! reference_error="$(RUBYOPT=--disable=gems ruby -e '
+        entry, shared = ARGV
+        directory = File.dirname(entry)
+        references = File.join(directory, "references")
+        abort("references do not resolve to the shared implementation resources") unless
+          File.realpath(references) == File.realpath(shared)
+
+        files = [entry] + Dir.glob(File.join(references, "*.md"))
+        files.each do |file|
+          File.read(file).scan(/\[[^\]]+\]\(([^)\s]+)\)/).flatten.each do |target|
+            next if target.match?(/\A(?:[a-z][a-z0-9+.-]*:|#)/i)
+            target = target.split("#", 2).first
+            resolved = File.expand_path(target, File.dirname(file))
+            abort("missing reference #{target} from #{file}") unless File.file?(resolved)
+          end
+        end
+      ' "$skill_md" "$claude_root/implement-ticket/references" 2>&1)"; then
+        fail "invalid implementation references for $skill_md: $reference_error"
+      fi
+    done
   done
 }
 
 validate_ticket_delegation_contract() {
-  local skill_md
+  local skill
+  local skill_root
+  local adapter
+  local adapter_error
 
-  for skill_md in \
-    "$claude_root/implement-ticket/SKILL.md" \
-    "$codex_root/implement-ticket/SKILL.md"; do
-    require_literal "$skill_md" "via <executor>"
-    require_literal "$skill_md" "run-ticket-executor.sh"
-    require_literal "$skill_md" "codex"
-    require_literal "$skill_md" "claude"
-    require_literal "$skill_md" "grok"
-    require_literal "$skill_md" "duplicate"
-    require_literal "$skill_md" "tokens after the executor"
-    require_literal "$skill_md" \
-      "must not commit, push, merge, delete a worktree, or change ticket status"
-    require_literal "$skill_md" "no reviewable implementation"
-    require_literal "$skill_md" "ticket-specific review"
+  # All four entry points must still reach the same actual adapter. Its fixed
+  # CLI boundary is exercised by scripts/test-ticket-delegation.sh.
+  for skill in implement-ticket implement-ticket-linear; do
+    for skill_root in "$claude_root" "$codex_root"; do
+      adapter="$skill_root/$skill/scripts/run-ticket-executor.sh"
+      if ! adapter_error="$(RUBYOPT=--disable=gems ruby -e '
+        actual, expected = ARGV
+        abort("missing or unreadable delegation adapter") unless File.readable?(actual)
+        abort("delegation adapter does not resolve to the canonical script") unless
+          File.realpath(actual) == File.realpath(expected)
+      ' "$adapter" "$claude_root/implement-ticket/scripts/run-ticket-executor.sh" 2>&1)"; then
+        fail "invalid delegation adapter for $skill_root/$skill: $adapter_error"
+      fi
+    done
   done
-
-  require_literal "$root/README.md" \
-    "/implement-ticket 003 worktree via claude"
-  require_literal "$root/README.md" \
-    "/implement-ticket 003 via codex"
-  require_literal "$root/README.md" \
-    "/implement-ticket 003 dev via grok"
-
-  for skill_md in \
-    "$claude_root/implement-ticket-linear/SKILL.md" \
-    "$codex_root/implement-ticket-linear/SKILL.md"; do
-    require_literal "$skill_md" "via <executor>"
-    require_literal "$skill_md" "run-ticket-executor.sh"
-    require_literal "$skill_md" "duplicate"
-    require_literal "$skill_md" "tokens after the executor"
-    require_literal "$skill_md" \
-      "must not commit, push, merge, delete a worktree, or change ticket status"
-    require_literal "$skill_md" "no reviewable implementation"
-    require_literal "$skill_md" "ticket-specific review"
-    require_literal "$skill_md" \
-      "Todo → In Progress transition remains host-owned"
-  done
-
-  require_literal "$root/README.md" \
-    "/implement-ticket-linear ENG-42 via codex"
 }
 
 validate_worktree_linear_contract() {

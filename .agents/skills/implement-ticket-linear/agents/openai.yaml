@@ -1,7 +1,7 @@
 interface:
   display_name: "Implement Ticket (Linear)"
-  short_description: "Implement a Linear issue with validation and review (no commit; moves Todo to In Progress first)"
-  default_prompt: "Fetch the named Linear issue via MCP. If it is in a Todo (unstarted) state, move it to In Progress before starting; if it is in any other non-terminal state, report that state first and then continue. Implement it, validate, and review. Do not commit, and do not set a completion status on Linear."
+  short_description: "Implement Linear issues with business context and review"
+  default_prompt: "Use $implement-ticket-linear to understand the issue's business role and related tickets, clarify conflicting definitions, then implement and verify it, including from Backlog and with worktree isolation when requested."
 
 policy:
   allow_implicit_invocation: false

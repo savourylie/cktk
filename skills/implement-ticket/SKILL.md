@@ -1,361 +1,58 @@
 ---
 name: implement-ticket
-description: "Implement a specific ticket from the ticket tracker on its own branch with code review, then offer to merge it, open a PR, commit only, or leave it. Optional `worktree` keyword runs the implementation inside an isolated git worktree. A final `via codex`, `via claude`, or `via grok` clause delegates implementation only to that CLI, after which this host verifies and reviews the result. Triggers on: /implement-ticket TICKET-NNN, /implement-ticket NNN dev, /implement-ticket NNN worktree, /implement-ticket NNN worktree dev, /implement-ticket NNN via codex, implement ticket on a branch, implement ticket in a worktree, delegate ticket implementation"
+description: "Implement a docs/tickets ticket in its project business context, with validation and review. Supports worktree isolation and optional implementation delegation via codex, claude, or grok. Use for /implement-ticket or requests to implement a local development ticket."
 user-invocable: true
 ---
 
-**Argument:** `$ARGUMENTS`
-
-You are a senior full-stack developer implementing a ticket. Follow this workflow precisely. Do not skip steps.
-
-A ticket ID is required (e.g., `TICKET-001`, `001`, or `1`). If no argument is provided, inform the user that a ticket ID is required and stop.
-
-## Portable interaction rules
-
-This skill prompts the user at several points — when the working tree is dirty, when resuming without a discoverable base, when choosing whether to mark the ticket done, and when landing the work. All of them follow these rules:
-
-- Show every option with a stable number and a one-line description of what it does. A yes/no confirmation is the degenerate case: state the default explicitly (`[y/N]`) and treat anything but an explicit yes as that default.
-- Use the host's structured choice mechanism only when it is available and can represent the options clearly. Otherwise ask a concise numbered prose question and accept the number or the option name.
-- Never assume an option limit or an automatically supplied "Other" choice.
-- Treat an unanswered or ambiguous response as the documented default; never re-ask and never escalate.
-- Refer to other skills by name. When suggesting a command, use host-native syntax if known (`/skill` in Claude Code, `$skill` in Codex); otherwise show the plain skill name and arguments.
-
-## Argument grammar
-
-Every invocation implements on a branch. The optional tokens choose where that branch lives and what it forks from:
-
-| Invocation | Meaning |
-| --- | --- |
-| `<ticket>` | New branch off the current HEAD, in the current checkout. |
-| `<ticket> <base>` | New branch off `origin/<base>` (e.g. `dev`), in the current checkout. |
-| `<ticket> worktree` | New branch off `origin/main`, inside an isolated worktree. |
-| `<ticket> worktree <base>` | New branch off `origin/<base>`, inside an isolated worktree. |
-
-Any valid row may end with the optional final clause `via <executor>`, where
-`<executor>` is exactly `codex`, `claude`, or `grok` (case-insensitive):
-
-| Invocation | Meaning |
-| --- | --- |
-| `<ticket> via codex` | Keep the normal branch setup, then delegate implementation to Codex CLI. |
-| `<ticket> <base> via grok` | Fork from `<base>`, then delegate implementation to Grok Build CLI. |
-| `<ticket> worktree [base] via claude` | Use the requested isolated worktree, then delegate implementation to Claude Code CLI. |
-
-Parse the `via` clause **before** interpreting `worktree` or a trailing base:
-
-1. Count case-insensitive `via` tokens. More than one is a duplicate clause and is an invocation error.
-2. If `via` is absent, leave `executor` unset and preserve the existing native implementation workflow exactly.
-3. If present, it must be the penultimate token. Reject a missing executor, an unknown executor, or any tokens after the executor.
-4. Normalize the executor to lowercase, remove the final pair, and parse the remaining tokens with the existing grammar below.
-
-Do not reinterpret an invalid executor as a base branch. Use direct errors such as
-`unsupported executor '<name>' (expected codex, claude, or grok)` and stop before
-branch/worktree setup.
-
-The `worktree` keyword is case-insensitive; only this exact word triggers worktree mode (not `wt`, not `--worktree`). Any other trailing token is read as a base branch and **must resolve** — check `git rev-parse --verify --quiet origin/<token>` then `git rev-parse --verify --quiet <token>`. If neither resolves, stop with:
-
-```
-unrecognized argument '<token>' — did you mean 'worktree'?
-(no branch named '<token>' found locally or on origin)
-```
-
-That resolution check is what protects against typos like `worktre` now that the base slot is open. In the unlikely case that a repository has a real branch named `worktree`, the keyword wins. A fourth token is an error.
-
-## Phase 1: Set Up the Working Directory and Branch
-
-This phase runs whether or not worktree mode is requested, because both modes need the same things (main repo root, ticket file, slug, branch name, base).
-
-1. **Parse `$ARGUMENTS`.** Capture:
-   - `ticket_id`, normalized to a 3-digit zero-padded `NNN` (so `7`, `007`, `#7`, `TICKET-007` all become `007`).
-   - `use_worktree` (bool — true iff a token is exactly `worktree`, case-insensitive).
-   - `base_token` (the trailing non-ticket, non-`worktree` token, if any). Validate it as described in the argument grammar above.
-   - `executor` (unset for the native path, otherwise the normalized final `via` target).
-2. **Resolve the main repo root** so this skill behaves the same whether invoked from the main checkout or another worktree:
-   ```
-   MAIN_ROOT=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
-   ```
-3. **Resolve the ticket file and slug.** Glob `$MAIN_ROOT/docs/tickets/NNN-*.md`.
-   - No match → report `TICKET-NNN not found in docs/tickets/` and stop.
-   - Multiple matches → report the ambiguity and stop.
-   - Slug = the filename minus the `NNN-` prefix and the `.md` suffix.
-4. **Compute the handles.** Both modes use the same branch name, so `/update-ticket`, `/merge-worktree`, and `/quiz-ticket` recognize the work either way:
-   - Branch name: `ticket-NNN-<slug>`
-   - Worktree path: `$MAIN_ROOT/.worktrees/NNN-<slug>` (worktree mode only)
-5. **Resolve `base`** — the branch Phase 7 will offer to merge into:
-   - Worktree mode: `base_token` if present, otherwise `main`.
-   - Current checkout with a `base_token`: that token.
-   - Current checkout without one, when the current branch is **not** `ticket-NNN-<slug>`: the current branch, from `git rev-parse --abbrev-ref HEAD`. If that returns `HEAD` (detached), stop and ask the user to pass an explicit base branch — there is no merge target to record.
-   - Current checkout without one, when the current branch already **is** `ticket-NNN-<slug>` (you are resuming): a branch cannot be its own base, and nothing on disk records what it forked from. Ask once, following the portable interaction rules, offering the plausible bases that actually exist locally or on `origin` (check `main`, `master`, `dev`, `develop`):
-
-     ```
-     Resuming on ticket-NNN-<slug>. I can't tell which branch it forked from.
-     Which branch should Phase 7 offer to merge into?
-       1  main
-       2  dev
-       3  other (name it)
-     ```
-
-     Use the answer as `base`. If the user declines to answer, record no base and mark Phase 7's option 1 unavailable rather than guessing — options 2, 3, and 4 need no base. Without this branch of the rule, `base` would be the ticket branch itself and option 1 would merge it into itself: git reports "Already up to date" and exits 0, so the skill would claim a successful land while nothing reached the real base.
-6. **If `use_worktree` is true:**
-   - If the worktree path is already registered (check `git worktree list --porcelain`), reuse it. If `git -C <worktree-path> status --porcelain` is non-empty, that's fine — the user is resuming work — but note "reused existing worktree (with uncommitted changes)" in the final summary so they're not surprised.
-   - Otherwise invoke `/create-worktree` via the `Skill` tool. This is the same Skill-tool pattern this skill already uses to invoke `/review-ticket` later, so it's not a new mechanism:
-     ```
-     skill: "create-worktree"
-     args: "<NNN> <base>"   # drop <base> if base is main
-     ```
-   - Set `WORK_DIR = <worktree-path>`. The branch already exists on it — skip step 9.
-7. **If `use_worktree` is false:** set `WORK_DIR = $MAIN_ROOT` (or the user's current `git rev-parse --show-toplevel` if they invoked the skill from a worktree on purpose — they may already have set up the environment they want).
-8. **Pin the working directory.** Run `cd "$WORK_DIR"` as a single Bash command. The Bash tool's working directory persists between commands within this session, so every later Bash call — including those inside `/review-ticket` when invoked via the `Skill` tool — will see `WORK_DIR` as cwd. For Read/Edit/Write tools (which require absolute paths), prefix project paths with `$WORK_DIR` (e.g. `$WORK_DIR/docs/PRD.md`).
-9. **Create or reuse the ticket branch** (current-checkout mode only — worktree mode got its branch in step 6). Never implement onto whatever branch happened to be checked out:
-   - Already on `ticket-NNN-<slug>` → reuse it and report "resuming on `ticket-NNN-<slug>`".
-   - The branch exists but is not checked out (`git rev-parse --verify --quiet ticket-NNN-<slug>` succeeds) → `git switch ticket-NNN-<slug>` and report "reusing existing branch". Do not rebase it onto anything.
-   - Otherwise:
-     a. Run `git status --porcelain`. If it is non-empty, list the files and ask once, defaulting to no:
-
-        ```
-        Working tree has N uncommitted file(s):
-          <porcelain lines>
+# Implement a Ticket
 
-        These will be carried onto ticket-NNN-<slug> and may land in the ticket commit.
+Implement the requested ticket as part of the project's business workflow. By default, deliver reviewed code, as-built notes, and a clear account of verification. Commit, publish, merge, and completion-status updates follow the user's authorization in this conversation.
 
-        Continue? [y/N]
-        ```
+## Inputs and scope
 
-        Anything other than an explicit yes stops the skill before any branch is created. This prompt exists because `git switch -c` carries uncommitted changes onto the new branch, where Phase 7 would otherwise sweep unrelated work into the ticket commit.
-     b. With a `base_token`: `git fetch origin <base>` (on failure, warn that the base may be stale and continue), then `git switch -c ticket-NNN-<slug> origin/<base>`, falling back to local `<base>` if `origin/<base>` does not exist. If neither exists, stop.
-     c. Without one: `git switch -c ticket-NNN-<slug>`.
-     d. If the `git switch -c` fails because local changes would be overwritten by the target base, report git's error and stop. Do not force, stash, or discard.
-10. **Tell the user, in one sentence, where the work is happening** before doing any reading, e.g.:
-   - "Implementing TICKET-007 in `.worktrees/007-add-export` (branch `ticket-007-add-export`, base `dev`)."
-   - "Implementing TICKET-007 on branch `ticket-007-add-export` (base `dev`)."
+Accept `<ticket> [worktree] [base] [via <executor>]` from `$ARGUMENTS` or the user's request.
 
-## Phase 2: Understand the Project
+- Normalize `7`, `007`, `#7`, and `TICKET-007` to `007`. With no explicit ID, use an unambiguous ticket already identified in the conversation or the current ticket branch; otherwise ask. An empty invocation never starts the whole backlog.
+- Preserve `<ticket>`, `<ticket> <base>`, `<ticket> worktree`, and `<ticket> worktree <base>`. The `worktree` keyword is case-insensitive and remains an explicit request for an isolated checkout.
+- Without `worktree`, a new ticket branch starts at the current HEAD unless a base is supplied. With `worktree`, the default base remains `main`. An explicit base must resolve.
+- The optional final `via <executor>` supports `codex`, `claude`, or `grok`. Before setup, read [delegation](references/delegation.md) to validate this mode.
+- Process multiple tickets only when the user explicitly requests a bounded batch. Establish its scope, order, and dependency integration before starting; apply this workflow to each ticket. Do not silently stack branches or expand to the remaining backlog.
 
-1. Read `$WORK_DIR/docs/PRD.md` thoroughly. Internalize the product requirements, user stories, acceptance criteria, and scope.
-2. Read the project's design source thoroughly:
-   - Prefer `$WORK_DIR/docs/DESIGN.md`.
-   - If that is missing, use `$WORK_DIR/docs/design/DESIGN.md` if present.
-   - If no `DESIGN.md` file exists, search for a folder named `design-system` (commonly `$WORK_DIR/design-system/` or `$WORK_DIR/docs/design-system/`) and use that as the design source.
-   - If using a `design-system/` folder, read its README/index file first if present, then read the files relevant to architecture, component patterns, tokens, data models, API contracts, and implementation constraints.
-3. Briefly summarize (to yourself) the key requirements and architectural decisions before moving on. This is your mental model for all implementation work.
+## Understand the business context
 
-## Phase 3: Load the Ticket
+1. Resolve the repository and exact ticket file under `docs/tickets/`; the filename supplies its slug. Read the ticket, relevant tracker entries, applicable `AGENTS.md` / `CLAUDE.md`, and the code needed to understand the behavior. Missing or ambiguous ticket identity needs clarification.
+2. Read [business context](references/business-context.md). Establish the ticket's role in the project, the business outcome it enables, its direct and indirect ticket relationships, and the boundaries of this change. Use relevant project requirements and decisions; no particular PRD or design filename is mandatory.
+3. Before implementation, briefly explain that role and the related ticket IDs, distinguishing confirmed relationships from inferred ones. Verify prerequisites against the selected code, not just tracker labels.
+4. **If the ticket definition contradicts the business context, stop and ask the user to resolve the conflict before implementation.** Cite the conflicting sources and their practical effect. Do not silently choose a source, expand the scope, or record an unapproved deviation as an as-built decision. Apply the same rule to contradictions discovered later.
+5. An already-done ticket needs an explicit reimplementation request. An unresolved prerequisite requires resolution or an agreed scope change before proceeding.
 
-1. Read `$WORK_DIR/docs/tickets/INDEX.md` to see the current status of all tickets and understand dependencies.
-2. The target ticket is the one identified in Phase 1. If its status is already `done`, inform the user and stop.
-3. Read the full ticket file at `$WORK_DIR/docs/tickets/NNN-<slug>.md`.
-4. Before writing any code, briefly state:
-   - What you're implementing
-   - Which files you expect to create or modify
-   - Any edge cases or risks you see
+## Prepare and implement
 
-## Phase 4: Implement the Ticket
+Read [workspace setup](references/workspace.md) before creating, switching, or reusing a branch or worktree. Preserve the `ticket-NNN-<slug>` branch and `.worktrees/NNN-<slug>` directory contracts. Record the work directory, branch, base when known, and pre-existing changes. If the selected checkout changes the relevant evidence, revisit the business-context check.
 
-### Native path (no `via` clause)
+Use an explicit working directory for every shell call and absolute paths for file tools. A previous `cd` is not a portable guarantee for later calls or other skills.
 
-When `executor` is unset, preserve the current host-native behavior:
+Implement within the agreed business scope, following relevant repository conventions. Choose the approach and tests according to the behavior and risk; add or adjust tests where they provide useful evidence or are required by the ticket or repository.
 
-1. Implement the ticket fully, following the project's design source and the requirements in the ticket. All edits land under `$WORK_DIR`.
-2. Write clean, well-structured code. Follow existing project conventions (naming, file structure, patterns).
-3. Include appropriate error handling, input validation, and edge case coverage.
-4. If the ticket specifies tests, write them. If it doesn't but the project has a test suite, add tests for your changes anyway.
-5. Make sure any new files are properly exported/imported and integrated with the rest of the codebase.
-6. Prepare manual testing instructions for the implementation. Think about what a developer or QA tester would need to do to verify the feature works correctly by hand — specific commands to run, URLs to visit, inputs to provide, expected outputs to observe, and edge cases to try.
+When `via` is requested, use the bundled `scripts/run-ticket-executor.sh` through [delegation](references/delegation.md). Pass the resolved business context and relationships to the executor. This host keeps responsibility for verification, decisions, and lifecycle actions.
 
-### Delegated path (`via <executor>`)
+## Verify and review
 
-When `executor` is set, the target CLI performs implementation only. This invoking host still owns the ticket-specific review, build verification, remediation, As-Built Notes, and every Phase 7 landing choice.
+- Run the checks required by the repository or ticket, plus those justified by the affected behavior. Distinguish failures introduced here from pre-existing failures or unavailable checks.
+- Review the complete ticket change against acceptance criteria, the agreed business rules, and effects on related tickets. Use the [review rubric](../review-ticket/references/review-guidelines.md).
+- For delegated implementation or an explicitly requested skill review, read and invoke [review-ticket](../review-ticket/SKILL.md) with bare `NNN`, in the ticket checkout. That mode checks uncommitted changes against the ticket. For resumed committed work, also review the relevant branch diff against a known base with the same ticket context; do not mistake an empty uncommitted diff for a full review.
+- Fix issues introduced by this work and rerun the affected checks. Repeat broader checks when a change or finding warrants it. Report unresolved problems and incomplete acceptance evidence without claiming completion.
 
-1. Set `current_host` from the runtime actually invoking this skill: `claude` in Claude Code or `grok` in Grok Build. Do not infer it from which CLIs happen to be installed. If `executor == current_host`, stop with: `executor '<name>' is the current host; omit via to use native implementation`.
-2. Locate this skill's bundled `scripts/run-ticket-executor.sh`. In a Claude Code plugin install it is:
+## Deliver and authorized follow-up
 
-   ```bash
-   ADAPTER="${CLAUDE_PLUGIN_ROOT}/skills/implement-ticket/scripts/run-ticket-executor.sh"
-   ```
+Append a concise dated entry under `## As-Built Notes` in the ticket for material implementation decisions, agreed deviations, and follow-ups. Preserve existing entries and omit empty boilerplate. This does not change status, acceptance checkboxes, or `INDEX.md`.
 
-   In another supported host, resolve `scripts/run-ticket-executor.sh` relative to this skill's own directory. Never substitute a project-local script with the same name.
-3. Create `$WORK_DIR/.ai/cktk/delegation/` and a unique run stem such as `TICKET-NNN-<UTC timestamp>-<shell pid>`. Write `<stem>.input.md` there using the host's file-writing tool, not interpolated shell text. Include:
-   - ticket id, title, full requirements, and acceptance criteria;
-   - absolute ticket, PRD, and selected design-source paths;
-   - the pinned `$WORK_DIR`, expected files/areas, project conventions, risks, and relevant test commands;
-   - a reminder that the adapter adds the authoritative implementation-only boundary.
+Explain the business result, important effects on related tickets, verification performed, remaining manual acceptance, and the branch/worktree location. Include useful manual steps when automated checks do not establish the user-visible result.
 
-   Do not include credentials, connector tokens, hidden reasoning, or instructions to update ticket state. Set `<stem>.json` as the record path. These `.ai/cktk/delegation/` files are local diagnostics: preserve them on failure or timeout, exclude them from source review, and never stage them.
-4. Invoke the adapter once with its fixed interface and a 30-minute bound:
+If the conversation already authorizes further actions, read [finishing](references/finishing.md) and continue within that scope. It covers `commit-ticket`, `commit-push-pr`, `update-ticket`, and `merge-worktree`, including their different checkout requirements. Otherwise leave the result ready for review and name the useful next step; no fixed landing menu or extra status prompt is required.
 
-   ```bash
-   bash "$ADAPTER" \
-     --host "$current_host" \
-     --executor "$executor" \
-     --work-dir "$WORK_DIR" \
-     --task-file "$WORK_DIR/.ai/cktk/delegation/<stem>.input.md" \
-     --record-file "$WORK_DIR/.ai/cktk/delegation/<stem>.json" \
-     --timeout-seconds 1800
-   ```
+## Interaction and boundaries
 
-   `run-ticket-executor.sh` owns executor validation, CLI discovery and version checking, final task-package construction, the fixed non-interactive command template, bounded waiting, output capture, no-change detection, and the atomic outcome record. Never replace this call with `eval`, a free-form shell command, or an automatic retry.
-5. On any non-zero adapter exit, report its error verbatim plus `$WORK_DIR` and the record path when one exists, then stop. Do not commit, discard, reset, retry, land, or delete the worktree. When a record exists, read its `status` rather than inferring the cause from the numeric exit alone because raw target exit codes are preserved. `no_changes` means the CLI produced no new reviewable implementation; `forbidden_git_state` means it changed the pinned branch or HEAD; `git_inspection_failed` means the adapter could not safely verify the resulting Git state. Preserve all work and diagnostics for inspection.
-6. On exit `0`, independently confirm reviewable source changes remain:
+Carry forward prior authorization; do not ask the same question again. Ask only for a material missing decision, conflicting requirements, or additional scope. Use the host's available interaction mechanism without assuming fixed option counts. A required unanswered question remains pending; silence is not approval.
 
-   ```bash
-   git status --porcelain=v1 --untracked-files=all -- . \
-     ':(exclude).ai/cktk/delegation/**'
-   ```
-
-   If that output is empty, report `no reviewable implementation was produced`, point to the worktree and record, and stop safely. Otherwise continue to Phase 5. Do not accept the target agent's final message as verification.
-
-The delegated task package must state exactly: the target agent **must not commit, push, merge, delete a worktree, or change ticket status**. The invoking host enforces that boundary procedurally by withholding every later lifecycle phase until the adapter succeeds.
-
-## Phase 5: Code Review
-
-### 5a: Build Check
-
-Run lint, type-check, and build commands from `package.json` (e.g., `npm run lint`, `npm run build`) — these run in `WORK_DIR` because the Bash cwd is pinned. Fix any errors until the build is clean.
-
-### 5b: Automated Code Review
-
-This step is mandatory — do not skip it. Invoke the `/review-ticket` skill using the `Skill` tool to review all uncommitted changes against the ticket requirements:
-
-```
-skill: "review-ticket"
-args: "NNN"
-```
-
-**Pass the ticket number.** `/review-ticket` picks its mode from its argument, and with no argument it falls into generic auto-detect: it reviews the uncommitted diff on its own merits and never opens `docs/tickets/NNN-*.md`. Ticket mode is what reads the ticket's requirements and acceptance criteria, and what treats deviations recorded in `## As-Built Notes` as intentional rather than as scope drift — and it is selected only by passing the bare number.
-
-`/review-ticket` reads the diff via `git status` / `git diff`, which run in the pinned Bash cwd, so it sees the worktree's changes (or the main checkout's, when not in worktree mode).
-
-### 5c: Fix and Re-review
-
-If the code review finds any issues:
-1. Fix them immediately.
-2. Re-run the build check (5a) until clean.
-3. Re-invoke `/review-ticket` (5b) to verify fixes.
-4. Repeat until both build and code review are clean.
-
-Do not proceed to the next phase until the build passes cleanly AND the code review returns no P0 or P1 findings.
-
-## Phase 6: As-Built Notes, Summary, and Manual Testing
-
-### As-Built Notes (write to the ticket file)
-
-Before presenting the summary, append an `## As-Built Notes` section to `$WORK_DIR/docs/tickets/NNN-<slug>.md`. If the section already exists from a previous session, add a new dated entry beneath the existing content instead of duplicating the heading:
-
-```markdown
-## As-Built Notes
-> Appended by implement-ticket on YYYY-MM-DD.
-
-### Deviations from spec
-- <what differs from the ticket/design source and why> (or "None")
-
-### Key decisions
-- <decision made during implementation and its rationale>
-
-### Follow-ups / tech debt
-- <deferred item or concern> (or "None")
-```
-
-This is the only ticket-file edit this skill makes on its own — never change `## Status`, acceptance-criteria checkboxes, or `INDEX.md` directly. Those are changed only by `/update-ticket`, and only when the user opts into the status follow-up in Phase 7. Leave the as-built edit uncommitted alongside the code changes so it lands in whichever commit Phase 7 produces. In worktree mode the append happens in the worktree's copy of `docs/tickets/` and merges back via `/merge-worktree`.
-
-Present the following to the user:
-
-### Implementation Summary
-1. State which ticket was implemented (ID and title).
-2. Briefly summarize what was built — key files created or modified, architectural decisions made.
-3. Summarize the deviations recorded in `## As-Built Notes` (or state there were none).
-4. Note any remaining concerns, tech debt, or follow-up items.
-
-### Worktree Note (only when `use_worktree` was true)
-
-Include a short block so the user knows where the work lives and how to land it:
-
-- **Worktree:** `.worktrees/NNN-<slug>/` (branch `ticket-NNN-<slug>`, base `<base>`).
-- **Inspect:** `cd .worktrees/NNN-<slug>` to test the implementation locally.
-- **Land:** Phase 7 below offers to do this for you. If you decline, `/merge-worktree NNN <base>` will merge the branch back, remove the worktree, and delete the local branch whenever you're ready.
-
-If the worktree was reused with pre-existing uncommitted changes, mention that here too.
-
-### Manual Testing Instructions
-Provide clear, step-by-step instructions for how to manually verify the implementation works correctly. Include:
-- Prerequisites (environment setup, dependencies, services that need to be running)
-- Exact commands to run the application or relevant part of it
-- Specific actions to take (URLs to visit, buttons to click, inputs to provide)
-- Expected results for each action
-- Edge cases worth testing manually
-- If the ticket involves API changes, include example curl commands or request/response pairs
-
-If the implementation is purely internal (e.g., a refactor with no user-facing changes), state that manual testing is not applicable and explain what the automated tests cover instead.
-
-## Phase 7: Land the Work
-
-Ask exactly once, after the summary and manual testing instructions above, so the user decides with the full picture in front of them. Follow the portable interaction rules.
-
-**Before any repo-level git operation in this phase, run `cd "$MAIN_ROOT"`.** The Bash cwd has been pinned to `$WORK_DIR` since the setup phase, and every option below acts on the repository as a whole — merging into the base, delegating to another skill, or removing the very worktree the cwd points at. Operating from inside a worktree here causes silent wrong answers, not loud errors.
-
-Before asking, check whether option 2 is available: both `git remote get-url origin` and `gh auth status` must succeed. If either fails, still show option 2 but mark it unavailable with the reason, and do not accept it. If no base was recorded — a resume where the user declined to name one — show option 1 as unavailable for that reason and do not accept it; options 2 and 3 (and 4 where present) need no base.
-
-````
-TICKET-NNN implemented on ticket-NNN-<slug> (base: <base>).
-How do you want to land it?
-
-  1  Merge into <base> locally  (commit → merge --no-ff → delete branch)
-  2  Open a PR                  (invokes /commit-push-pr)
-  3  Commit only                (stay on the branch, decide later)
-  4  Nothing                    (leave changes uncommitted)  [default]
-````
-
-An ambiguous, empty, or unanswered response is option 4. Never re-ask.
-
-### Status follow-up (options 1, 2, and 3 only)
-
-Ask one follow-up, defaulting to no:
-
-````
-Also mark TICKET-NNN done? [y/N]
-````
-
-On an explicit yes, invoke `/update-ticket` via the `Skill` tool with args `NNN done` **before** the code commit below. It stages only `docs/tickets/`, so its commit stays separate from the code commit, and both land on the ticket branch — inside the merge for option 1, inside the PR for option 2. Anything other than an explicit yes skips it without re-asking.
-
-### Option 1 — merge into `<base>`
-
-- **Worktree mode:** `cd "$MAIN_ROOT"` first — `/merge-worktree` refuses to run when the cwd is inside a target worktree.
-
-  Then clear its second refusal before delegating, because this skill is usually what caused it. `/merge-worktree` also requires the main checkout to be clean, and `/create-worktree` — which Phase 1 invoked — appends `.worktrees/` to `$MAIN_ROOT/.gitignore` without committing it. On the first worktree run in a repo that had not already ignored `.worktrees/`, that lone uncommitted line is enough to make the merge refuse.
-
-  Run `git -C "$MAIN_ROOT" status --porcelain`. If it is non-empty, list the files and ask once, defaulting to yes (matching `/merge-worktree`'s own auto-commit convention for the same situation):
-
-  ```
-  The main checkout has N uncommitted file(s), which will make /merge-worktree refuse:
-    <porcelain lines>
-
-  Commit them first? [Y/n]
-  ```
-
-  On yes, commit exactly those files — use `chore: ignore .worktrees/` when the `.gitignore` line is all there is, otherwise a message describing what changed. On no, report that `/merge-worktree` will refuse and stop without delegating.
-
-  Then invoke `/merge-worktree` via the `Skill` tool with args `NNN <base>`. It auto-commits the implementation, merges, removes the worktree, and deletes the local branch. If it still refuses, report its refusal verbatim rather than working around it.
-- **Current checkout:**
-  a. Invoke `/commit-ticket` via the `Skill` tool.
-  b. Switch to the base — it may exist only on the remote: `git switch <base>` if it exists locally, otherwise `git switch -c <base> origin/<base>`.
-  c. `git merge --no-ff -m "Merge ticket-NNN-<slug> into <base>" ticket-NNN-<slug>`.
-  d. On conflict: `git merge --abort`, report which files conflicted, leave the branch intact, and stop. Do not attempt resolution.
-  e. On success: `git branch -d ticket-NNN-<slug>`. Use `-d`, not `-D` — after a `--no-ff` merge the safe delete succeeds unless the branch is checked out elsewhere — if the delete is refused, report the refusal rather than escalating to `-D`.
-- **Never push.** Close the report with `git push` as the explicit next step.
-
-### Option 2 — open a PR
-
-Invoke `/commit-push-pr` via the `Skill` tool. It commits, pushes the ticket branch, and opens the PR. Stay on the branch afterward. In worktree mode it runs in the pinned worktree cwd, so it pushes the worktree's branch; a later `/merge-worktree NNN` will detect the already-merged branch and only clean up. Note that `/commit-push-pr` opens the PR against the repository's default branch; if `<base>` is not that branch, retarget the PR afterwards or use option 1 instead.
-
-### Option 3 — commit only
-
-Invoke `/commit-ticket` via the `Skill` tool and stay on the branch.
-
-### Option 4 — nothing
-
-Leave the changes uncommitted. Report the branch name and how to land later: `/commit-push-pr`, or `/merge-worktree NNN <base>` in worktree mode.
-
-## Safety Rules
-
-- No commit, merge, push, or branch deletion happens before Phase 7, and then only per the user's explicit choice. Never force-push, and never delete or overwrite a remote branch.
-- Appending `## As-Built Notes` to the ticket file (Phase 6) is the one ticket-file edit this skill makes on its own. `## Status` and acceptance-criteria checkboxes are only ever changed by `/update-ticket`, and only when the user opts into the status follow-up.
-- In worktree mode, do not switch the user's main checkout branch yourself and do not delete the worktree — option 1 delegates both to `/merge-worktree`.
-- If unrelated dirty changes conflict with the ticket, stop and ask instead of overwriting.
+Preserve unrelated changes, avoid force-pushing or rewriting history, and keep delegation diagnostics out of commits. Completion status must reflect verified acceptance and the user's authorized workflow.
