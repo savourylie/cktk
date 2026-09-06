@@ -81,6 +81,7 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 
 | Skill(s) | What it does | Notes |
 | --- | --- | --- |
+| `product-manager` | Keep the conversation addressed to you as the product manager, centering business logic, user outcomes, each ticket's project significance, and priorities for the whole project | Remains active in the same conversation until you change or end the mode. Technical details appear when consequential or requested; works alongside other skills |
 | `clarify` | Explain a previous statement again after the user says they do not understand it — recover the missing context from Linear, Notion, tickets, docs, and code, then re-explain with explicit scope, resolved references, defined terminology, and the missing reasoning steps filled in | Clarifies a *statement*, not a ticket — use `clarify-ticket` for that. Read-only; Linear and Notion MCP are optional and it degrades to repo sources without them |
 | `debrief-result` | Explain a complete or partial result's business purpose, technical progress, completion state, and unresolved obstacles or next steps | No ticket id required — starts from the conversation and asks when consequential context remains unclear. Read-only. Not a quiz, review, or `clarify` |
 | `interact-html` | Render clarifying questions, option picks, and decision briefings as a local interactive HTML page, collect answers via a one-shot localhost server or paste-back, and archive the resolved page as a decision record | Pages live under `.ai/interactions/` (gitignored, local-only) |
@@ -128,6 +129,24 @@ Invoke a skill in your project's agent session:
 Below, `/name` examples assume Claude's linked installation, and `$name` examples are for Codex. Use `/cktk:name` for the Claude plugin; arguments stay the same across hosts.
 
 For Codex, each skill's `agents/openai.yaml` controls implicit selection through `policy.allow_implicit_invocation`. A value of `false` requires explicit invocation; `true` permits matching a user request. For example, [`create-tickets-linear`](skills/create-tickets-linear/agents/openai.yaml) permits implicit selection. Prefer explicit `$skill-name` calls for workflows that change files or call external services. Skill selection does not expand the user's authorized scope.
+
+### Product manager conversation mode
+
+Use [`product-manager`](skills/product-manager/SKILL.md) once to establish you as the product manager for the current conversation. Replies and progress updates focus on business rules, user experience, and what the work means for the project. Algorithms, technology choices, and technical debt are explained through their consequences for users, cost, risk, or delivery; ask for more technical depth whenever useful.
+
+Codex example conversation (use `/product-manager` in Claude Code):
+
+```text
+$product-manager
+這張 ticket 完成後，使用者能多做什麼？
+接下來應該做什麼？
+這個技術選型為什麼會影響營運成本？
+$product-manager off
+```
+
+An unqualified next-step question considers the whole project's goal, bottlenecks, dependencies, and opportunity costs. A question explicitly scoped to one ticket stays within that scope. The mode continues across follow-up turns and other skills; asking one technical question does not turn it off. Use `off` or say 「取消產品經理模式」 to end it. Activate it again in a new conversation; it does not change global or repository instructions. A plain-language request to use this ongoing mode can also activate it, but an ordinary ticket question alone does not.
+
+`product-manager` sets the ongoing conversational perspective, `project-advisor` performs a project assessment, and `debrief-result` explains a particular result. Activation alone starts no assessment or external action; work already requested continues under its existing scope and authorization.
 
 ### Project direction and priorities
 
@@ -395,7 +414,7 @@ This repo intentionally carries three skill trees:
 - `.agents/skills/` links portable folders to the canonical tree and retains native Codex documents for unmigrated skills.
 - `.agent/skills/` links directly to the canonical tree for Antigravity.
 
-The eight ticket lifecycle skills (`create-tickets`, `create-tickets-linear`, both `implement-ticket` variants, `commit-ticket`, `commit-push-pr`, and both `update-ticket` variants) have one agent-neutral source under `skills/`. Their entries in the other two trees link to the entire folder, including resources and Codex metadata in `agents/openai.yaml`. [`catalog.json`](catalog.json) marks this set with `portable: true`.
+The eight ticket lifecycle skills (`create-tickets`, `create-tickets-linear`, both `implement-ticket` variants, `commit-ticket`, `commit-push-pr`, and both `update-ticket` variants), plus the `product-manager` conversation mode, have one agent-neutral source under `skills/`. Their entries in the other two trees link to the entire folder, including resources and Codex metadata in `agents/openai.yaml`. [`catalog.json`](catalog.json) marks this set with `portable: true`.
 
 Other skills retain distinct Codex instructions until individually reviewed, with shared support resources linked from the canonical tree. The installer keeps agent entries tied to the selected checkout; `doctor --runtime` checks available host inventories for competing copies.
 

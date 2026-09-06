@@ -1,0 +1,7 @@
+interface:
+  display_name: "Product Manager"
+  short_description: "Keep the conversation focused on users and business value"
+  default_prompt: "Use $product-manager to treat me as the product manager for this conversation, focusing on business logic, user outcomes, and priorities for the whole project."
+
+policy:
+  allow_implicit_invocation: true

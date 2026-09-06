@@ -15,6 +15,12 @@
       "description": "Assess project direction across Notion, Linear, and repository evidence, recommend strategic trade-offs and tactical next steps, discuss alternatives, and revisit earlier decisions — advisory by default, with decision records saved on request"
     },
     {
+      "name": "product-manager",
+      "path": ".agent/skills/product-manager",
+      "description": "Keep the current conversation addressed to the user as a product manager, focusing on business logic, user outcomes, ticket significance, and priorities for the whole project; explain technical details when consequential or requested",
+      "portable": true
+    },
+    {
       "name": "create-tickets",
       "path": ".agent/skills/create-tickets",
       "description": "Generate development tickets from a PRD, feature catalog, or Plan Mode plan, with optional design inputs — files, directories, URLs, PDF, PPTX, or HTML (including Claude Design handoff bundles)",
