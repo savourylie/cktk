@@ -29,7 +29,7 @@
     {
       "name": "implement-ticket",
       "path": ".agent/skills/implement-ticket",
-      "description": "Implement a local ticket in its project business context, trace direct and indirect ticket relationships, clarify conflicting definitions, and verify the result; supports worktree isolation, optional CLI delegation, and authorized lifecycle follow-up",
+      "description": "Implement and verify a local ticket in its business context, then explicitly report completion and PR/merge readiness or blockers and next steps, connecting business meaning to technical progress; supports worktree isolation, CLI delegation, and authorized lifecycle follow-up",
       "portable": true
     },
     {
@@ -50,7 +50,7 @@
     {
       "name": "implement-ticket-linear",
       "path": ".agent/skills/implement-ticket-linear",
-      "description": "Implement a Linear issue, including from Backlog, with project business context, direct and indirect ticket relationships, conflict clarification, and verification; supports worktree isolation, optional CLI delegation, and authorized lifecycle follow-up (requires Linear MCP)",
+      "description": "Implement and verify a Linear issue, including from Backlog, then report completion and PR/merge readiness or contextual blockers and next steps, connecting business meaning to technical progress; supports worktrees, CLI delegation, and authorized lifecycle follow-up (requires Linear MCP)",
       "portable": true
     },
     {
@@ -83,7 +83,7 @@
     {
       "name": "debrief-result",
       "path": ".agent/skills/debrief-result",
-      "description": "Explain what a just-delivered result means for the project — no ticket id; uses the current conversation (read-only)"
+      "description": "Explain a complete or partial result's business purpose, technical progress, completion state, and unresolved obstacles or next steps; recover context and ask focused questions when needed — no ticket id required (read-only)"
     },
     {
       "name": "commit-ticket",

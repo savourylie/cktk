@@ -1,7 +1,7 @@
 interface:
   display_name: "Implement Ticket"
-  short_description: "Implement tickets with business context and verification"
-  default_prompt: "Use $implement-ticket to establish the requested ticket's business role and related tickets, clarify conflicting definitions, then implement and verify it in the requested branch or worktree."
+  short_description: "Implement tickets and explain completion or blockers"
+  default_prompt: "Use $implement-ticket to clarify the ticket's business context, implement and verify it in the requested checkout, then clearly report completion and PR/merge readiness or blockers and next steps, connecting business value to technical progress."
 
 policy:
   allow_implicit_invocation: false

@@ -2,7 +2,7 @@
 
 Read when the user authorizes a commit, push/PR, local merge, or tracker update. Reuse authorization from the conversation; do not force another menu or treat silence as consent. A broad implementation request alone does not select these additional actions.
 
-Before any action, present enough of the implementation and verification result for the user to assess it. Resolve business contradictions first. Keep commit/PR readiness distinct from completion acceptance; pending manual acceptance may permit a clearly described PR without proving the ticket done.
+Before any action, present enough of the implementation and verification result for the user to assess it, following [result delivery](delivery.md). Resolve business contradictions first. Keep commit/PR readiness distinct from completion acceptance; pending manual acceptance may permit a clearly described PR without proving the ticket done. A supported completion verdict does not by itself authorize a commit, PR, merge, or tracker write.
 
 ## Scope and directory
 
@@ -46,4 +46,4 @@ For a branch-only implementation, or a request to retain the worktree, merge fro
 
 After a confirmed merge, remove the worktree only when authorized and when no user shell/caller depends on that directory. Run removal from `MAIN_ROOT`; never force removal of dirty work. Delete a local branch only after confirming its work reached the base and cleanup was authorized. Do not push or delete remote branches as a side effect of a local merge.
 
-Report actual commits, PR URL, state changes, retained worktrees, and incomplete actions. A partial finish must not be described as complete.
+Report actual commits, PR URL, state changes, retained worktrees, and incomplete actions using [result delivery](delivery.md). Distinguish ticket acceptance from lifecycle progress: an incomplete ticket cannot be called complete, and a failed publication or tracker action cannot be called successful even when the ticket's required outcome is complete. Explain the obstacle and recovery step for any unfinished authorized action.

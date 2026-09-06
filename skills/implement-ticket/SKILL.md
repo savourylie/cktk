@@ -5,7 +5,9 @@ description: "Implement a docs/tickets ticket in its project business context, w
 
 # Implement a Ticket
 
-Implement the requested ticket as part of the project's business workflow. By default, deliver reviewed code, as-built notes, and a clear account of verification. Commit, publish, merge, and completion-status updates follow the user's authorization in this conversation.
+Implement the requested ticket as part of the project's business workflow. By default, deliver reviewed code, as-built notes, and an explicit completion verdict with business and technical meaning. Commit, publish, merge, and completion-status updates follow the user's authorization in this conversation.
+
+Read [result delivery](references/delivery.md) at the start of every run. Apply it to every handoff, including an early blocker or incomplete implementation; the user should not need a separate debrief to understand the outcome.
 
 ## Inputs and scope
 
@@ -46,9 +48,9 @@ When `via` is requested, use the bundled `scripts/run-ticket-executor.sh` throug
 
 Append a concise dated entry under `## As-Built Notes` in the ticket for material implementation decisions, agreed deviations, and follow-ups. Preserve existing entries and omit empty boilerplate. This does not change status, acceptance checkboxes, or `INDEX.md`.
 
-Explain the business result, important effects on related tickets, verification performed, remaining manual acceptance, and the branch/worktree location. Include useful manual steps when automated checks do not establish the user-visible result.
+Use [result delivery](references/delivery.md) to state whether the ticket is complete, what the completed work means for the project, and which technical changes and verification support that account. When incomplete, explain the original problem, the obstacle, a concrete way forward, and whether to continue this ticket, propose separate work, or pause with a condition for resuming.
 
-If the conversation already authorizes further actions, read [finishing](references/finishing.md) and continue within that scope. It covers `commit-ticket`, `commit-push-pr`, `update-ticket`, and `merge-worktree`, including their different checkout requirements. Otherwise leave the result ready for review and name the useful next step; no fixed landing menu or extra status prompt is required.
+If the conversation already authorizes further actions, read [finishing](references/finishing.md) and continue within that scope. It covers `commit-ticket`, `commit-push-pr`, `update-ticket`, and `merge-worktree`, including their different checkout requirements. Base the final handoff on the actual outcome of those actions. Otherwise, explicitly say a verified complete ticket is ready to prepare a PR and proceed toward merge; for incomplete work, name what remains and the useful next step. No fixed landing menu or extra status prompt is required.
 
 ## Interaction and boundaries
 

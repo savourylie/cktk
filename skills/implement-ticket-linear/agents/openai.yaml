@@ -1,7 +1,7 @@
 interface:
   display_name: "Implement Ticket (Linear)"
-  short_description: "Implement Linear issues with business context and review"
-  default_prompt: "Use $implement-ticket-linear to understand the issue's business role and related tickets, clarify conflicting definitions, then implement and verify it, including from Backlog and with worktree isolation when requested."
+  short_description: "Implement Linear issues and explain outcomes or blockers"
+  default_prompt: "Use $implement-ticket-linear to clarify the issue's business context, implement and verify it in the requested checkout, then clearly report completion and PR/merge readiness or blockers and next steps, connecting business value to technical progress."
 
 policy:
   allow_implicit_invocation: false

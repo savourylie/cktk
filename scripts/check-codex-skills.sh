@@ -370,7 +370,7 @@ validate_implement_contract() {
   # exact prose. Behavioral decisions are checked with isolated task scenarios.
   for skill in implement-ticket implement-ticket-linear; do
     for skill_md in "$claude_root/$skill/SKILL.md" "$codex_root/$skill/SKILL.md"; do
-      for reference in business-context.md workspace.md delegation.md finishing.md; do
+      for reference in business-context.md workspace.md delegation.md delivery.md finishing.md; do
         require_literal "$skill_md" "(references/$reference)"
       done
       forbid_literal "$skill_md" "AskUserQuestion"

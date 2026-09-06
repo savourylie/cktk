@@ -1,7 +1,7 @@
 interface:
   display_name: "Debrief Result"
-  short_description: "Explain a result's meaning for the project"
-  default_prompt: "Use $debrief-result to explain what the just-delivered result means for the project: what the product can now do, what this unlocks, and what is still missing."
+  short_description: "Connect results to business purpose and technical progress"
+  default_prompt: "Use $debrief-result to explain the current result's business purpose, completed technical work, completion state, and remaining obstacles or next steps, asking focused questions when consequential context is unclear."
 
 policy:
   allow_implicit_invocation: true

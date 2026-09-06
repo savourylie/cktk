@@ -5,7 +5,9 @@ description: "Implement a Linear issue in its project business context, includin
 
 # Implement a Linear Issue
 
-Deliver the issue's business outcome using Linear as the ticket source. The default is reviewed implementation and a summary; commits, publishing, merging, and completion updates require authorization from the conversation.
+Deliver the issue's business outcome using Linear as the ticket source. The default is reviewed implementation and an explicit completion verdict with business and technical meaning; commits, publishing, merging, and completion updates require authorization from the conversation.
+
+Read [result delivery](references/delivery.md) at the start of every run. Apply it to every handoff, including unavailable Linear access, a readiness blocker, or incomplete implementation; the user should not need a separate debrief to understand the outcome.
 
 ## Inputs and access
 
@@ -48,10 +50,10 @@ Fix problems introduced here and rerun affected checks. Broaden verification whe
 
 ## Deliver and authorized follow-up
 
-Explain the business result, effects on related issues, important decisions, verification, remaining acceptance work, and the branch/worktree. Supply useful manual steps when automated checks do not establish the user-visible behavior.
+Use [result delivery](references/delivery.md) to state whether the issue is complete, what the completed work means for the project, and which technical changes and verification support that account. When incomplete, explain the original problem, the obstacle, a concrete way forward, and whether to continue this issue, propose separate work, or pause with a condition for resuming.
 
 Post an as-built comment only when the user has authorized that comment; summarize the concrete content before posting and reconcile an uncertain result before retrying. No mandatory comment prompt is needed. Preserve issue fields and other people's comments.
 
-For further actions already authorized, read [finishing](references/finishing.md). Completion updates belong to `update-ticket-linear`, including its acceptance evaluation and any separately authorized Project Context / decision-log follow-up. `merge-worktree-linear` is available for later worktree landing once its preconditions hold. Otherwise leave the work ready for review.
+For further actions already authorized, read [finishing](references/finishing.md). Completion updates belong to `update-ticket-linear`, including its acceptance evaluation and any separately authorized Project Context / decision-log follow-up. `merge-worktree-linear` is available for later worktree landing once its preconditions hold. Base the final handoff on the actual outcome of those actions. Otherwise, explicitly say a verified complete issue is ready to prepare a PR and proceed toward merge; for incomplete work, name what remains and the useful next step.
 
 Carry forward authorization without asking again. Ask for a missing material decision or a business contradiction, and keep required unanswered questions pending. Preserve unrelated work and diagnostics; never send Linear credentials to an executor or let it change issue state.
