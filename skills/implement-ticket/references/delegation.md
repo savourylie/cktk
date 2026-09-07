@@ -14,7 +14,7 @@ Resolve `scripts/run-ticket-executor.sh` from the loaded skill's real directory,
 
 After business-context and workspace readiness, create a unique stem under `$WORK_DIR/.ai/cktk/delegation/`. Write `<stem>.input.md` with a file-writing tool. Include the exact ticket, full requirements and acceptance criteria, business role, direct and indirect ticket relationships with supporting evidence, agreed decisions, scope boundaries, absolute source/workspace paths, expected areas, and relevant checks.
 
-Include the instruction to stop and report a new business contradiction rather than choosing an interpretation. The target agent **must not commit, push, merge, delete a worktree, or change ticket status**. Do not provide connector credentials, hidden reasoning, or instructions to access Linear. The host owns any Todo → In Progress transition.
+Include the instruction to stop and report a new business contradiction rather than choosing an interpretation. The target agent **must not commit, push, merge, delete a worktree, or change ticket status**. Do not provide connector credentials, hidden reasoning, or instructions to access Linear. The host owns any Backlog → In Progress or Todo → In Progress transition at the time specified by the invoking skill.
 
 Use `<stem>.json` as the outcome record. Preserve diagnostics on failure/timeout; exclude `.ai/cktk/delegation/` from source review and all staging.
 

@@ -19,9 +19,17 @@ A final `via <executor>` supports `codex`, `claude`, or `grok`; read [delegation
 
 Use available authenticated Linear MCP tools and their actual schemas. If issue reads are unavailable, report that blocker; do not invent an API-key, CLI, browser, or local-ticket fallback. This skill does not use `docs/tickets/` as its issue source.
 
+## Start a Backlog issue
+
+Fetch the exact issue, its team/project, and current state. Read applicable repository instructions and any existing `.ai/cktk/project.json` under the [project bindings contract](../init-project/references/project-schema.md); respect a read-only binding for this issue's team/project.
+
+Classify states by the team's actual state types, using `list_issue_statuses` or the available equivalent. A completed or canceled issue requires an explicit reimplementation request; leave terminal status unchanged.
+
+**For a `backlog` issue, automatically perform Backlog → In Progress as the first action after identity and access checks, before business-context analysis, dependency resolution, or workspace preparation.** Invoking this skill authorizes that start transition without another confirmation or an intermediate move to Todo, unless the user explicitly requested preserving the state. Use the transition rules below to apply and verify it. For a requested batch, do this when starting each issue, not for the whole batch up front.
+
 ## Understand the issue in the project
 
-1. Fetch the exact issue, including its description, acceptance criteria, team/project, state, relations, and relevant comments. Read applicable repository instructions and relevant code.
+1. Read the fetched issue's description, acceptance criteria, relations, and relevant comments, fetching any missing detail. Read relevant code.
 2. Read [business context](references/business-context.md). Establish the issue's role in the whole project's business scope, its direct and indirect ticket relationships, and the requirements and decisions that govern this change. Discover relevant project documents and canonical sources rather than requiring a specific PRD filename.
 3. Explain that business role, the related issue IDs and their effect, and the intended scope before implementation. Identify inferred relationships and any consequential gaps in evidence.
 4. **If the issue definition contradicts this context, stop and ask the user to resolve the conflict.** Cite both sources and explain the behavioral or acceptance consequence. Do not silently prefer the issue, change the product rule, or use an as-built comment to justify the deviation. Apply this rule to conflicts discovered during implementation or review too.
@@ -30,13 +38,15 @@ Use available authenticated Linear MCP tools and their actual schemas. If issue 
 
 **Backlog is a valid starting state.** It does not require moving the issue to Todo first. Triage, an already-started state, or another non-terminal state is likewise not a refusal. Distinguish a workflow state from an actual unresolved blocker relation or missing prerequisite.
 
-Classify states by the team's actual state types, using `list_issue_statuses` or the available equivalent. A completed or canceled issue requires an explicit reimplementation request; leave terminal status unchanged. Resolve open blockers and business contradictions before starting.
+Resolve open blockers and business contradictions before coding or delegating implementation. The early Backlog transition does not establish implementation readiness.
 
 Prepare the checkout using [workspace setup](references/workspace.md), and confirm its code contains the prerequisites. Preserve `linear-<issue_id>-<slug>` and `.worktrees/<issue_id>-<slug>`; reuse existing work by issue ID even if its title changed. Recheck context when the selected checkout differs.
 
-Only after the business check, dependencies, workspace, and selected executor are ready, perform the existing **Todo → In Progress** transition for an `unstarted` issue. Re-read the issue before writing; resolve a `started` state from its team's statuses, preferring that team's In Progress state, and update only the state field with its ID. Respect a read-only binding. If the state changed concurrently, reassess readiness and do not overwrite it.
+Only after the business check, dependencies, workspace, and selected executor are ready, perform the existing **Todo → In Progress** transition for an `unstarted` issue.
 
-Backlog, triage, and already-started issues are implemented with their current state preserved unless the user authorized a specific transition. If state types cannot be verified, do not guess a transition. Missing write capability or a refused start update is reported without blocking otherwise-ready implementation. If a later failure stops work after a successful transition, report the actual state; do not auto-revert a potentially concurrent change.
+For either automatic start transition, resolve a `started` state from the issue's team's statuses, preferring that team's In Progress state. If no intended target can be resolved unambiguously, do not choose an arbitrary started state. Re-read the issue before writing; if its team or state changed concurrently, reassess and do not overwrite it. Update only the state field with the target ID, respecting a read-only binding, then read back and report the confirmed state. Reconcile an uncertain response by reading current state before any retry.
+
+Triage and already-started issues are implemented with their current state preserved unless the user authorized a specific transition. If state types cannot be verified, do not guess a transition. Missing write capability, an unresolved target state, or a refused start update is reported without blocking otherwise-ready implementation; include the unchanged or unverified state in the final handoff. If a later failure stops work after a successful transition, report the actual state; do not auto-revert a potentially concurrent change.
 
 ## Implement, verify, and review
 
