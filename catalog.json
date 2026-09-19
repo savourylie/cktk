@@ -39,14 +39,20 @@
       "portable": true
     },
     {
+      "name": "explain-ticket",
+      "path": ".agent/skills/explain-ticket",
+      "description": "Explain a local ticket or Linear issue before implementation: its problem, intended behavior, project value, scope, completion criteria, and material unknowns — read-only, without starting implementation research or coding",
+      "portable": true
+    },
+    {
       "name": "clarify-ticket",
       "path": ".agent/skills/clarify-ticket",
-      "description": "Read a docs/tickets/ ticket and interactively clarify its details and risks against the codebase before implementation — read-only (docs/tickets twin of clarify-ticket-linear)"
+      "description": "Research how to implement a docs/tickets/ ticket, discuss material decisions with options, trade-offs, and recommendations, then summarize readiness and an implementation plan — read-only (docs/tickets twin of clarify-ticket-linear)"
     },
     {
       "name": "clarify-ticket-linear",
       "path": ".agent/skills/clarify-ticket-linear",
-      "description": "Fetch a Linear issue and interactively clarify its details and risks against the codebase before implementation — read-only (requires Linear MCP; Linear twin of clarify-ticket)"
+      "description": "Research how to implement a Linear issue against relevant code when available, discuss decisions with options, trade-offs, and recommendations, then summarize readiness and an implementation plan — read-only (requires Linear MCP; Linear twin of clarify-ticket)"
     },
     {
       "name": "clarify",

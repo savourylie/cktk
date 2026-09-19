@@ -1,13 +1,25 @@
 ---
 name: "clarify-ticket-linear"
-description: "Use only when the user explicitly asks to clarify or de-risk a Linear issue, supplies a TEAM-NUMBER id or linear.app issue URL, or invokes clarify-ticket-linear. Do not use for docs/tickets/ or TICKET-NNN markdown tickets. Fetch through read-only Linear MCP tools, analyze against relevant code when available, discuss ambiguities and risks, and produce a readiness summary. Never modify Linear, repo files, or git."
+description: "Research how to implement a Linear issue, analyze requirements and risks, discuss material decisions with options, trade-offs, and a recommendation, then produce a readiness summary and implementation plan. Use for pre-implementation research or clarification, or clarify-ticket-linear. Not for local markdown tickets or a purpose-only explanation (explain-ticket). Read-only: never change tickets, repository files, or git."
 ---
 
 # Clarify a Linear Issue (advisory, read-only)
 
-Fetch one Linear issue, analyze its requirements and risks against relevant code when available, discuss unresolved details, and end with a readiness summary. Never modify Linear, files, or git. Do not use `docs/tickets/`.
+Fetch one Linear issue, analyze its requirements and risks against relevant code when available, discuss unresolved details, and end with a readiness summary and implementation plan. Never modify Linear, files, or git. Do not use `docs/tickets/`.
 
-Resolve the issue reference from explicit skill arguments when the host provides them; otherwise use the surrounding request. Empty input means branch/worktree auto-detection.
+Resolve the issue reference from explicit skill arguments when the host provides them; otherwise use the surrounding request. Empty input first uses a single Linear issue established in the conversation, then branch/worktree auto-detection.
+
+## Continue an established ticket
+
+Reuse the same ticket's explanation, decisions, constraints, and audience
+preferences already established in the conversation, including an earlier
+`explain-ticket` result. Resolve a missing reference from that context before
+branch/worktree discovery. If several tickets remain plausible, ask which one;
+do not silently choose a branch over the conversation. An explicit reference
+wins. A reference for the other source belongs to the matching twin.
+Refresh evidence that could affect readiness rather than repeating the whole
+explanation or asking resolved questions again. A purpose-only explanation
+belongs to `explain-ticket`; this workflow researches implementation choices.
 
 ## Portable interaction
 
@@ -28,7 +40,7 @@ Accept one optional Linear id (`ENG-42`) or issue URL. Reject extra/status/write
 
 ## Phase 1: Resolve Issue Reference
 
-1. Parse and normalize the issue ref before requiring git (`TEAM-NUMBER` uppercase; URL must contain a complete id).
+1. Parse the issue ref, or reuse the single Linear issue established in the conversation; normalize before requiring git (`TEAM-NUMBER` uppercase; URL must contain a complete id).
 2. Probe git:
    - Success → set `REPO_AVAILABLE=true`, compute `MAIN_ROOT` from absolute git-common-dir and `CURRENT_ROOT` from show-toplevel.
    - Failure → set `REPO_AVAILABLE=false` and run no more git commands.
@@ -56,7 +68,7 @@ No repo → `ANALYSIS_MODE=text-only`.
 With a repo:
 
 1. Prefer an auto-selected worktree, current `linear-<issue_id>-*` checkout, exact issue worktree, unique registered `.worktrees/<issue_id>-*`, then current checkout.
-2. Compare issue repo clues with origin URL, repo basename, manifests, referenced paths, and project guidance.
+2. Compare issue repo clues with origin URL, repo basename, manifests, referenced paths, project guidance, and an existing confirmation for this issue/repo. Reuse a prior confirmation unless the repo changed or new evidence contradicts it.
 3. Clear match → code mode.
 4. Clear mismatch or no useful clue → disclose it and ask whether to confirm this repo, provide another repo, or continue text-only. Make no code-grounded claims before confirmation.
 5. Record mode as confirmed code, user-confirmed code, or text-only.
@@ -85,20 +97,19 @@ Use read-only tools and safe read-only shell commands. Produce:
 
 Text-only mode may be specification-ready, but must state that code feasibility was not assessed.
 
-## Phase 6: Briefing and Discussion
+## Phase 6: Briefing, Discussion, and Implementation Plan
 
-Present a `Clarification Briefing — <ISSUE-ID>` with readiness, analysis mode, five analysis buckets, severity, and source-specific evidence. Open the discussion with two calibration questions, one at a time: what is obvious to the user but not written down (unknown knowns), and how familiar they are with the code or systems this issue touches (scale explanation depth to the answer). Then walk substantive open items one at a time using portable interaction; batch trivial confirmations. Record outcomes as **resolved here** or **still open**. Skip the open-item walk if nothing is open beyond the calibration questions.
+Read and follow the [shared implementation discussion](../clarify-ticket/references/implementation-discussion.md).
+Use the analysis above to present a concise briefing with the ticket identity,
+analysis mode and confirmed code context when available, preliminary readiness,
+proposed approach, and an ordered agenda of unresolved decisions and missing facts.
 
-## Phase 7: Readiness Summary
-
-Present on screen only:
-
-- Verdict (`ready to implement`, `needs author input`, or `blocked by …`)
-- Analysis mode
-- Resolved decisions
-- Open questions for the author
-- Key risks
-- Suggested next step: use `implement-ticket-linear <ISSUE-ID>`, or resolve blockers first
+Discuss material decisions one at a time with viable options, their trade-offs,
+and a recommendation. Ask calibration questions only when needed; skip settled
+questions and do not ask the user to resolve facts available in the sources.
+Finish with decisions, ordered implementation steps, acceptance checks, remaining
+blockers, and the matching next step, all on screen. Apply this skill's readiness
+rules to the final evidence; recommendations are not user decisions.
 
 ## Safety rules
 

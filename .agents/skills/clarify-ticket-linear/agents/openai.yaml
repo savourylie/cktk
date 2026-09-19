@@ -1,7 +1,7 @@
 interface:
   display_name: "Clarify Ticket (Linear)"
-  short_description: "Clarify a Linear issue against relevant code"
-  default_prompt: "Use $clarify-ticket-linear to fetch one Linear issue with read-only tools, analyze it against relevant code when available, discuss ambiguities and risks, and produce a readiness summary."
+  short_description: "Research a Linear issue and discuss implementation options"
+  default_prompt: "Use $clarify-ticket-linear to research how to implement this Linear issue, discuss material questions one at a time with options, trade-offs, and a recommendation, then summarize decisions and an implementation plan without making changes."
 
 policy:
   allow_implicit_invocation: false

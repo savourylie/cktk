@@ -1,7 +1,7 @@
 interface:
   display_name: "Clarify Ticket"
-  short_description: "Clarify a markdown ticket against the codebase"
-  default_prompt: "Use $clarify-ticket to read one docs/tickets/ ticket, validate it against tracker and code context, discuss ambiguities and risks, and produce a read-only readiness summary."
+  short_description: "Research a ticket and discuss implementation options"
+  default_prompt: "Use $clarify-ticket to research how to implement this local ticket, discuss material questions one at a time with options, trade-offs, and a recommendation, then summarize decisions and an implementation plan without making changes."
 
 policy:
   allow_implicit_invocation: false

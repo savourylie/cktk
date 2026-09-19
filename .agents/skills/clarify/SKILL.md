@@ -32,6 +32,7 @@ This skill clarifies a statement, not a work item. It produces no briefing, no r
 
 - The user did not understand something **you** said → this skill.
 - The **result** of just-finished work was stated without its project-level meaning → `debrief-result`.
+- A **ticket's** purpose, scope, and intended outcome need explaining before implementation → `explain-ticket`.
 - A **ticket's** requirements, risks, and readiness need analyzing before implementation → `clarify-ticket` (docs/tickets) or `clarify-ticket-linear` (Linear).
 - The user's understanding of an **already-implemented** ticket needs checking → `quiz-ticket` or `quiz-ticket-linear`.
 

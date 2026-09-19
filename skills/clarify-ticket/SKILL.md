@@ -1,6 +1,6 @@
 ---
 name: clarify-ticket
-description: "Clarify a markdown ticket from docs/tickets/ before implementation. Use only when the request names docs/tickets/, a TICKET-NNN reference, or the clarify-ticket skill; do not use for Linear issue IDs or URLs. Read the ticket, validate it against the tracker and codebase, discuss ambiguities and risks, and produce a readiness summary. Strictly read-only: never edit tickets, INDEX.md, repo files, or git."
+description: "Research how to implement a local docs/tickets/ ticket, analyze requirements and risks, discuss material decisions with options, trade-offs, and a recommendation, then produce a readiness summary and implementation plan. Use for pre-implementation research or clarification, or clarify-ticket. Not for Linear issues or a purpose-only explanation (explain-ticket). Read-only: never change tickets, repository files, or git."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[ticket]"
@@ -10,9 +10,21 @@ argument-hint: "[ticket]"
 
 # Clarify a Markdown Ticket (advisory, read-only)
 
-Read one ticket from `docs/tickets/`, analyze it against the tracker and actual codebase, discuss unresolved details with the user, and end with a readiness summary. **Never** edit ticket files, `INDEX.md`, any other repo file, or git.
+Read one ticket from `docs/tickets/`, analyze it against the tracker and actual codebase, discuss unresolved details with the user, and end with a readiness summary and implementation plan. **Never** edit ticket files, `INDEX.md`, any other repo file, or git.
 
 Use `docs/tickets/` as the source of truth. Do not use Linear. For a Linear issue, use the `clarify-ticket-linear` skill.
+
+## Continue an established ticket
+
+Reuse the same ticket's explanation, decisions, constraints, and audience
+preferences already established in the conversation, including an earlier
+`explain-ticket` result. Resolve a missing reference from that context before
+branch/worktree discovery. If several tickets remain plausible, ask which one;
+do not silently choose a branch over the conversation. An explicit reference
+wins. A reference for the other source belongs to the matching twin.
+Refresh evidence that could affect readiness rather than repeating the whole
+explanation or asking resolved questions again. A purpose-only explanation
+belongs to `explain-ticket`; this workflow researches implementation choices.
 
 ## Portable interaction rules
 
@@ -31,7 +43,7 @@ Accept one optional `<ticket>`:
 | Input | Meaning |
 | --- | --- |
 | `TICKET-007`, `007`, `#7`, or `7` | Clarify that ticket; normalize to three-digit `NNN`. |
-| Empty | Auto-detect a ticket, then clarify it. |
+| Empty | Use the single local ticket established in the conversation, then auto-detect. |
 
 Reject status tokens, multi-ticket batches, write/commit flags, invalid ticket refs, and extra tokens.
 
@@ -42,7 +54,7 @@ Reject status tokens, multi-ticket batches, write/commit flags, invalid ticket r
    MAIN_ROOT=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
    CURRENT_ROOT=$(git rev-parse --show-toplevel)
    ```
-2. Parse the invocation input or surrounding request. If a ticket ref exists, normalize it to `NNN`; otherwise auto-detect:
+2. Parse the invocation input or surrounding request, then the single local ticket already established in the conversation. If a ticket ref exists, normalize it to `NNN`; otherwise auto-detect:
    - Current branch matching `^ticket-(\d{3})-.+$` → use its `NNN` and set `WORK_DIR=$CURRENT_ROOT`.
    - Otherwise inspect registered worktrees under `$MAIN_ROOT/.worktrees/` and collect branches matching `^ticket-(\d{3})-.+$`.
    - One worktree candidate → use it. Multiple candidates → apply the portable interaction rules.
@@ -145,66 +157,19 @@ List only questions that the ticket, tracker, project guidance, requirements/des
 - `needs-clarification` — unresolved ambiguity, untestable criteria, or tracker inconsistency prevents a confident start
 - `blocked` — an unsatisfied dependency, missing prerequisite, or other hard blocker prevents starting
 
-## Phase 5: Present the Briefing
+## Phase 5: Briefing, Discussion, and Implementation Plan
 
-Present before discussion:
+Read and follow the [shared implementation discussion](references/implementation-discussion.md).
+Use the analysis above to present a concise briefing with the ticket identity,
+selected code context, preliminary readiness, proposed approach, and an
+ordered agenda of unresolved decisions and missing facts.
 
-```
-## Clarification Briefing — TICKET-NNN: <title>
-**Readiness:** <ready | needs-clarification | blocked>
-**Code context:** <main checkout | registered worktree path>
-
-### Details to confirm
-- ...
-
-### Risks (code-grounded)
-- [high] ... — evidence: `src/...:NN`
-
-### Blind spots
-- <category>: ... — evidence: `src/...:NN` (or "No blind spots found")
-
-### Dependencies
-- Requires #NNN (<status>, <satisfied | unsatisfied | inconsistent>) ...
-- Blocks #MMM ...
-
-### Open questions
-1. ...
-```
-
-## Phase 6: Guided Discussion
-
-Open with two calibration questions, asked one at a time before the open items:
-
-1. **Unknown knowns** — "What's obvious to you about this ticket that isn't written down?" Fold answers into resolved details, risks, or blind spots.
-2. **Experience calibration** — "How familiar are you with this area of the code?" Scale later explanations to the answer: more background when familiarity is low, terser confirmation when high.
-
-Then walk substantive open items one topic at a time using the portable interaction rules. Batch trivial confirmations. Record each outcome as:
-
-- **Resolved here** — capture the user's decision.
-- **Still open** — retain it for the ticket author or another external source.
-
-If there are no open items beyond the two calibration questions, proceed directly to the summary after asking them.
-
-## Phase 7: Readiness Summary
-
-Present on screen only:
-
-```
-## Clarification Summary — TICKET-NNN
-**Verdict:** <ready to implement | needs author input | blocked by <...>>
-
-**Resolved**
-- ...
-
-**Open questions for the author**
-- ... (or "none")
-
-**Key risks to watch during implementation**
-- [severity] ...
-
-**Suggested next step**
-- Use implement-ticket with NNN [worktree], or resolve the blockers/questions first.
-```
+Discuss material decisions one at a time with viable options, their trade-offs,
+and a recommendation. Ask calibration questions only when needed; skip settled
+questions and do not ask the user to resolve facts available in the sources.
+Finish with decisions, ordered implementation steps, acceptance checks, remaining
+blockers, and the matching next step, all on screen. Apply this skill's readiness
+rules to the final evidence; recommendations are not user decisions.
 
 ## Safety rules
 

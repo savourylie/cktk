@@ -1,6 +1,6 @@
 ---
 name: clarify-ticket-linear
-description: "Clarify a Linear issue before implementation. Use only when the request names Linear, a TEAM-NUMBER issue id, a linear.app issue URL, or the clarify-ticket-linear skill; do not use for docs/tickets/ or TICKET-NNN markdown tickets. Fetch the issue through read-only Linear MCP tools, analyze it against relevant code when available, discuss ambiguities and risks, and produce a readiness summary. Never modify Linear, repo files, or git."
+description: "Research how to implement a Linear issue, analyze requirements and risks, discuss material decisions with options, trade-offs, and a recommendation, then produce a readiness summary and implementation plan. Use for pre-implementation research or clarification, or clarify-ticket-linear. Not for local markdown tickets or a purpose-only explanation (explain-ticket). Read-only: never change tickets, repository files, or git."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[issue-id-or-url]"
@@ -10,9 +10,21 @@ argument-hint: "[issue-id-or-url]"
 
 # Clarify a Linear Issue (advisory, read-only)
 
-Fetch one Linear issue, analyze its requirements and risks against relevant code when available, discuss unresolved details with the user, and end with a readiness summary. **Never** modify Linear, repository files, or git.
+Fetch one Linear issue, analyze its requirements and risks against relevant code when available, discuss unresolved details with the user, and end with a readiness summary and implementation plan. **Never** modify Linear, repository files, or git.
 
 Use Linear as the ticket source of truth. Do not use `docs/tickets/`.
+
+## Continue an established ticket
+
+Reuse the same ticket's explanation, decisions, constraints, and audience
+preferences already established in the conversation, including an earlier
+`explain-ticket` result. Resolve a missing reference from that context before
+branch/worktree discovery. If several tickets remain plausible, ask which one;
+do not silently choose a branch over the conversation. An explicit reference
+wins. A reference for the other source belongs to the matching twin.
+Refresh evidence that could affect readiness rather than repeating the whole
+explanation or asking resolved questions again. A purpose-only explanation
+belongs to `explain-ticket`; this workflow researches implementation choices.
 
 ## Portable interaction rules
 
@@ -32,13 +44,13 @@ Accept one optional `<issue>`:
 | --- | --- |
 | `ENG-42` or another `TEAM-NUMBER` id | Clarify that issue; uppercase the team key. |
 | A Linear issue URL containing an id | Extract and clarify that issue. |
-| Empty | Auto-detect from a git branch or registered worktree. |
+| Empty | Use the single Linear issue established in the conversation, then a git branch or registered worktree. |
 
 Reject status tokens, multi-issue batches, title-only searches, write/commit flags, invalid refs, and extra tokens.
 
 ## Phase 1: Resolve the Issue Reference
 
-1. Parse the populated invocation input or surrounding user request before requiring a repository.
+1. Parse the populated invocation input or surrounding user request before requiring a repository. If no ref is supplied, reuse the single Linear issue already established in the conversation.
 2. If an id or URL is present:
    - Normalize `^[A-Za-z]+-\d+$` by uppercasing the team key.
    - For a URL, extract a complete `TEAM-NUMBER` path token; fail if none exists.
@@ -89,7 +101,7 @@ If a repo is available:
    - Exact registered worktree path
    - A unique registered worktree path starting with `$MAIN_ROOT/.worktrees/<issue_id>-`
    - Otherwise `$CURRENT_ROOT`
-3. Check whether the issue is plausibly associated with the candidate repo using issue links/path references, project guidance, `git remote get-url origin`, repo basename, and manifests:
+3. Check whether the issue is plausibly associated with the candidate repo using an existing confirmation for this issue/repo, issue links/path references, project guidance, `git remote get-url origin`, repo basename, and manifests. Reuse a prior confirmation unless the repo changed or new evidence contradicts it:
    - Clear match → set `ANALYSIS_MODE=code`.
    - Clear mismatch → disclose it and ask whether to use this repo, supply another repo, or continue text-only. Do not make code-grounded claims before confirmation.
    - No useful repo clue → disclose the assumption and ask for confirmation before code-grounded analysis. The user may choose text-only instead.
@@ -162,66 +174,19 @@ List only questions unresolved by the issue, comments, relations, project contex
 
 Text-only mode may still be `ready` for specification quality, but state explicitly that code feasibility was not assessed.
 
-## Phase 6: Present the Briefing
+## Phase 6: Briefing, Discussion, and Implementation Plan
 
-Present before discussion:
+Read and follow the [shared implementation discussion](../clarify-ticket/references/implementation-discussion.md).
+Use the analysis above to present a concise briefing with the ticket identity,
+analysis mode and confirmed code context when available, preliminary readiness,
+proposed approach, and an ordered agenda of unresolved decisions and missing facts.
 
-```
-## Clarification Briefing — <ISSUE-ID>: <title>
-**Readiness:** <ready | needs-clarification | blocked>
-**Analysis mode:** <code: confirmed path | code: user-confirmed path | text-only>
-
-### Details to confirm
-- ...
-
-### Risks
-- [high] ... — evidence: `<path:line | Linear source>`
-
-### Blind spots
-- <category>: ... — evidence: `<path:line | Linear source>` (or "No blind spots found")
-
-### Dependencies
-- blocked by <ISSUE> (<state name>, <state type>, <satisfied | unsatisfied | unknown>) ...
-
-### Open questions
-1. ...
-```
-
-## Phase 7: Guided Discussion
-
-Open with two calibration questions, asked one at a time before the open items:
-
-1. **Unknown knowns** — "What's obvious to you about this issue that isn't written down?" Fold answers into resolved details, risks, or blind spots.
-2. **Experience calibration** — "How familiar are you with the code or systems this issue touches?" Scale later explanations to the answer: more background when familiarity is low, terser confirmation when high.
-
-Then walk substantive open items one topic at a time using the portable interaction rules. Batch trivial confirmations. Record each outcome as:
-
-- **Resolved here** — capture the user's decision.
-- **Still open** — retain it for the issue author or another external source.
-
-If there are no open items beyond the two calibration questions, proceed directly to the summary after asking them.
-
-## Phase 8: Readiness Summary
-
-Present on screen only:
-
-```
-## Clarification Summary — <ISSUE-ID>
-**Verdict:** <ready to implement | needs author input | blocked by <...>>
-**Analysis mode:** <code | text-only>
-
-**Resolved**
-- ...
-
-**Open questions for the author**
-- ... (or "none")
-
-**Key risks to watch during implementation**
-- [severity] ...
-
-**Suggested next step**
-- Use implement-ticket-linear with <ISSUE-ID>, or resolve the blockers/questions first.
-```
+Discuss material decisions one at a time with viable options, their trade-offs,
+and a recommendation. Ask calibration questions only when needed; skip settled
+questions and do not ask the user to resolve facts available in the sources.
+Finish with decisions, ordered implementation steps, acceptance checks, remaining
+blockers, and the matching next step, all on screen. Apply this skill's readiness
+rules to the final evidence; recommendations are not user decisions.
 
 ## Safety rules
 

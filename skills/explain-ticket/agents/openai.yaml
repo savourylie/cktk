@@ -1,0 +1,7 @@
+interface:
+  display_name: "Explain Ticket"
+  short_description: "Explain a ticket's purpose, scope, and intended outcome"
+  default_prompt: "Use $explain-ticket to explain this ticket's problem, intended behavior, project value, scope, and completion criteria before we discuss implementation."
+
+policy:
+  allow_implicit_invocation: true

@@ -43,7 +43,7 @@ Image, browser, and design workflows may need additional tools described in thei
 
 ## Skills
 
-Ticket skills come in twins: the plain skill works against `docs/tickets/` markdown files, and the `-linear` twin works against Linear issues (via Linear MCP) without touching `docs/tickets/`.
+Most ticket lifecycle skills come in twins: the plain skill works against `docs/tickets/` markdown files, and the `-linear` twin works against Linear issues (via Linear MCP) without touching `docs/tickets/`. `explain-ticket` and `review-ticket` each accept either source through one entry point.
 
 ### Tickets and planning
 
@@ -53,7 +53,8 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 | `project-advisor` | Assess overall project direction across Notion, Linear, and repo evidence; recommend strategic trade-offs and tactical next steps, discuss alternatives, and revisit earlier decisions | Uses existing `init-project` bindings; continues with available evidence when a source is missing. Advisory by default; saves a dated discussion/decision record on request |
 | `create-tickets` | Generate dev tickets into `docs/tickets/` from requirements, a feature catalog, or a conversation or saved plan, with dependency ordering and an INDEX.md tracker | Preserves existing tickets; leaves new tracker files uncommitted |
 | `create-tickets-linear` | Create Linear issues from requirements, a feature catalog, or a conversation or saved plan, with acceptance criteria and native dependency relations | Uses explicit destinations or validated project bindings; checks existing coverage and reconciles partial creation before retrying. Requires Linear MCP; preserves existing issues |
-| `clarify-ticket` · `clarify-ticket-linear` | Interactively clarify a ticket's details, blind spots, and risks against the codebase before implementation | Read-only: never edits tickets, INDEX.md, Linear, or git |
+| `explain-ticket` | Explain a ticket's problem, intended behavior, project value, scope, and completion criteria before implementation | Accepts local tickets or Linear issues; read-only. Reuses the current conversation's ticket when no ID is supplied |
+| `clarify-ticket` · `clarify-ticket-linear` | Research implementation, discuss material decisions with options, trade-offs, and recommendations, then summarize readiness and an implementation plan | Reuses prior explanations and decisions. Read-only: never edits tickets, INDEX.md, Linear, or git |
 | `implement-ticket` · `implement-ticket-linear` | Implement a ticket in its project business context, trace related tickets, clarify conflicting definitions, and verify the result; explicitly report completion and PR/merge readiness or contextual blockers, resolution, and whether to continue, split, or pause; supports `worktree` and final `via codex\|claude\|grok` delegation | Every handoff connects completed technical work to its business meaning. Further actions follow existing user authorization. Linear Backlog issues automatically move to In Progress at the start, before context and workspace preparation. Todo → In Progress still waits for readiness; completion updates use the matching update skill |
 | `review-ticket` | Review uncommitted changes, branch diffs, PR diffs, single commits, or ticket/Linear-issue implementations for bugs and scope gaps | Linear issue mode requires Linear MCP |
 | `update-ticket` · `update-ticket-linear` | Reconcile status and affected dependencies from business context and acceptance evidence, in the selected checkout | Clear completion moves directly to Done without another confirmation. The docs twin commits only its tracker changes via `commit-ticket`; the Linear twin creates no git commit. Bound Project Context and Notion follow-ups use independent preferences and authorization |
@@ -82,7 +83,7 @@ Ticket skills come in twins: the plain skill works against `docs/tickets/` markd
 | Skill(s) | What it does | Notes |
 | --- | --- | --- |
 | `product-manager` | Keep the conversation addressed to you as the product manager, centering business logic, user outcomes, each ticket's project significance, and priorities for the whole project | Remains active in the same conversation until you change or end the mode. Technical details appear when consequential or requested; works alongside other skills |
-| `clarify` | Explain a previous statement again after the user says they do not understand it — recover the missing context from Linear, Notion, tickets, docs, and code, then re-explain with explicit scope, resolved references, defined terminology, and the missing reasoning steps filled in | Clarifies a *statement*, not a ticket — use `clarify-ticket` for that. Read-only; Linear and Notion MCP are optional and it degrades to repo sources without them |
+| `clarify` | Explain a previous statement again after the user says they do not understand it — recover the missing context from Linear, Notion, tickets, docs, and code, then re-explain with explicit scope, resolved references, defined terminology, and the missing reasoning steps filled in | Clarifies a *statement*. Use `explain-ticket` for a ticket's purpose or `clarify-ticket` / `clarify-ticket-linear` for implementation decisions. Read-only; Linear and Notion MCP are optional and it degrades to repo sources without them |
 | `debrief-result` | Explain a complete or partial result's business purpose, technical progress, completion state, and unresolved obstacles or next steps | No ticket id required — starts from the conversation and asks when consequential context remains unclear. Read-only. Not a quiz, review, or `clarify` |
 | `interact-html` | Render clarifying questions, option picks, and decision briefings as a local interactive HTML page, collect answers via a one-shot localhost server or paste-back, and archive the resolved page as a decision record | Pages live under `.ai/interactions/` (gitignored, local-only) |
 
@@ -169,6 +170,26 @@ The default assessment reads sources and replies in the conversation. It uses `.
 
 `init-project` is optional setup for reusable Linear/Notion destinations and requirements paths. Explicit inputs and available repository context can be used without it. It writes `.ai/cktk/project.json` but does not commit the file or configure MCP access; commit the bindings separately when you want to share them with the project.
 
+**Understand a ticket, then discuss how to implement it**
+
+For an existing ticket, these are two separate, read-only stages in the same conversation:
+
+```text
+$explain-ticket 007
+$clarify-ticket 007
+```
+
+For a Linear issue:
+
+```text
+$explain-ticket ENG-42
+$clarify-ticket-linear ENG-42
+```
+
+`explain-ticket` explains the problem, intended before/after behavior, project role, scope, and completion criteria. It reads only enough context to explain accurately and does not start a decision interview. The clarification stage researches the code when available, shows an agenda, and discusses material decisions one at a time with viable options, trade-offs, and a recommendation. It finishes with agreed decisions, ordered implementation steps, verification plans, and any remaining blockers; coding starts only when requested separately.
+
+Both stages reuse an unambiguous ticket and decisions already established in the conversation, so you can omit the ID on a follow-up. Routine engineering choices do not become mandatory questions, and missing facts do not become artificial multiple-choice decisions. A text-only Linear plan identifies what still needs code investigation. Neither stage saves files, comments, or status changes. `quiz-ticket ... explain` explains an existing implementation diff, while `debrief-result` explains a delivered or partial result.
+
 The following Codex walkthroughs start from an agreed plan in the conversation. Use the ticket identifiers returned by creation; `003` and `ENG-42` are examples. Run each follow-up in the ticket's selected checkout. These examples assume verified implementation satisfies the project's Done criteria. If completion requires a merge, deployment, or other acceptance gate, publish first and update status after that gate is satisfied.
 
 **Local tickets**
@@ -217,8 +238,10 @@ Implementation alone does not authorize commits, publishing, merging, or Done up
 /create-tickets-linear FEATURES: docs/FEATURES.md  # Use the bound Linear destination
 /create-tickets-linear PLAN                       # Create issues from this conversation's plan
 
-/clarify-ticket 007                          # Read ticket, analyze vs. code, discuss risks (read-only)
-/clarify-ticket-linear ENG-42                # Same for a Linear issue (requires Linear MCP)
+$explain-ticket 007                         # Explain a local ticket's purpose and scope (read-only)
+$explain-ticket ENG-42                      # Explain a Linear issue (requires Linear MCP for live reads)
+$clarify-ticket 007                         # Research, discuss options, and plan implementation (read-only)
+$clarify-ticket-linear ENG-42               # Same for a Linear issue (requires Linear MCP)
 
 /implement-ticket 003                        # Implement on branch ticket-003-slug off the current HEAD
 /implement-ticket 003 dev                    # Same, but branch off origin/dev
@@ -320,7 +343,7 @@ Worktree creation may add `.worktrees/` to the main checkout's `.gitignore` and 
 /interact-html                     # Render the pending questions from the current conversation as a page
 ```
 
-`clarify` also triggers on its own when the user says they do not understand something you said. It clarifies a *statement*; `clarify-ticket` and `clarify-ticket-linear` clarify a *ticket*. `debrief-result` explains a *result's* meaning for the project and needs no ticket id.
+`clarify` also triggers on its own when the user says they do not understand something you said. It clarifies a *statement*; `explain-ticket` explains a ticket's *purpose and scope*; `clarify-ticket` and `clarify-ticket-linear` research and discuss its *implementation*. `debrief-result` explains a *result's* meaning for the project and needs no ticket id.
 
 ### Docs and maintenance
 
