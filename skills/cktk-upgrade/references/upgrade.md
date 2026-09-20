@@ -10,7 +10,7 @@ Read `~/.local/share/cktk/install.json` when present. Its `source_root` and `mod
 
 Without a receipt, resolve the loaded skill's real path. A full development checkout supplies the source for linked mode. For a Claude marketplace/plugin installation, use the registered cktk marketplace checkout and plugin mode. Verify `catalog.json`, `.claude-plugin/plugin.json`, and the installer exist; neither a remote URL substring nor an isolated copied skill establishes a full installation.
 
-Record the source's HEAD, branch, upstream, and local changes. Keep the selected absolute directory for every call.
+Record the source's HEAD as `<PREV>`, plus branch, upstream, and local changes. Keep the selected absolute directory for every call.
 
 ## Update that source
 
@@ -33,6 +33,7 @@ After a successful version check, including **Already up to date**, automaticall
 ```sh
 bash <CKTK_DIR>/scripts/install-all-agent-skills.sh --source <CKTK_DIR> --mode <mode>
 python3 <CKTK_DIR>/scripts/agent-skills.py doctor --runtime
+python3 <CKTK_DIR>/scripts/agent-skills.py changes --from <PREV>
 ```
 
 Pass `--project-root <PROJECT_ROOT>` only for the recorded invoking git project. The installer links portable skills through `~/.agents/skills`, retains native Codex entries under `${CODEX_HOME:-$HOME/.codex}/skills`, reconciles OpenCode and Antigravity links and shell helpers, and records the source. Grok reads the shared/Claude skill locations. Linked mode also installs Claude personal skills; plugin mode leaves Claude's cache under its CLI's management.
@@ -43,4 +44,16 @@ In linked mode, an enabled old `cktk@cktk` Claude plugin supplies a second sourc
 
 Inspect runtime inventories from the invoking project when available. Report absent/failed CLI inspection as unverified, separately from filesystem checks. Same-real-source aliases are harmless; another plugin with the same skill name remains a selection ambiguity and must be identified without removing that plugin.
 
-Report the previous/current revision, local changes or commits, actions actually completed, and remaining conflicts. A linked checkout with uncommitted edits has HEAD plus a dirty working payload; do not call those edits a released version. Claude plugin changes may need `/reload-plugins`; other agents may need a new session or restart if their registry has not refreshed. Do not claim the current conversation's already-loaded instructions were replaced.
+## Report
+
+After reconcile and doctor, print a user-facing summary. Quote the `changes` output's added, removed, and updated skill names (or its explicit no-change line). If the command fails, say the inventory could not be compared instead of inventing one.
+
+The summary includes, in this order:
+
+1. Source path, mode, and previous → current revision, including dirty or local-ahead state
+2. The `changes` inventory: catalog version, commits in the update, skills added, skills removed, skills updated, and other source files
+3. Actions actually completed (fetch/fast-forward, plugin marketplace/scope updates, reconcile, doctor)
+4. Remaining conflicts, failed plugin scopes, or unverified CLI inventories
+5. Reload: this conversation still has the previously loaded skill text; Claude plugin updates may need `/reload-plugins`; other agents may need a new session if their registry has not refreshed
+
+A linked checkout with uncommitted edits is HEAD plus a dirty working payload; do not call those edits a released version.

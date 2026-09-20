@@ -67,6 +67,98 @@ def version(source):
     return {"revision": revision, "dirty": dirty, "payload_sha256": digest(source / "skills")}
 
 
+def catalog_skills(text):
+    data = json.loads(text)
+    return {entry["name"]: entry for entry in data["skills"]}, data.get("version")
+
+
+def git_show(source, revision, path):
+    with tempfile.TemporaryFile(mode="w+") as output:
+        completed = subprocess.run(
+            ["git", "-C", str(source), "show", f"{revision}:{path}"],
+            text=True, stdout=output, stderr=subprocess.PIPE, timeout=30,
+        )
+        output.seek(0)
+        return None if completed.returncode else output.read()
+
+
+def skill_from_path(path):
+    for prefix in ("skills/", ".agents/skills/", ".agent/skills/"):
+        if path.startswith(prefix):
+            name = path[len(prefix):].split("/", 1)[0]
+            return name or None
+    return None
+
+
+def changes(source, baseline, target=None):
+    """Print added, removed, and updated skills between two source revisions."""
+    if not is_checkout(source):
+        raise ValueError(f"not a full cktk checkout: {source}")
+    try:
+        previous = run("git", "-C", str(source), "rev-parse", "--verify", f"{baseline}^{{commit}}")
+        current = run("git", "-C", str(source), "rev-parse", "--verify",
+                      f"{target}^{{commit}}" if target else "HEAD")
+        dirty = (not target) and bool(run("git", "-C", str(source), "status", "--porcelain"))
+        prev_short = run("git", "-C", str(source), "rev-parse", "--short", previous)
+        curr_short = run("git", "-C", str(source), "rev-parse", "--short", current)
+        old_text = git_show(source, previous, "catalog.json")
+        new_text = git_show(source, current, "catalog.json") if target else (source / "catalog.json").read_text()
+        names = ["git", "-C", str(source), "diff", "--name-only", previous]
+        if target:
+            names.append(current)
+        paths = set(run(*names).splitlines())
+        if not target:
+            paths.update(run("git", "-C", str(source), "ls-files", "--others", "--exclude-standard").splitlines())
+        paths.discard("")
+        log = run("git", "-C", str(source), "log", "--oneline", "--no-merges", f"{previous}..{current}")
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ValueError(f"cannot compare revisions: {error}") from error
+    if old_text is None:
+        raise ValueError(f"cannot read catalog.json at {baseline}")
+    if new_text is None:
+        raise ValueError(f"cannot read catalog.json at {target or 'HEAD'}")
+    old, old_version = catalog_skills(old_text)
+    new, new_version = catalog_skills(new_text)
+    added = sorted(set(new) - set(old))
+    removed = sorted(set(old) - set(new))
+    common = set(old) & set(new)
+    updated, other = set(), []
+    for path in sorted(paths):
+        name = skill_from_path(path)
+        if path == "catalog.json":
+            continue
+        if name in common:
+            updated.add(name)
+        elif name not in added and name not in removed:
+            other.append(path)
+    updated.update(name for name in common if old[name] != new[name])
+    lines = [f"Previous: {prev_short}", f"Current: {curr_short}{' dirty' if dirty else ''}"]
+    if old_version != new_version and (old_version or new_version):
+        lines.append(f"catalog {old_version or '?'} → {new_version or '?'}")
+    commit_lines = log.splitlines() if log else []
+    shown = commit_lines[:20]
+    if len(commit_lines) > 20:
+        shown.append(f"and {len(commit_lines) - 20} more")
+    if shown:
+        lines.append("Commits:")
+        lines.extend(f"- {item}" for item in shown)
+    if added:
+        lines.append("Skills added:")
+        lines.extend(f"- {name}" for name in added)
+    if removed:
+        lines.append("Skills removed:")
+        lines.extend(f"- {name}" for name in removed)
+    if updated:
+        lines.append("Skills updated:")
+        lines.extend(f"- {name}" for name in sorted(updated))
+    if not added and not removed and not updated:
+        lines.append("No skill inventory changes.")
+    if other:
+        lines.append("Other changes:")
+        lines.extend(f"- {path}" for path in other)
+    print("\n".join(lines))
+
+
 def locations(home, isolated):
     def configured(key, default):
         return Path(os.environ.get(key, str(default))).expanduser() if not isolated else default
@@ -302,12 +394,14 @@ def runtime_doctor(source, skills, mode):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("install", "doctor", "source"))
+    parser.add_argument("command", choices=("install", "doctor", "source", "changes"))
     parser.add_argument("--source", type=Path, help="explicit source checkout; install otherwise uses this script's checkout")
     parser.add_argument("--home", type=Path, help="isolated installation home (ignores agent-home environment overrides)")
     parser.add_argument("--project-root", type=Path, help="optional invoking project for handoff ignore rules")
     parser.add_argument("--runtime", action="store_true", help="also read installed CLI inventories (doctor only)")
     parser.add_argument("--mode", choices=("linked", "plugin"), help="linked personal Claude skills, or Claude-managed plugin cache")
+    parser.add_argument("--from", dest="baseline", help="previous revision (changes only)")
+    parser.add_argument("--to", dest="target", help="current revision (changes only); omit to include the working tree")
     args = parser.parse_args()
     home = (args.home or Path.home()).expanduser().resolve()
     state_path = home / ".local/share/cktk/install.json"
@@ -318,6 +412,13 @@ def main():
         if not is_checkout(source):
             raise ValueError(f"registered checkout is unavailable: {source}; select an existing checkout explicitly")
         print(source)
+        return 0
+    if args.command == "changes":
+        if not args.baseline:
+            raise ValueError("changes requires --from <revision>")
+        if not is_checkout(source):
+            raise ValueError(f"registered checkout is unavailable: {source}; select an existing checkout explicitly")
+        changes(source, args.baseline, args.target)
         return 0
     skills = source_skills(source)
     paths = locations(home, args.home is not None)

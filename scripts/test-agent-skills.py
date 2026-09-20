@@ -221,5 +221,93 @@ class InstallationTests(unittest.TestCase):
         self.assertIn("UNVERIFIED (CLI unavailable): claude, grok, opencode", output.getvalue())
 
 
+class SkillChangesTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="cktk-changes-")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve() / "cktk"
+        self.root.mkdir()
+        (self.root / ".claude-plugin").mkdir()
+        (self.root / ".claude-plugin/plugin.json").write_text('{"name":"cktk"}\n')
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+        for key, value in (("user.email", "test@example.com"), ("user.name", "test"),
+                           ("commit.gpgsign", "false")):
+            subprocess.run(["git", "-C", str(self.root), "config", key, value], check=True)
+        self.write_catalog("1.0.0", ("alpha",))
+        self.write_skill("alpha", "first")
+        self.baseline = self.commit("initial")
+
+    def git(self, *args):
+        return subprocess.run(["git", "-C", str(self.root), *args], check=True,
+                              capture_output=True, text=True).stdout.strip()
+
+    def commit(self, message):
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", message)
+        return self.git("rev-parse", "HEAD")
+
+    def write_catalog(self, version, names, descriptions=None):
+        descriptions = descriptions or {}
+        skills = [{"name": name, "path": f".agent/skills/{name}",
+                   "description": descriptions.get(name, name)} for name in names]
+        payload = {"name": "cktk", "version": version, "skills": skills}
+        (self.root / "catalog.json").write_text(json.dumps(payload, indent=2) + "\n")
+
+    def write_skill(self, name, body):
+        directory = self.root / "skills" / name
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "SKILL.md").write_text(body + "\n")
+
+    def report(self, *arguments, expected=0):
+        command = [sys.executable, str(SCRIPT), "changes", "--source", str(self.root), *arguments]
+        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
+        return result.stdout + result.stderr
+
+    def test_changes_requires_from(self):
+        self.assertIn("changes requires --from", self.report(expected=1))
+
+    def test_unchanged_revision_has_no_skill_inventory_changes(self):
+        output = self.report("--from", self.baseline)
+        self.assertIn("No skill inventory changes.", output)
+        self.assertNotIn("Skills added:", output)
+        self.assertNotIn("Skills removed:", output)
+        self.assertNotIn("Skills updated:", output)
+
+    def test_reports_added_removed_updated_skills_and_other_files(self):
+        self.write_skill("gamma", "soon gone")
+        self.write_catalog("1.0.0", ("alpha", "gamma"))
+        self.baseline = self.commit("add gamma")
+        self.write_skill("alpha", "revised")
+        self.write_skill("beta", "new")
+        shutil.rmtree(self.root / "skills" / "gamma")
+        self.write_catalog("1.1.0", ("alpha", "beta"))
+        (self.root / "README.md").write_text("notes\n")
+        self.commit("add beta, drop gamma, edit alpha")
+        output = self.report("--from", self.baseline)
+        self.assertIn("catalog 1.0.0 → 1.1.0", output)
+        self.assertIn("Skills added:\n- beta", output)
+        self.assertIn("Skills removed:\n- gamma", output)
+        self.assertIn("Skills updated:\n- alpha", output)
+        self.assertIn("Other changes:\n- README.md", output)
+        self.assertIn("Commits:\n- ", output)
+
+    def test_catalog_description_change_counts_as_updated(self):
+        self.write_catalog("1.0.0", ("alpha",), {"alpha": "new purpose"})
+        self.commit("reword alpha")
+        output = self.report("--from", self.baseline)
+        self.assertIn("Skills updated:\n- alpha", output)
+        self.assertNotIn("Skills added:", output)
+
+    def test_dirty_working_tree_is_marked_and_compared(self):
+        self.write_skill("alpha", "uncommitted")
+        output = self.report("--from", self.baseline)
+        self.assertIn(" dirty", output)
+        self.assertIn("Skills updated:\n- alpha", output)
+        clean = self.report("--from", self.baseline, "--to", "HEAD")
+        self.assertNotIn(" dirty", clean)
+        self.assertIn("No skill inventory changes.", clean)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
