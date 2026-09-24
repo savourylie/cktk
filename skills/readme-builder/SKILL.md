@@ -1,14 +1,14 @@
 ---
 name: readme-builder
 user-invocable: true
-description: "Create or refresh README.md for a software project. Auto-detects framework, package manager, scripts, env vars; reads existing docs (AGENTS.md, CONTRIBUTING.md, docs/, package.json, pyproject.toml, docker-compose.yml); writes a sectioned README with tagline, quick start, development commands, environment variables, architecture overview, usage, testing, deployment, troubleshooting, and contributing. For browser-renderable apps it captures screenshots of major UI flows via Playwright MCP and embeds them; pass `no-screenshots` for a pure-text README. When README.md already exists, refreshes recognizable sections from current code while preserving custom user-authored content verbatim. Triggers on: /readme-builder, create README, write README, generate README, update README, refresh README, build documentation for this repo, add a quick-start, document this project, README from code. Do NOT use for: feature catalogs, PRDs, tickets, code review, or API reference docs."
+description: "Create or refresh README.md for a software project. Auto-detects framework, package manager, scripts, env vars; reads existing docs (AGENTS.md, CONTRIBUTING.md, docs/, package.json, pyproject.toml, docker-compose.yml); writes a sectioned README with tagline, quick start, development commands, environment variables, architecture overview, usage, testing, deployment, troubleshooting, and contributing. For browser-renderable apps it captures screenshots of major UI flows via agent-browser and embeds them; pass `no-screenshots` for a pure-text README. When README.md already exists, refreshes recognizable sections from current code while preserving custom user-authored content verbatim. Triggers on: /readme-builder, create README, write README, generate README, update README, refresh README, build documentation for this repo, add a quick-start, document this project, README from code. Do NOT use for: feature catalogs, PRDs, tickets, code review, or API reference docs."
 ---
 
 **Argument:** `$ARGUMENTS`
 
 # README Builder
 
-Generate or refresh a project's `README.md` from observed facts in the codebase — framework, scripts, env vars, existing docs — plus, for browser-renderable apps, screenshots of major UI flows captured via Playwright MCP.
+Generate or refresh a project's `README.md` from observed facts in the codebase — framework, scripts, env vars, existing docs — plus, for browser-renderable apps, screenshots of major UI flows captured via agent-browser.
 
 The output is a README sized for the project's actual readers: contributors who need to clone and run it, users who want to install and use it, and outside visitors who want to know what it is in the first thirty seconds. Sections that don't apply for the project type are omitted rather than padded with "N/A".
 
@@ -182,17 +182,15 @@ For all other types, follow the protocol in [`references/screenshot-strategy.md`
    - The root path (`/`).
    - Up to 4 additional routes inferred from navigation components (read the navbar / sidebar / route definitions to find the most user-visible routes).
    - Prefer public / unauthenticated routes — skip anything that obviously requires login unless the user has provided auth.
-6. **Capture each route** with:
-   - `mcp__plugin_playwright_playwright__browser_navigate` to load it.
-   - `mcp__plugin_playwright_playwright__browser_take_screenshot` to snapshot.
+6. **Capture each route with `agent-browser`**, following [`references/screenshot-strategy.md`](./references/screenshot-strategy.md): a named session, viewport `1280×800`, `open` the local URL, `screenshot` to the save path. Load `agent-browser skills get core` before the first command.
 7. **Save screenshots** to `docs/images/` (create if missing) — unless the project already has a `public/` directory with a `readme/` or `images/` sub-folder convention, in which case use that. Filenames: `<route-slug>.png` (e.g., `home.png`, `dashboard.png`, `settings.png`).
-8. **Stop the dev server** by killing the background task.
-9. **On any failure** (port collision, dev server hangs past the timeout, auth wall, Playwright connection error):
-   - Stop / kill the dev server cleanly.
+8. **Stop the dev server** by killing the background task, and close the named session with `agent-browser --session "$SESSION" close`.
+9. **On any failure** (port collision, dev server hangs past the timeout, auth wall, `agent-browser` missing or unable to connect):
+   - Stop / kill the dev server cleanly and close the named browser session.
    - Record the failure reason (one line).
    - Continue to Phase 5 — the README will be written without screenshots, with a `TODO: screenshots failed — <reason>. Re-run /readme-builder after fixing, or add screenshots manually.` note in place of the gallery.
 
-For `native-desktop` (Electron / Tauri), only attempt screenshots if `electron-playwright-helpers` or `playwright-electron` is already in `package.json#devDependencies`. Otherwise insert a TODO placeholder and move on.
+For `native-desktop`, follow the Electron and Tauri rules in [`references/screenshot-strategy.md`](./references/screenshot-strategy.md). Electron is captured by connecting `agent-browser` over CDP. Tauri is captured only when its frontend already serves a localhost URL.
 
 ---
 
@@ -289,5 +287,5 @@ Before reporting completion, confirm:
 ## References
 
 - [`references/project-types.md`](./references/project-types.md) — Detection signals + per-type guidance for which sections apply.
-- [`references/screenshot-strategy.md`](./references/screenshot-strategy.md) — Playwright MCP workflow, dev-server discovery, port handling, failure modes.
+- [`references/screenshot-strategy.md`](./references/screenshot-strategy.md) — agent-browser capture, dev-server discovery, port handling, failure modes.
 - [`references/readme-template.md`](./references/readme-template.md) — Canonical section order, per-section drafting rules, example output blocks.

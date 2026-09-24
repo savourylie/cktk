@@ -1,13 +1,13 @@
 ---
 name: "readme-builder"
-description: "Create or refresh README.md for a software project from observed facts (framework, scripts, env vars, existing docs) plus optional UI screenshots via Playwright MCP. Use when the user asks to generate, refresh, or build a README for a repo, document a project, or add a quick-start. Prefer explicit invocation with $readme-builder."
+description: "Create or refresh README.md for a software project from observed facts (framework, scripts, env vars, existing docs) plus optional UI screenshots via agent-browser. Use when the user asks to generate, refresh, or build a README for a repo, document a project, or add a quick-start. Prefer explicit invocation with $readme-builder."
 ---
 
 **Argument:** `$ARGUMENTS`
 
 # README Builder
 
-Generate or refresh a project's `README.md` from observed facts — framework, scripts, env vars, existing docs — plus, for browser-renderable apps, screenshots of major UI flows captured via Playwright MCP.
+Generate or refresh a project's `README.md` from observed facts — framework, scripts, env vars, existing docs — plus, for browser-renderable apps, screenshots of major UI flows captured via agent-browser.
 
 Anti-fabrication is the single most important rule. README content shapes how strangers form their first impression of a project — a fabricated command or env var makes that impression a lie. When in doubt, write a `TODO:` placeholder and let the user fill it in. See **Anti-fabrication discipline** below.
 
@@ -122,12 +122,12 @@ For all other types, follow the protocol in [screenshot-strategy.md](./reference
 3. **Start the dev server in the background** (record the task/PID so you can stop it later).
 4. **Wait for the port to respond** by polling `curl -s http://localhost:<port>/` (or equivalent) until a 2xx/3xx/4xx is returned or 30 seconds elapse.
 5. **Discover routes** — default to 3–5: the root path plus up to 4 routes inferred from navigation components or route definitions. Prefer public / unauthenticated routes.
-6. **Capture each route** with Playwright MCP `browser_navigate` followed by `browser_take_screenshot`. If you need a specific viewport, call `browser_resize` (default to `1280×800`).
+6. **Capture each route with `agent-browser`**, following [screenshot-strategy.md](./references/screenshot-strategy.md): a named session, viewport `1280×800`, `open` the local URL, `screenshot` to the save path. Load `agent-browser skills get core` before the first command.
 7. **Save screenshots** to `public/readme/` if `public/readme/` already exists, else create and use `public/readme/` for `web-app-browser` projects that ship a `public/` directory (Next.js, Astro, SvelteKit, Vite). Otherwise create and use `docs/images/`. Filenames: slugified route (`home.png`, `dashboard.png`, etc.). Always `.png`.
-8. **Stop the dev server** cleanly. Always — even on failure. Leaving a runaway background process is hostile UX.
-9. **On any failure** (no dev script, port collision, server never ready, auth wall, Playwright MCP not configured, navigation error): stop the server, record a one-line reason, continue to Phase 5. The README will get a `TODO: screenshots failed — <reason>` note in place of the gallery.
+8. **Stop the dev server** cleanly, and close the named session with `agent-browser --session "$SESSION" close`. Always — even on failure. Leaving a runaway background process is hostile UX.
+9. **On any failure** (no dev script, port collision, server never ready, auth wall, `agent-browser` missing or unable to connect, navigation error): stop the server, close the named browser session, record a one-line reason, continue to Phase 5. The README will get a `TODO: screenshots failed — <reason>` note in place of the gallery.
 
-For `native-desktop` (Electron / Tauri), only attempt screenshots if `electron-playwright-helpers`, `playwright-electron`, or a `playwright.config.*` targeting `electron` is already in `package.json`. Otherwise TODO and move on.
+For `native-desktop`, follow the Electron and Tauri rules in [screenshot-strategy.md](./references/screenshot-strategy.md). Electron is captured by connecting `agent-browser` over CDP. Tauri is captured only when its frontend already serves a localhost URL.
 
 ## Phase 5: Compose the README
 
@@ -206,5 +206,5 @@ Before reporting completion, confirm:
 ## References
 
 - [project-types.md](./references/project-types.md) — Detection signals and per-type section matrix.
-- [screenshot-strategy.md](./references/screenshot-strategy.md) — Playwright MCP workflow, dev-server discovery, port handling, failure modes.
+- [screenshot-strategy.md](./references/screenshot-strategy.md) — agent-browser capture, dev-server discovery, port handling, failure modes.
 - [readme-template.md](./references/readme-template.md) — Canonical section order, per-section drafting rules, example output blocks.

@@ -1,7 +1,7 @@
 interface:
   display_name: "README Builder"
   short_description: "Generate or refresh README.md from observed codebase facts plus optional UI screenshots"
-  default_prompt: "Detect the project type, read existing docs and manifests, introspect scripts and env vars, optionally capture UI screenshots via Playwright MCP, and write a sectioned README.md."
+  default_prompt: "Detect the project type, read existing docs and manifests, introspect scripts and env vars, optionally capture UI screenshots via agent-browser, and write a sectioned README.md."
 
 policy:
   allow_implicit_invocation: false

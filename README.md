@@ -92,7 +92,7 @@ Most ticket lifecycle skills come in twins: the plain skill works against `docs/
 | Skill(s) | What it does | Notes |
 |---|---|---|
 | `feature-catalog` | Explore a codebase and produce a user-facing feature catalog | |
-| `readme-builder` | Generate or refresh `README.md` from observed facts (framework, scripts, env vars, existing docs) plus optional UI screenshots via Playwright MCP | Pass `no-screenshots` for a pure-text README |
+| `readme-builder` | Generate or refresh `README.md` from observed facts (framework, scripts, env vars, existing docs) plus optional UI screenshots via agent-browser | Pass `no-screenshots` for a pure-text README |
 | `update-agents` | Persist durable agent instructions into the current repo's `AGENTS.md` and `CLAUDE.md` | Optional argument is the instruction; with no argument, writes what the agent said it would remember next time. Does not commit |
 | `cktk-upgrade` | Update the registered cktk source and reconcile supported agent entries and handoff helpers | Preserves linked/plugin mode; reconciles links even when the source is already current |
 
@@ -350,7 +350,7 @@ Worktree creation may add `.worktrees/` to the main checkout's `.gitignore` and 
 ```text
 /feature-catalog                   # Generate a feature catalog for the current project
 /readme-builder                    # Generate or refresh README.md from codebase facts + screenshots
-/readme-builder no-screenshots     # Same, but skip Playwright screenshot capture
+/readme-builder no-screenshots     # Same, but skip agent-browser screenshot capture
 /update-agents                     # Persist what you said you'd remember next time into AGENTS.md and CLAUDE.md
 /update-agents use bun, never npm  # Persist this standing instruction into both files
 /cktk-upgrade                      # Upgrade cktk and reconcile all supported agent installs

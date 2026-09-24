@@ -1,6 +1,6 @@
 # Screenshot Capture Strategy
 
-This reference is loaded during Phase 4 of the readme-builder workflow when `screenshots_enabled = true` and the project type is browser-renderable (or a desktop project with Playwright helpers already installed).
+This reference is loaded during Phase 4 of the readme-builder workflow when `screenshots_enabled = true` and the project type is browser-renderable (or a desktop project that agent-browser can capture).
 
 The goal is to produce 3–5 representative PNGs that show what the application looks like, without burning time on flaky setup or fabricating coverage. **A clean failure is better than a misleading screenshot.**
 
@@ -11,9 +11,10 @@ The goal is to produce 3–5 representative PNGs that show what the application 
 3. [Port discovery](#port-discovery)
 4. [Waiting for the server](#waiting-for-the-server)
 5. [Route selection](#route-selection)
-6. [Save location and naming](#save-location-and-naming)
-7. [Cleanup and failure handling](#cleanup-and-failure-handling)
-8. [Native-desktop notes](#native-desktop-notes)
+6. [Capture with agent-browser](#capture-with-agent-browser)
+7. [Save location and naming](#save-location-and-naming)
+8. [Cleanup and failure handling](#cleanup-and-failure-handling)
+9. [Native-desktop notes](#native-desktop-notes)
 
 ---
 
@@ -158,6 +159,42 @@ For a single-page app with client-side routing and no obvious nav file, capture 
 
 ---
 
+## Capture with agent-browser
+
+Screenshots are taken with the `agent-browser` CLI. Before the first command, load the workflow that matches the installed CLI:
+
+```bash
+agent-browser skills get core
+```
+
+If `agent-browser` is not on `PATH`, skip Phase 4. TODO: `agent-browser is not installed — add screenshots manually.`
+
+Resolve one session id and pass that same `--session` on every command, including `close`. The unnamed default session is shared with every other agent on the machine.
+
+```bash
+SESSION="$(agent-browser session id --scope worktree --prefix readme)"
+agent-browser --session "$SESSION" set viewport 1280 800
+```
+
+Viewport is `1280×800`. Set it once, before the first `open`.
+
+For each selected route, open the local URL and write a PNG to the path chosen in [Save location and naming](#save-location-and-naming):
+
+```bash
+agent-browser --session "$SESSION" open "http://localhost:${PORT}${ROUTE}"
+agent-browser --session "$SESSION" screenshot "<save-path>"
+```
+
+`open` waits for navigation. If the saved PNG is blank, run `agent-browser --session "$SESSION" wait --load load` once and screenshot that route again. Leave other routes that already saved.
+
+After the last route — and on any failure — close that session:
+
+```bash
+agent-browser --session "$SESSION" close
+```
+
+---
+
 ## Save location and naming
 
 Pick the save directory in this order:
@@ -175,7 +212,7 @@ Pick the save directory in this order:
 | `/blog/posts` | `blog-posts.png` |
 | `/users/[id]` (rendered as `/users/42`) | `users-42.png` (use the actual rendered path) |
 
-Always `.png`. Standardize on a single viewport width — `1280×800` is a reasonable default. The Playwright MCP screenshot tool takes whatever the browser shows; if you need a specific viewport, call `mcp__plugin_playwright_playwright__browser_resize` first.
+Always `.png`. The capture commands above already set the viewport to `1280×800`.
 
 ---
 
@@ -187,7 +224,7 @@ After all routes are captured:
 
 1. Identify the background task ID for the dev server.
 2. Kill it cleanly. If the dev server didn't capture its own port-cleanup, the user's next `npm run dev` will fail with "port in use" — this is hostile UX, so always stop cleanly.
-3. Close the Playwright browser if it's still open: `mcp__plugin_playwright_playwright__browser_close`.
+3. Close the named agent-browser session: `agent-browser --session "$SESSION" close`.
 
 ### Failure modes and responses
 
@@ -196,23 +233,36 @@ After all routes are captured:
 | No dev-server command found | Skip Phase 4. README writes a TODO in the Screenshots section: `TODO: no dev-server command detected — add screenshots manually if applicable.` |
 | Port already in use | Stop the (failed) background task. TODO: `Port N already in use — re-run after stopping the conflicting process.` |
 | Server never reached 2xx/3xx/4xx within 30s | Stop the background task. TODO: `dev server didn't become ready within 30s — re-run after confirming the dev script works locally.` |
-| Playwright MCP not configured | Skip Phase 4. TODO: `Playwright MCP not available — add screenshots manually.` |
-| Playwright navigates but the page is blank / errors | Save what was captured of other routes; for the failing route specifically, TODO: `route <path> failed to render — see logs.` |
+| `agent-browser` not installed | Skip Phase 4. TODO: `agent-browser is not installed — add screenshots manually.` |
+| `agent-browser` opens the page but it is blank / errors | Save what was captured of other routes; for the failing route specifically, TODO: `route <path> failed to render — see logs.` |
 | One route 404s | That's fine — capture it anyway. A 404 is part of the project's surface. |
 
-In every case, regardless of failure mode, **stop the dev server**. Leaving a runaway background process for the user to discover is unkind.
+In every case, regardless of failure mode, **stop the dev server** and close the named session if one was opened. Leaving a runaway background process for the user to discover is unkind.
 
 ---
 
 ## Native-desktop notes
 
-For Electron / Tauri:
+### Electron
 
-- Only attempt screenshots if one of these is in `package.json` deps/devDeps:
-  - `electron-playwright-helpers`
-  - `playwright-electron`
-  - `@playwright/test` AND a `playwright.config.*` that targets `electron`
-  - For Tauri: `tauri-driver` plus a Selenium/Playwright bridge
-- Otherwise, leave a TODO in the Screenshots section: `TODO: add desktop-app screenshots manually — auto-capture for desktop apps requires Playwright Electron helpers, which aren't installed here.`
+Load the installed Electron workflow before connecting:
+
+```bash
+agent-browser skills get electron
+```
+
+Resolve `$SESSION` the same way as in [Capture with agent-browser](#capture-with-agent-browser). Launch the project's existing desktop dev command with the remote-debugging flag from that Electron workflow, then connect and screenshot the main window to the save path from [Save location and naming](#save-location-and-naming):
+
+```bash
+agent-browser --session "$SESSION" connect <debug-port>
+agent-browser --session "$SESSION" screenshot "<save-path>"
+agent-browser --session "$SESSION" close
+```
+
+`<debug-port>` is the port the launch actually opened. If the dev command does not start Electron, or `connect` fails, stop whatever you started and leave `TODO: add desktop-app screenshots manually — agent-browser could not attach to the Electron app.`
+
+### Tauri
+
+If `tauri dev` (or the project's dev script) serves the frontend at a known localhost URL, capture that URL with the web flow above. If no frontend URL is known, leave `TODO: add desktop-app screenshots manually — Tauri has no browser URL to capture.`
 
 For iOS / Android / React Native / Flutter — v1 does not attempt automatic capture. The README writes a TODO placeholder and continues. (Future versions could integrate with `xcrun simctl io ... screenshot` or `adb shell screencap`, but those add a lot of moving parts for relatively little gain on first-pass README generation.)

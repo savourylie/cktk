@@ -108,7 +108,7 @@ The matrix below is consumed by Phase 5. A `✓` means write the section; `—` 
 | --- | :-: | :-: | :-: | :-: | :-: | :-: |
 | Title + tagline | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | What it does | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Screenshots | ✓ (unless `no-screenshots`) | — | — | — | TODO | ✓ if Electron/Tauri Playwright helpers present, else TODO |
+| Screenshots | ✓ (unless `no-screenshots`) | — | — | — | TODO | Electron via agent-browser; Tauri only with a frontend URL; else TODO |
 | Quick start | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Development | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Environment variables | if any found | — | if any found | if any found | if any found | if any found |

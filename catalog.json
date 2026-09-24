@@ -202,7 +202,7 @@
     {
       "name": "readme-builder",
       "path": ".agent/skills/readme-builder",
-      "description": "Generate or refresh README.md from observed codebase facts plus optional UI screenshots via Playwright MCP"
+      "description": "Generate or refresh README.md from observed codebase facts plus optional UI screenshots via agent-browser"
     },
     {
       "name": "update-agents",
