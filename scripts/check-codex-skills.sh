@@ -634,12 +634,35 @@ validate_worktree_base_contract() {
   forbid_stale_claim "$root/README.md" 'which may not contain a local planning commit yet'
 }
 
+validate_backlog_contract() {
+  local skill_dir="$claude_root/implement-backlog-linear"
+  local skill_md="$skill_dir/SKILL.md"
+  local planning="$skill_dir/references/planning.md"
+
+  # One portable source plans and runs a Linear backlog. Pin what makes a
+  # plan safe to confirm: the script that owns the rules, the read-only
+  # planning contract, and the exact /goal line the status line satisfies.
+  require_literal "$skill_md" "(references/planning.md)"
+  require_literal "$skill_md" "scripts/backlog_graph.py"
+  require_literal "$skill_md" "human-blocked"
+  forbid_literal "$skill_md" "AskUserQuestion"
+
+  require_literal "$planning" "Planning is read-only"
+  require_literal "$planning" "includeRelations"
+  require_literal "$planning" 'until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"'
+  require_literal "$planning" "Do not start execution from a planning run"
+
+  require_literal "$root/catalog.json" '"name": "implement-backlog-linear"'
+  require_literal "$root/README.md" '`implement-backlog-linear`'
+}
+
 validate_clarify_contract
 validate_interact_contract
 validate_implement_contract
 validate_ticket_delegation_contract
 validate_worktree_linear_contract
 validate_worktree_base_contract
+validate_backlog_contract
 validate_review_ticket_contract
 validate_update_agents_contract
 

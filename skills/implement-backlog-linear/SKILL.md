@@ -1,0 +1,38 @@
+---
+name: implement-backlog-linear
+description: "Plan and run every Linear issue an agent can finish without a person, for one team or project. Selects issues without human-setup or human-acceptance labels whose blockers are done or also selected, implements them in parallel worktrees through implement-ticket-linear, lands each on the base through a serial merge queue, marks it Done, and parks work that needs a person. A read-only plan comes first; execution runs from the /goal line it prints. Requires Linear MCP. Use for implement-backlog-linear or requests to work through a Linear backlog automatically."
+---
+
+# Run a Linear Backlog to Its Human Boundary
+
+Work through every issue in one Linear scope that an agent can finish without a person, and stop where people are needed. `implement-ticket-linear` still does each issue's work; this skill selects the issues, schedules them, lands them, and reports. The user's `human-setup` and `human-acceptance` labels mark work that needs a person, and this skill adds `human-blocked` to work it could not finish.
+
+Use the available authenticated Linear MCP tools and their actual schemas. Without issue reads, report that blocker; do not invent an API-key, CLI, or browser fallback.
+
+## Modes
+
+Accept keyed arguments, case-insensitive, with or without a space after the colon. Quoted values may contain spaces.
+
+| Input | Meaning |
+| --- | --- |
+| `TEAM: <key/name/id>` | Linear team; optional only when a validated `.ai/cktk/project.json` supplies it |
+| `PROJECT: <name/id/URL>` | Linear project. One project is one repository |
+| `PARALLEL: <n>` | Implementation subagents at once; default 3 |
+| `BASE: <branch>` | Branch that issues land on; default `main` |
+| `RUN: <run-id>` | Execute a confirmed plan; takes no other input |
+
+Without `RUN:`, plan: read [planning](references/planning.md). Planning is read-only and ends with a `/goal` line; pasting that line is the user's confirmation and starts execution.
+
+```text
+implement-backlog-linear TEAM: ENG PROJECT: "Website"
+implement-backlog-linear                          # the bound team and project
+implement-backlog-linear TEAM: ENG PARALLEL: 1
+```
+
+## Shared rules
+
+- Resolve `MAIN_ROOT` from the absolute common git directory and verify it with `git worktree list --porcelain`. Select the directory explicitly on every shell call, and use absolute paths for file tools.
+- `$SKILL_DIR` is this skill's real directory, resolved through installation symlinks. Run `$SKILL_DIR/scripts/backlog_graph.py` from there, never from the target project. It owns scope, selection, readiness, locking, and status lines; use its output instead of recomputing them.
+- Run directories live under `$MAIN_ROOT/.worktrees/.cktk/runs/`. They are local and never staged.
+- Before calling another skill, read its active host document for refusals, side effects, and argument modes, and pass the work directory, branch, issue, and authorized scope explicitly, as in `implement-ticket`'s [calls across skills](../implement-ticket/references/workspace.md#calls-across-skills).
+- Answer in the user's language. Status lines and the `/goal` line keep their fixed English tokens.

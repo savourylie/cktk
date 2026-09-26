@@ -1,0 +1,7 @@
+interface:
+  display_name: "Implement Backlog (Linear)"
+  short_description: "Plan and run a Linear backlog up to human-gated work"
+  default_prompt: "Use $implement-backlog-linear to plan the Linear issues an agent can finish without a person, then, after the user pastes the printed /goal line, implement them in parallel worktrees, land each on the base, update Linear, and park work that needs a person."
+
+policy:
+  allow_implicit_invocation: false
