@@ -163,7 +163,7 @@ The implementation brief (kept in `references/subagent-briefs.md`) gives the sub
 }
 ```
 
-**Waiting.** The orchestrator must not end its turn to wait while subagents run: under Claude Code's `/goal`, every ended turn is a check, and repeated unmet checks in one turn pause the goal. It blocks on the result files instead: `wait_agent` in Codex, and in Claude Code the mechanism the spike (§13) selects.
+**Waiting.** Under Claude Code's `/goal`, every ended turn is a check, and repeated unmet checks in one turn pause the goal, so an orchestrator that ends its turn to wait for subagents may pause its own goal. Codex blocks with `wait_agent`. Claude Code has no blocking wait for background work — `Monitor` and background shell commands only notify — so the spike (§13) chooses among three outcomes: (A) ending the turn is safe because background work does not use up goal checks; (B) the orchestrator waits in the foreground with the planner's bounded `wait`; (C) Claude Code runs issues inline with `PARALLEL` 1.
 
 **Resuming.** Progress is derived from Linear and git, not stored:
 
@@ -255,6 +255,7 @@ Reverse check (rule 6): every document mentioning `create-worktree` was read, an
 ### 12. Repository integration
 
 - `skills/implement-backlog-linear/SKILL.md`, with `references/planning.md` (§2–4), `references/execution.md` (§5–6), `references/merge-queue.md` (§7), `references/stopping.md` (§8–10), and `references/subagent-briefs.md` (implementation and conflict briefs, result schema).
+- `skills/implement-backlog-linear/scripts/backlog_graph.py`: a standard-library Python planner that applies §2, §3, the readiness and removal rules of §5–§8, the lock, and the status lines deterministically. The model gathers Linear and git facts; the script decides, because these rules form the authorization boundary and are easy to misapply by hand across dozens of issues. `scripts/test-backlog-graph.py` tests it.
 - `skills/implement-backlog-linear/agents/openai.yaml`.
 - Symlinks `.agents/skills/implement-backlog-linear` and `.agent/skills/implement-backlog-linear` → `../../skills/implement-backlog-linear`.
 - A `catalog.json` entry with `portable: true`; a `README.md` table row and a two-step lifecycle example.
@@ -262,8 +263,8 @@ Reverse check (rule 6): every document mentioning `create-worktree` was read, an
 
 ### 13. Verification
 
-1. **Spike first.** In Claude Code under `/goal`, dispatch two background subagents and observe whether waiting by ending the turn consumes goal checks and trips the per-turn cap. Choose the blocking-wait mechanism from the result.
-2. **Repository checks:** `scripts/check-codex-skills.sh`, `scripts/check-portable-skills.py`, `scripts/test-agent-skills.py`.
+1. **Spike before writing the execution reference.** In Claude Code under `/goal`, dispatch two background subagents and observe whether waiting by ending the turn uses up goal checks and trips the per-turn cap; if it does, probe the planner's bounded foreground `wait`. The result selects outcome A, B, or C in §6.
+2. **Repository checks:** `scripts/check-codex-skills.sh`, `scripts/check-portable-skills.py`, `scripts/test-agent-skills.py`, and `scripts/test-backlog-graph.py`.
 3. **Read-only planning run** against one of the user's real Linear projects, compared with the user's expectation.
 4. **End-to-end rehearsal** in a throwaway repository and Linear project, in both Claude Code and Codex, with 6–8 issues covering a parallel pair, a chain, a parent with sub-issues, a `human-setup` issue with a dependent, a pair built to conflict, and an issue built to park. Creating that Linear data needs the user's go-ahead at the time.
 
