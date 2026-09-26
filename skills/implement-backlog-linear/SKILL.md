@@ -23,10 +23,13 @@ Accept keyed arguments, case-insensitive, with or without a space after the colo
 
 Without `RUN:`, plan: read [planning](references/planning.md). Planning is read-only and ends with a `/goal` line; pasting that line is the user's confirmation and starts execution.
 
+With `RUN:`, execute a confirmed plan: read [execution](references/execution.md), then [merge queue](references/merge-queue.md) and [stopping](references/stopping.md) as results reach them. Subagents receive the [subagent briefs](references/subagent-briefs.md).
+
 ```text
 implement-backlog-linear TEAM: ENG PROJECT: "Website"
 implement-backlog-linear                          # the bound team and project
 implement-backlog-linear TEAM: ENG PARALLEL: 1
+implement-backlog-linear RUN: ENG-website-20260926-1430
 ```
 
 ## Shared rules
@@ -36,3 +39,5 @@ implement-backlog-linear TEAM: ENG PARALLEL: 1
 - Run directories live under `$MAIN_ROOT/.worktrees/.cktk/runs/`. They are local and never staged.
 - Before calling another skill, read its active host document for refusals, side effects, and argument modes, and pass the work directory, branch, issue, and authorized scope explicitly, as in `implement-ticket`'s [calls across skills](../implement-ticket/references/workspace.md#calls-across-skills).
 - Answer in the user's language. Status lines and the `/goal` line keep their fixed English tokens.
+- The confirmed plan is the authorization boundary: execution may shrink it and never grows it. `RUN:` authorizes, for planned issues only, the preparatory `.gitignore` commit and label creation the plan names, implementation and commits in issue worktrees, merges into the base, Linear updates through `update-ticket-linear`, and parking. It does not authorize pushing, pull requests, or optional document follow-ups whose preference is `ask`.
+- Only this skill adds `human-blocked`, and only through an append-only label operation.

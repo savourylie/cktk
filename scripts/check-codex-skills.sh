@@ -654,6 +654,30 @@ validate_backlog_contract() {
 
   require_literal "$root/catalog.json" '"name": "implement-backlog-linear"'
   require_literal "$root/README.md" '`implement-backlog-linear`'
+
+  local execution="$skill_dir/references/execution.md"
+  local queue="$skill_dir/references/merge-queue.md"
+  local stopping="$skill_dir/references/stopping.md"
+  local briefs="$skill_dir/references/subagent-briefs.md"
+  local reference
+
+  # Execution: every reference is reachable from the entry point, landing
+  # goes through the existing merge and update skills, parking can never
+  # overwrite labels, and subagents never wait on a person.
+  for reference in execution.md merge-queue.md stopping.md subagent-briefs.md; do
+    require_literal "$skill_md" "(references/$reference)"
+  done
+  require_literal "$skill_md" "authorization boundary"
+  require_literal "$execution" 'backlog_graph.py" lock'
+  require_literal "$execution" "wait_agent"
+  require_literal "$queue" "merge-worktree-linear"
+  require_literal "$queue" "update-ticket-linear"
+  require_literal "$queue" "Never reset"
+  require_literal "$stopping" 'addLabels: ["human-blocked"]'
+  require_literal "$stopping" 'Never send `labels`'
+  require_literal "$stopping" "/goal resume"
+  require_literal "$briefs" "<ISSUE> worktree <BASE>"
+  require_literal "$briefs" "never wait for an answer"
 }
 
 validate_clarify_contract
