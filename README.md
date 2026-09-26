@@ -218,6 +218,15 @@ $commit-push-pr
 
 Linear assigns the issue ID, and `$implement-ticket-linear` automatically moves a Backlog issue to In Progress before analyzing context or preparing the checkout. Status and dependency updates go to Linear without creating a Git commit. The final publish step uses the selected worktree. `commit-push-pr` can also create the implementation commit itself when changes remain pending.
 
+**A whole Linear backlog**
+
+```text
+$implement-backlog-linear TEAM: ENG PROJECT: "Account Platform"
+/goal Run $implement-backlog-linear RUN: ENG-account-platform-20260926-1430 until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"
+```
+
+The first command only plans. It selects every issue without a `human-setup` or `human-acceptance` label whose blockers are done or also selected — a parent once its sub-issues are — and shows why each other issue was left out. Pasting the `/goal` line it prints confirms the plan and starts the run: subagents implement ready issues in their own worktrees through `implement-ticket-linear`, one serial merge queue lands each issue on the local base, and `update-ticket-linear` marks it Done, which unblocks the next issues. An issue the run cannot finish gets the `human-blocked` label and a comment explaining what a person needs to do; removing the label lets the next plan take it again. The run never pushes. If it halts, fix the reported cause and paste the same `/goal` line again.
+
 Implementation alone does not authorize commits, publishing, merging, or Done updates; it carries forward any authorization already given. A publishing request creates or updates the PR; merging and worktree cleanup follow the project's agreed workflow. If local tracker changes are made after publishing, publish that additional tracker commit as well.
 
 **Inputs and variants**
@@ -281,7 +290,7 @@ Before coding, both implement skills explain the ticket's role in the project's 
 
 The `worktree` parameter and optional base remain supported. Invoking `$implement-ticket-linear` automatically moves a `backlog` issue directly to the team's In Progress state after identity and access checks, before business-context analysis, dependency resolution, or workspace preparation; no extra confirmation or Todo step is needed. The existing automatic Todo → In Progress transition applies to an `unstarted` issue only after business context, dependencies, workspace, and executor readiness have been checked. Triage and already-started states are preserved unless another transition is authorized. Explicit requests to preserve status and read-only bindings are respected; a failed or unavailable start update is reported with the actual state. An unresolved blocker still needs resolution before coding.
 
-Both skills default to implementation, verification, review, and a summary. They carry forward existing authorization for commits, PRs, merges, and tracker updates without forcing another landing menu. A missing ticket ID may be resolved from unambiguous conversation or branch context; it never starts the entire backlog. Batches require an explicit scope.
+Both skills default to implementation, verification, review, and a summary. They carry forward existing authorization for commits, PRs, merges, and tracker updates without forcing another landing menu. A missing ticket ID may be resolved from unambiguous conversation or branch context; it never starts the entire backlog. Batches require an explicit scope; `implement-backlog-linear` is the explicit way to work through a Linear backlog.
 
 The optional final `via <executor>` clause supports `codex`, `claude`, and `grok`. Choose an executor different from the invoking host; omit `via` to implement in the current agent. For example, run `$implement-ticket 003 worktree via claude` **from Codex**, or `/implement-ticket 003 worktree via codex` **from Claude Code**. The selected CLI receives the agreed business context and implements only in the chosen ticket checkout. The invoking host independently verifies and performs ticket-specific review before authorized follow-up. Delegation, workspace, and finishing details live in shared references and are read when needed.
 
@@ -440,7 +449,7 @@ This repo intentionally carries three skill trees:
 - `.agents/skills/` links portable folders to the canonical tree and retains native Codex documents for unmigrated skills.
 - `.agent/skills/` links directly to the canonical tree for Antigravity.
 
-The eight ticket lifecycle skills (`create-tickets`, `create-tickets-linear`, both `implement-ticket` variants, `commit-ticket`, `commit-push-pr`, and both `update-ticket` variants), plus the `product-manager` conversation mode, have one agent-neutral source under `skills/`. Their entries in the other two trees link to the entire folder, including resources and Codex metadata in `agents/openai.yaml`. [`catalog.json`](catalog.json) marks this set with `portable: true`.
+The ticket lifecycle skills `create-tickets`, `create-tickets-linear`, `explain-ticket`, both `implement-ticket` variants, `implement-backlog-linear`, `commit-ticket`, `commit-push-pr`, and both `update-ticket` variants, plus the `product-manager` conversation mode, have one agent-neutral source under `skills/`. Their entries in the other two trees link to the entire folder, including resources and Codex metadata in `agents/openai.yaml`. [`catalog.json`](catalog.json) marks this set with `portable: true`.
 
 Other skills retain distinct Codex instructions until individually reviewed, with shared support resources linked from the canonical tree. The installer keeps agent entries tied to the selected checkout; `doctor --runtime` checks available host inventories for competing copies.
 
@@ -491,7 +500,7 @@ Run the cross-agent skill validation script after changing skill content or layo
 ./scripts/check-codex-skills.sh
 ```
 
-Installer changes use `python3 scripts/test-agent-skills.py` with isolated homes. Run `bash scripts/test-ticket-delegation.sh` when changing the executor adapter, and `bash scripts/test-handoff-tools.sh` for handoff/installation integration. No test calls a live coding model or ticket service.
+Installer changes use `python3 scripts/test-agent-skills.py` with isolated homes. Run `python3 scripts/test-backlog-graph.py` when changing the backlog planner. Run `bash scripts/test-ticket-delegation.sh` when changing the executor adapter, and `bash scripts/test-handoff-tools.sh` for handoff/installation integration. No test calls a live coding model or ticket service.
 
 ## License
 

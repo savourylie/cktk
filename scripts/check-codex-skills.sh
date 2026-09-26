@@ -678,6 +678,11 @@ validate_backlog_contract() {
   require_literal "$stopping" "/goal resume"
   require_literal "$briefs" "<ISSUE> worktree <BASE>"
   require_literal "$briefs" "never wait for an answer"
+
+  # The README walks through the two-step run and names the planner's tests.
+  require_literal "$root/README.md" "**A whole Linear backlog**"
+  require_literal "$root/README.md" 'until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"'
+  require_literal "$root/README.md" "python3 scripts/test-backlog-graph.py"
 }
 
 validate_clarify_contract
