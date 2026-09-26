@@ -172,6 +172,16 @@ class DependencyTests(unittest.TestCase):
         self.assertEqual(plan["excluded"]["ENG-2"], {"reason": "cycle", "via": ["ENG-1"]})
         self.assertEqual(plan["excluded"]["ENG-3"]["roots"], ["cycle:ENG-1"])
 
+    def test_duplicate_is_terminal_and_not_delivery(self):
+        plan = plan_for(issue("ENG-1", state="duplicate"),
+                        issue("ENG-2", blocked_by=["DATA-9"]),
+                        issue("ENG-3", blocked_by=["ENG-1"]), issue("ENG-4"),
+                        external=[{"id": "DATA-9", "state_type": "duplicate"}])
+        self.assertEqual(plan["order"], ["ENG-4"])
+        self.assertNotIn("ENG-1", plan["excluded"])
+        self.assertEqual(plan["excluded"]["ENG-2"]["roots"], ["duplicate:DATA-9"])
+        self.assertEqual(plan["excluded"]["ENG-3"]["roots"], ["duplicate:ENG-1"])
+
     def test_nothing_eligible(self):
         plan = plan_for(issue("ENG-1", labels=["human-setup"]))
         self.assertEqual(plan["status"], "nothing-eligible")
@@ -356,6 +366,12 @@ class NextStepTests(unittest.TestCase):
         step = graph.next_step(self.plan, state({"ENG-1": "canceled", "ENG-2": "backlog",
                                                  "ENG-3": "backlog", "ENG-4": "backlog"}))
         self.assertEqual(step["removed"]["ENG-1"], {"reason": "canceled"})
+        self.assertEqual(step["removed"]["ENG-2"], {"reason": "blocked", "via": ["ENG-1"]})
+
+    def test_a_planned_issue_marked_duplicate_leaves_the_plan(self):
+        step = graph.next_step(self.plan, state({"ENG-1": "duplicate", "ENG-2": "backlog",
+                                                 "ENG-3": "backlog", "ENG-4": "backlog"}))
+        self.assertEqual(step["removed"]["ENG-1"], {"reason": "duplicate"})
         self.assertEqual(step["removed"]["ENG-2"], {"reason": "blocked", "via": ["ENG-1"]})
 
     def test_completion_elsewhere_counts_as_done(self):

@@ -22,7 +22,7 @@ SCHEMA = 1
 PARK_LABEL = "human-blocked"
 GATE_LABELS = frozenset({"human-setup", "human-acceptance", PARK_LABEL})
 OPEN_STATES = frozenset({"triage", "backlog", "unstarted", "started"})
-TERMINAL_STATES = frozenset({"completed", "canceled"})
+TERMINAL_STATES = frozenset({"completed", "canceled", "duplicate"})
 ISSUE_ID = re.compile(r"^([A-Za-z][A-Za-z0-9]*)-(\d+)$")
 ID_PREFIX = re.compile(r"^([A-Za-z][A-Za-z0-9]*-\d+)-")
 LANDED_SUBJECT = re.compile(r"^Merge linear-([A-Za-z][A-Za-z0-9]*-\d+)-\S* into (\S+)$")
@@ -204,8 +204,8 @@ def attach_roots(excluded, snapshot):
                         found |= roots(blocker, trail | {issue_id})
                     continue
                 state = state_of(blocker, snapshot)
-                if state == "canceled":
-                    found.add(f"canceled:{blocker}")
+                if state in ("canceled", "duplicate"):
+                    found.add(f"{state}:{blocker}")
                 elif state is None:
                     found.add(f"unknown:{blocker}")
                 else:
@@ -429,8 +429,8 @@ def next_step(plan, state, landed=frozenset()):
             parked.append(issue_id)
         elif labels & GATE_LABELS:
             removed[issue_id] = {"reason": "human-gate", "label": sorted(labels & GATE_LABELS)[0]}
-        elif state_type == "canceled":
-            removed[issue_id] = {"reason": "canceled"}
+        elif state_type in ("canceled", "duplicate"):
+            removed[issue_id] = {"reason": state_type}
         elif info.get("assignee") and info["assignee"] != me:
             removed[issue_id] = {"reason": "someone-else"}
         else:

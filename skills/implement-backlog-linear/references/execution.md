@@ -23,7 +23,7 @@ At every start and resume, from `MAIN_ROOT`:
 
 ## Refresh the state
 
-Before each dispatch round and after each landing, read the plan's issues fresh: `list_issues` for the scope once per open state type, plus `completed` and `canceled` filtered to `updatedAt` on or after the plan's `created_at`; then `get_issue` for any planned issue still missing. For each issue about to be dispatched, also read its relations with `get_issue` and `includeRelations: true`. Write `$RUN_DIR/state.json`:
+Before each dispatch round and after each landing, read the plan's issues fresh: `list_issues` for the scope once per open state type, plus `completed`, `canceled`, and `duplicate` filtered to `updatedAt` on or after the plan's `created_at`; then `get_issue` for any planned issue still missing. For each issue about to be dispatched, also read its relations with `get_issue` and `includeRelations: true`. Write `$RUN_DIR/state.json`:
 
 ```json
 {
@@ -45,7 +45,7 @@ Act on its output:
 
 - `ready`: issues to dispatch, in plan order.
 - `landed_not_done`: merged but not yet Done; continue each at [update Linear](merge-queue.md#4-update-linear).
-- `removed`: issues that left the plan — newly gated, canceled, reassigned, given a new unfinished blocker, blocked by a parked or removed issue, or `stuck` because nothing could make them ready. Report them; do not touch them.
+- `removed`: issues that left the plan — newly gated, canceled or marked duplicate, reassigned, given a new unfinished blocker, blocked by a parked or removed issue, or `stuck` because nothing could make them ready. Report them; do not touch them.
 - `status_line`: the run's progress. Start every message that ends a turn with it. When it shows `AI-ELIGIBLE 0`, [finish](stopping.md#finish).
 
 ## Dispatch
