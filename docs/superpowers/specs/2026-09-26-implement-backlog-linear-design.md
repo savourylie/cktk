@@ -54,6 +54,7 @@ Linear MCP `list_issues` returns `labels`, `statusType`, `project`, `assigneeId`
 12. **A crashed or errored subagent is retried once. Two consecutive issues failing on the same environment problem halt the run.**
 13. **Optional document follow-ups:** `always` runs, `ask` is skipped and reported with its prepared content, `never` is skipped.
 14. **A halt is an exit of the goal**, and the halt report reprints the `/goal` line for resuming.
+15. **An `[Epic]` issue with no open sub-issues is not work yet.** Decided after the nomi-plus planning run, where NOM-44's description said its sub-issues would be defined once its architecture was agreed.
 
 ## Design
 
@@ -96,6 +97,8 @@ Classify each in-scope non-terminal issue by the first matching row:
 
 Completed, canceled, and duplicate issues are terminal and never become work.
 
+An issue whose title starts with `[Epic]` and that has no open sub-issue in scope is excluded as `epic-not-broken-down`: it is a container whose work has not been split into issues yet. An `[Epic]` issue with open sub-issues follows the parent rule below.
+
 **Edges.** Native blocks / blocked-by relations, fetched with one `get_issue(includeRelations: true)` per non-terminal issue, plus an implicit edge making every parent wait for each of its sub-issues. Related, duplicate, and prose links are not edges.
 
 **Eligible set.** Starting from the candidates, repeatedly remove any issue with a blocker that is neither completed nor still in the set, until nothing changes. Record why each issue was removed:
@@ -111,7 +114,7 @@ The remaining issues form a DAG, displayed in topological layers. Layers are for
 
 ### 4. The plan and its run directory
 
-The plan states the run id, the scope and binding check, `PARALLEL`, the layered issues with their in-plan blockers, the excluded issues grouped by reason, and the two preparatory writes execution may make: committing a `.worktrees/` ignore line on the base, and creating the `human-blocked` team label. It ends with the `/goal` line in the user's language, keeping the quoted tokens verbatim and using the host's explicit skill syntax (`/…` in Claude Code, `$…` in Codex):
+The plan states the run id (its timestamp in local time), the scope and binding check, `PARALLEL`, the layered issues with their in-plan blockers, the excluded issues grouped by reason, and the two preparatory writes execution may make: committing a `.worktrees/` ignore line on the base, and creating the `human-blocked` team label. It ends with the `/goal` line in the user's language, keeping the quoted tokens verbatim and using the host's explicit skill syntax (`/…` in Claude Code, `$…` in Codex):
 
 ```text
 /goal Run /implement-backlog-linear RUN: ENG-website-20260926-1430 until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"

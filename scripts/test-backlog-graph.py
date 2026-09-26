@@ -24,8 +24,8 @@ IDENT = ("-c", "user.email=test@example.com", "-c", "user.name=Test", "-c", "com
 
 
 def issue(issue_id, state="backlog", labels=(), assignee=None, project=WEB,
-          parent=None, blocked_by=(), blocks=(), local_work=False):
-    return {"id": issue_id, "title": f"Title {issue_id}", "state_type": state,
+          parent=None, blocked_by=(), blocks=(), local_work=False, title=None):
+    return {"id": issue_id, "title": title or f"Title {issue_id}", "state_type": state,
             "labels": list(labels), "assignee": assignee, "project": project,
             "parent": parent, "blocked_by": list(blocked_by), "blocks": list(blocks),
             "local_work": local_work}
@@ -41,9 +41,10 @@ def plan_for(*issues, **options):
     return graph.select(graph.load_snapshot(snapshot(*issues, **options)))
 
 
-def run_cli(*args):
+def run_cli(*args, env=None):
     return subprocess.run([sys.executable, str(SCRIPT), *map(str, args)],
-                          capture_output=True, text=True, timeout=60)
+                          capture_output=True, text=True, timeout=60,
+                          env={**os.environ, **(env or {})})
 
 
 def planned(*issues, **options):
@@ -177,6 +178,25 @@ class DependencyTests(unittest.TestCase):
         self.assertEqual(plan["order"], [])
 
 
+class EpicTests(unittest.TestCase):
+    def test_an_epic_without_open_sub_issues_is_not_broken_down(self):
+        plan = plan_for(issue("ENG-1", title="[Epic] Proactive calling"),
+                        issue("ENG-2", blocked_by=["ENG-1"]), issue("ENG-3"))
+        self.assertEqual(plan["excluded"]["ENG-1"], {"reason": "epic-not-broken-down"})
+        self.assertEqual(plan["excluded"]["ENG-2"]["roots"], ["epic-not-broken-down:ENG-1"])
+        self.assertEqual(plan["order"], ["ENG-3"])
+
+    def test_an_epic_with_open_sub_issues_waits_for_them(self):
+        plan = plan_for(issue("ENG-1", title="[EPIC] Memory layer"), issue("ENG-2", parent="ENG-1"))
+        self.assertEqual(plan["layers"], [["ENG-2"], ["ENG-1"]])
+
+    def test_the_epic_marker_must_lead_the_title(self):
+        plan = plan_for(issue("ENG-1", title="  [epic] lowercase marker"),
+                        issue("ENG-2", title="Split the [Epic] banner"))
+        self.assertEqual(plan["excluded"]["ENG-1"], {"reason": "epic-not-broken-down"})
+        self.assertEqual(plan["order"], ["ENG-2"])
+
+
 class IdentifierTests(unittest.TestCase):
     def test_identifiers_are_normalized_and_ordered_numerically(self):
         plan = plan_for(issue("eng-10", blocked_by=["eng-9"]), issue("ENG-9"), issue("Eng-2"))
@@ -237,7 +257,7 @@ class PlanCommandTests(unittest.TestCase):
     def test_a_planned_run_writes_its_directory(self):
         path = self.write_snapshot(snapshot(issue("ENG-1"), issue("ENG-2", blocked_by=["ENG-1"]), requested=WEB))
         result = run_cli("plan", "--snapshot", path, "--runs-dir", self.runs,
-                         "--now", "2026-09-26T14:30:00Z", "--host", "claude")
+                         "--now", "2026-09-26T14:30:00Z", "--host", "claude", env={"TZ": "UTC"})
         self.assertEqual(result.returncode, 0, result.stderr)
         output = json.loads(result.stdout)
         self.assertEqual(output["run_id"], "ENG-website-20260926-1430")
@@ -247,6 +267,13 @@ class PlanCommandTests(unittest.TestCase):
         self.assertEqual(stored["host"], "claude")
         self.assertTrue((run_dir / "snapshot.json").is_file())
         self.assertTrue((run_dir / "results").is_dir())
+
+    def test_run_ids_use_local_time(self):
+        path = self.write_snapshot(snapshot(issue("ENG-1"), requested=WEB))
+        result = run_cli("plan", "--snapshot", path, "--runs-dir", self.runs,
+                         "--now", "2026-09-26T16:13:00Z", env={"TZ": "Asia/Taipei"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["run_id"], "ENG-website-20260927-0013")
 
     def test_stop_nothing_eligible_and_dry_run_create_no_directory(self):
         for data in (snapshot(issue("ENG-1"), issue("ENG-2", project=API)),

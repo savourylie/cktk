@@ -46,6 +46,8 @@ Resolve the invoking Linear user (the `me` user) for the assignment check.
 
 Use `null` for an absent `requested_project`, `binding_project`, `assignee`, `project`, or `parent`. State types are Linear's: `triage`, `backlog`, `unstarted`, `started`, `completed`, and `canceled`.
 
+Each relation read returns the issue's whole body. When step 1 lists more than about 20 issues, give steps 2 and 3, with the list from step 1, to one subagent that writes the snapshot file above and reports only counts and failures, so the issue bodies stay out of this session.
+
 ## Run the planner
 
 ```sh
@@ -80,6 +82,7 @@ In the user's language, show:
 | `someone-else` | Assigned to someone else |
 | `not-triaged` | Still in triage |
 | `running-elsewhere` | Started, with no work in this repository |
+| `epic-not-broken-down` | An issue titled `[Epic] …` with no open sub-issues: its work has not been split into issues yet |
 | `cycle` | Dependency cycle |
 | `blocked` | Blocked. `roots` names each cause as `<kind>:<issue>`: a gate label, `outside-scope`, `canceled` (cancellation is not delivery, so a person decides whether the relation still holds), `cycle`, `unknown`, or one of the reasons above |
 

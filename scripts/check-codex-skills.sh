@@ -651,6 +651,7 @@ validate_backlog_contract() {
   require_literal "$planning" "includeRelations"
   require_literal "$planning" 'until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"'
   require_literal "$planning" "Do not start execution from a planning run"
+  require_literal "$planning" '`epic-not-broken-down`'
 
   require_literal "$root/catalog.json" '"name": "implement-backlog-linear"'
   require_literal "$root/README.md" '`implement-backlog-linear`'

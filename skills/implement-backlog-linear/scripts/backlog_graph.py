@@ -26,6 +26,7 @@ TERMINAL_STATES = frozenset({"completed", "canceled"})
 ISSUE_ID = re.compile(r"^([A-Za-z][A-Za-z0-9]*)-(\d+)$")
 ID_PREFIX = re.compile(r"^([A-Za-z][A-Za-z0-9]*-\d+)-")
 LANDED_SUBJECT = re.compile(r"^Merge linear-([A-Za-z][A-Za-z0-9]*-\d+)-\S* into (\S+)$")
+EPIC_TITLE = re.compile(r"^\s*\[epic\]", re.IGNORECASE)
 COUNT_KEYS = ("AI-ELIGIBLE", "DONE", "PARKED", "HUMAN-GATED", "BLOCKED")
 
 
@@ -233,6 +234,11 @@ def select(snapshot):
             excluded[issue_id] = verdict
         else:
             candidates.append(issue_id)
+    for issue_id in list(candidates):
+        has_sub_issues = any(issues[c]["parent"] == issue_id for c in scope_ids)
+        if EPIC_TITLE.match(issues[issue_id]["title"]) and not has_sub_issues:
+            excluded[issue_id] = {"reason": "epic-not-broken-down"}
+            candidates.remove(issue_id)
     edges = {}
     for issue_id in candidates:
         children = {c for c in scope_ids if issues[c]["parent"] == issue_id}
@@ -391,7 +397,7 @@ def cmd_plan(args):
         "run_dir": None,
     })
     if plan["status"] == "planned" and not args.dry_run:
-        run_id = make_run_id(snapshot["team"]["key"], plan["scope"]["project"], now, args.runs_dir)
+        run_id = make_run_id(snapshot["team"]["key"], plan["scope"]["project"], now.astimezone(), args.runs_dir)
         run_dir = Path(args.runs_dir) / run_id
         plan["run_id"], plan["run_dir"] = run_id, str(run_dir)
         write_json(run_dir / "plan.json", plan)
