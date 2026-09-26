@@ -203,7 +203,7 @@ $update-ticket 003 done
 $commit-push-pr
 ```
 
-This uses the current checkout, starting a ticket branch from its HEAD. The first commit preserves the planning files; the second commits the verified implementation. `update-ticket` makes a separate commit for its tracker changes, and `commit-push-pr` publishes the branch and creates or reuses its PR. For local ticket work in a new `worktree`, first ensure the planning files are committed **and included in the selected base**: the default is `origin/main`, which may not contain a local planning commit yet.
+This uses the current checkout, starting a ticket branch from its HEAD. The first commit preserves the planning files; the second commits the verified implementation. `update-ticket` makes a separate commit for its tracker changes, and `commit-push-pr` publishes the branch and creates or reuses its PR. For local ticket work in a new `worktree`, first commit the planning files on `main`. A new worktree starts from local `main` when it is ahead of `origin/main`, so it includes that commit; a PR opened from the worktree then includes it too, unless `main` is pushed first.
 
 **Linear issues**
 
@@ -244,9 +244,9 @@ $clarify-ticket 007                         # Research, discuss options, and pla
 $clarify-ticket-linear ENG-42               # Same for a Linear issue (requires Linear MCP)
 
 /implement-ticket 003                        # Implement on branch ticket-003-slug off the current HEAD
-/implement-ticket 003 dev                    # Same, but branch off origin/dev
-/implement-ticket 003 worktree               # Implement inside .worktrees/003-slug off origin/main
-/implement-ticket 003 worktree dev           # Same, based on origin/dev (all variants also work for implement-ticket-linear)
+/implement-ticket 003 dev                    # Same, but branch off dev
+/implement-ticket 003 worktree               # Implement inside .worktrees/003-slug off main
+/implement-ticket 003 worktree dev           # Same, based on dev (all variants also work for implement-ticket-linear)
 /implement-ticket 003 via codex               # Delegate implementation only to Codex CLI
 /implement-ticket 003 dev via grok            # Delegate implementation only to Grok Build CLI, branching from dev
 /implement-ticket-linear ENG-42              # Implement a Linear issue (requires Linear MCP)
@@ -295,14 +295,16 @@ An already-matching status still allows stale dependency/index data and known un
 ```text
 /commit-ticket                        # Stage and commit intended changes; no ticket required
 /commit-push-pr                       # Commit if needed, push, and create or reuse a PR
-/create-worktree 7                    # Worktree for ticket 007 off origin/main
-/create-worktree 7 8 9 dev            # Several tickets at once, based on origin/dev
+/create-worktree 7                    # Worktree for ticket 007 off main
+/create-worktree 7 8 9 dev            # Several tickets at once, based on dev
 /merge-worktree 7                     # Merge ticket 007 back, remove worktree, delete branch (same multi-ticket and base args)
-/create-worktree-linear ENG-42        # Worktree for Linear issue ENG-42 off origin/main
-/create-worktree-linear ENG-42 ENG-43 dev   # Several issues at once, based on origin/dev
+/create-worktree-linear ENG-42        # Worktree for Linear issue ENG-42 off main
+/create-worktree-linear ENG-42 ENG-43 dev   # Several issues at once, based on dev
 /merge-worktree-linear ENG-42         # Merge ENG-42 back, remove worktree, delete branch
 /merge-worktree-linear ENG-42 no-cleanup    # Merge and remove the worktree, but keep the branch
 ```
+
+A base comes from its freshly fetched `origin` copy unless the local branch is strictly ahead of it — for example after `merge-worktree` or `merge-worktree-linear` landed work without pushing. Then the local branch is used, so dependent tickets see that work.
 
 `commit-ticket` works with or without a ticket. It stages intended unstaged edits, deletions, and new files before committing, alongside any in-scope staged changes. A general request uses the current checkout's pending changes unless the conversation defines a narrower scope or known exclusions. Explicit staged-only or path-limited requests are respected, and unrelated staging and working-tree changes are preserved.
 

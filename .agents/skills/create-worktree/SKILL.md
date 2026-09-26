@@ -45,7 +45,7 @@ Examples:
    git fetch origin <base>
    ```
    If `origin` is missing or the fetch fails, continue with the local base branch and warn the user that the result may be stale.
-2. Resolve the base reference in order: `origin/<base>` → local `<base>` → if neither exists, report and stop.
+2. Resolve the base ref. Use local `<base>` when it is strictly ahead: `origin/<base>` is an ancestor of local `<base>` and the two differ, the state `$merge-worktree` leaves because it never pushes. Otherwise use `origin/<base>`, naming any local commits it lacks when the two have diverged. Use local `<base>` when there is no `origin/<base>`; stop if neither exists.
 3. Ensure `.worktrees/` is ignored:
    - If `$MAIN_ROOT/.gitignore` is missing, create it with a single line `.worktrees/`.
    - If it exists and contains no line matching `.worktrees/?`, append `.worktrees/` on a new line.

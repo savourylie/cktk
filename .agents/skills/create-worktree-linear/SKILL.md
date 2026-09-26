@@ -53,7 +53,7 @@ Linear titles are editable, so an exact-path check would create a second worktre
 ## Phase 4: Prepare the Repo
 
 1. `git fetch origin <base>`. If `origin` is missing or the fetch fails, continue with the local base and warn that the result may be stale.
-2. Resolve the base ref: `origin/<base>` → local `<base>` → if neither exists, report and stop.
+2. Resolve the base ref. Use local `<base>` when it is strictly ahead: `origin/<base>` is an ancestor of local `<base>` and the two differ, the state `$merge-worktree-linear` leaves because it never pushes. Otherwise use `origin/<base>`, naming any local commits it lacks when the two have diverged. Use local `<base>` when there is no `origin/<base>`; stop if neither exists.
 3. Ensure `.worktrees/` is ignored: create `$MAIN_ROOT/.gitignore` with that line if missing, append it if absent, leave it alone if present. Mention any change in the report and do not commit it — `$merge-worktree-linear` detects this state and offers to commit it when it blocks a merge.
 
 ## Phase 5: Create the Worktrees

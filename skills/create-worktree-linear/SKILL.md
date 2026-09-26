@@ -1,6 +1,6 @@
 ---
 name: create-worktree-linear
-description: "Create one or more git worktrees for Linear issues, each as an isolated checkout under .worktrees/ENG-42-slug/ on its own linear-ENG-42-slug branch. Source of truth is Linear, not docs/tickets/. Optionally pass a base branch as the last argument (defaults to main, fetched fresh from origin). Requires Linear MCP; makes no Linear writes. Use when the user wants an isolated checkout for a Linear issue, or to work on several issues in parallel."
+description: "Create one or more git worktrees for Linear issues, each as an isolated checkout under .worktrees/ENG-42-slug/ on its own linear-ENG-42-slug branch. Source of truth is Linear, not docs/tickets/. Optionally pass a base branch as the last argument (defaults to main; uses origin's copy unless the local branch is ahead of it). Requires Linear MCP; makes no Linear writes. Use when the user wants an isolated checkout for a Linear issue, or to work on several issues in parallel."
 user-invocable: true
 ---
 
@@ -103,9 +103,11 @@ For each issue, in order:
    ```
    If `origin` does not exist or the fetch fails (no remote, no network, no such ref), continue with the local base branch and tell the user the worktree may be based on a stale ref.
 
-2. Resolve the base reference in this order:
-   - `origin/<base>` (preferred — freshly fetched).
-   - Local `<base>` (fallback).
+2. Resolve the base reference:
+   - Local `<base>` when it is strictly ahead: `origin/<base>` is an ancestor of local `<base>` (`git merge-base --is-ancestor origin/<base> <base>` exits 0) and the two differ. `/merge-worktree-linear` leaves exactly this state, because it merges locally and never pushes, and a worktree for a dependent issue needs that work.
+   - `origin/<base>` when local `<base>` is missing, equal, or behind.
+   - `origin/<base>` when the two have diverged; name the local commits the worktree will not contain.
+   - Local `<base>` when `origin/<base>` does not exist.
    - If neither exists, report `base branch '<base>' not found locally or on origin` and stop the batch before creating anything.
 
 3. Ensure `.worktrees/` is ignored by git so the parent checkout doesn't see the new worktrees as untracked files. Read `$MAIN_ROOT/.gitignore`:

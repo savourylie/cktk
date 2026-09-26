@@ -608,11 +608,38 @@ validate_update_agents_contract() {
   require_literal "$root/README.md" "/update-agents"
 }
 
+validate_worktree_base_contract() {
+  local doc
+
+  # A new worktree takes local <base> when it is strictly ahead of
+  # origin/<base>: merge-worktree(-linear) lands work locally and never
+  # pushes, and a dependent ticket's worktree must contain that work. Pin
+  # the rule in every document that resolves a base, and keep the
+  # superseded origin-first wording out.
+  for doc in \
+    "$claude_root/create-worktree/SKILL.md" \
+    "$codex_root/create-worktree/SKILL.md" \
+    "$claude_root/create-worktree-linear/SKILL.md" \
+    "$codex_root/create-worktree-linear/SKILL.md" \
+    "$claude_root/implement-ticket/references/workspace.md"; do
+    require_literal "$doc" 'is an ancestor of local `<base>`'
+    forbid_stale_claim "$doc" '(preferred — freshly fetched)'
+    forbid_stale_claim "$doc" '`origin/<base>` → local `<base>`'
+    forbid_stale_claim "$doc" 'prefer that ref'
+    forbid_stale_claim "$doc" 'fetched fresh from origin'
+  done
+
+  forbid_stale_claim "$root/README.md" 'off origin/'
+  forbid_stale_claim "$root/README.md" 'based on origin/'
+  forbid_stale_claim "$root/README.md" 'which may not contain a local planning commit yet'
+}
+
 validate_clarify_contract
 validate_interact_contract
 validate_implement_contract
 validate_ticket_delegation_contract
 validate_worktree_linear_contract
+validate_worktree_base_contract
 validate_review_ticket_contract
 validate_update_agents_contract
 
