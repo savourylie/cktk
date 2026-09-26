@@ -1,6 +1,6 @@
 ---
 name: create-worktree-linear
-description: "Create one or more git worktrees for Linear issues, each as an isolated checkout under .worktrees/ENG-42-slug/ on its own linear-ENG-42-slug branch. Source of truth is Linear, not docs/tickets/. Optionally pass a base branch as the last argument (defaults to main, fetched fresh from origin). Requires Linear MCP; makes no Linear writes. Triggers on: /create-worktree-linear, /create-worktree-linear ENG-42, create worktree for Linear issue, worktree this Linear issue, isolated branch for Linear ticket, parallel Linear issue work"
+description: "Create one or more git worktrees for Linear issues, each as an isolated checkout under .worktrees/ENG-42-slug/ on its own linear-ENG-42-slug branch. Source of truth is Linear, not docs/tickets/. Optionally pass a base branch as the last argument (defaults to main, fetched fresh from origin). Requires Linear MCP; makes no Linear writes. Use when the user wants an isolated checkout for a Linear issue, or to work on several issues in parallel."
 user-invocable: true
 ---
 

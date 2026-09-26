@@ -184,21 +184,3 @@ Do not apply English readability formulas such as Flesch-Kincaid directly to Chi
 **Concrete example** — use the actual project implementation when it helps.
 
 Do not include these headings mechanically when the answer is simple.
-
----
-
-## 10. Final check
-
-Before responding, verify:
-
-- Did I retrieve relevant Linear / Notion / ticket / repository context if the explanation depends on project-specific facts?
-- Is it clear which ticket, feature, or component I am talking about?
-- Is the scope explicit?
-- Does every important reference have an obvious target?
-- Did I introduce unexplained abbreviations?
-- Did I assume terminology merely because it appears in a ticket or document?
-- Did I skip a reasoning step because I already knew it from the code or documentation?
-- Am I distinguishing the specific implementation from the general concept?
-- For Chinese, have I made subjects, scope, and relationships sufficiently explicit?
-
-If not, revise before responding.

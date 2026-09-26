@@ -1,7 +1,7 @@
 ---
 name: readme-builder
 user-invocable: true
-description: "Create or refresh README.md for a software project. Auto-detects framework, package manager, scripts, env vars; reads existing docs (AGENTS.md, CONTRIBUTING.md, docs/, package.json, pyproject.toml, docker-compose.yml); writes a sectioned README with tagline, quick start, development commands, environment variables, architecture overview, usage, testing, deployment, troubleshooting, and contributing. For browser-renderable apps it captures screenshots of major UI flows via agent-browser and embeds them; pass `no-screenshots` for a pure-text README. When README.md already exists, refreshes recognizable sections from current code while preserving custom user-authored content verbatim. Triggers on: /readme-builder, create README, write README, generate README, update README, refresh README, build documentation for this repo, add a quick-start, document this project, README from code. Do NOT use for: feature catalogs, PRDs, tickets, code review, or API reference docs."
+description: "Create or refresh README.md for a software project. Auto-detects framework, package manager, scripts, env vars; reads existing docs (AGENTS.md, CONTRIBUTING.md, docs/, package.json, pyproject.toml, docker-compose.yml); writes a sectioned README with tagline, quick start, development commands, environment variables, architecture overview, usage, testing, deployment, troubleshooting, and contributing. For browser-renderable apps it captures screenshots of major UI flows via agent-browser and embeds them; pass `no-screenshots` for a pure-text README. When README.md already exists, refreshes recognizable sections from current code while preserving custom user-authored content verbatim. Use when the user wants a project README created, refreshed, or extended from the code. Do NOT use for: feature catalogs, PRDs, tickets, code review, or API reference docs."
 ---
 
 **Argument:** `$ARGUMENTS`
@@ -263,24 +263,6 @@ Examples:
 - `TODO: deployment process not documented in repo — add details if this project ships to a hosting platform.`
 - `TODO: confirm Node version requirement — no engines field in package.json.`
 - `TODO: add screenshots manually — auto-capture failed (port 3000 already in use).`
-
----
-
-## Checklist
-
-Before reporting completion, confirm:
-
-- [ ] `$ARGUMENTS` parsed; unknown tokens rejected.
-- [ ] Project type detected (or user disambiguated `unknown` / `monorepo`).
-- [ ] All applicable manifest / doc / config files inspected.
-- [ ] Scripts, env vars, test setup, architecture cues, and entry points captured.
-- [ ] Screenshots phase ran (captured, skipped by flag, skipped by type, or failed cleanly).
-- [ ] Existing README's custom sections preserved verbatim.
-- [ ] Existing README's intentional top-of-file content (badges, HTML) preserved.
-- [ ] No fabricated commands, env vars, or deployment targets.
-- [ ] TODOs used wherever a confident statement couldn't be made.
-- [ ] `README.md` written; no commit made.
-- [ ] Summary printed with TODO list.
 
 ---
 

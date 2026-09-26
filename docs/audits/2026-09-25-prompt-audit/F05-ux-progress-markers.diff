@@ -1,0 +1,21 @@
+diff --git a/skills/ux-design/SKILL.md b/skills/ux-design/SKILL.md
+index f07be29..d429fdb 100644
+--- a/skills/ux-design/SKILL.md
++++ b/skills/ux-design/SKILL.md
+@@ -56,3 +56,2 @@ For the full procedure, required outputs, and examples for each pass, read `refe
+ 
+-- **Show progress.** At the start of each pass, show: `[Pass N/6: Pass Name]`
+ - **No per-pass feedback.** Complete all 6 passes before presenting work. The passes build on each other -- interrupting creates incomplete analysis.
+diff --git a/skills/ux-redesign/SKILL.md b/skills/ux-redesign/SKILL.md
+index 42eecf6..86b967d 100644
+--- a/skills/ux-redesign/SKILL.md
++++ b/skills/ux-redesign/SKILL.md
+@@ -85,8 +85,2 @@ For full procedures, required outputs, and redesign-specific guidance for each p
+ 
+-- **Show progress.** At each phase transition, show:
+-  - `[Phase: Reading Inputs]`
+-  - `[Phase: Codebase Inspection]`
+-  - `[Phase: Audit]`
+-  - `[Pass N/6: Pass Name]`
+-  - `[Phase: Visual Specifications]`
+ - **Write audit BEFORE redesign.** Gate 1 is enforced -- `docs/reports/UX_DESIGN_REPORT.md` must be written before Pass 1 starts.

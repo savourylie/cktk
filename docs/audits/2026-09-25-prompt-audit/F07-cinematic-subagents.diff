@@ -1,0 +1,41 @@
+diff --git a/skills/cinematic-design-system/references/phase-1-decisions.md b/skills/cinematic-design-system/references/phase-1-decisions.md
+index 5087088..3eaa6bb 100644
+--- a/skills/cinematic-design-system/references/phase-1-decisions.md
++++ b/skills/cinematic-design-system/references/phase-1-decisions.md
+@@ -139,3 +139,3 @@ If no prior outputs exist in either mode, still write a shell-ban list targeting
+ 
+-If the environment supports sub-agents, delegate these bounded Phase 1 tasks once the director + film are committed:
++Sub-agents are optional. Each one re-establishes context and reports back, so do the research yourself unless a track is large and independent — for example, film research and niche research that each need many sources. Candidate tracks, once the director + film are committed:
+ 
+diff --git a/skills/cinematic-design-system/references/phase-2-storyboard.md b/skills/cinematic-design-system/references/phase-2-storyboard.md
+index bfac857..8e5c3b1 100644
+--- a/skills/cinematic-design-system/references/phase-2-storyboard.md
++++ b/skills/cinematic-design-system/references/phase-2-storyboard.md
+@@ -167,6 +167,6 @@ If any fail, re-roll the archetype selection for the offending section(s) before
+ 
+-If the environment supports sub-agents, delegate per-page work once the site-wide grammar is locked:
++Sub-agents are optional. Each one re-establishes context and reports back, and the cross-page anti-convergence rules need every page in view, so draft pages yourself unless the page drafts are large and can proceed independently. In that case, delegate after the site-wide grammar is locked, with at most one sub-agent per major page role:
+ 
+-- One sub-agent per major page role, drafting that page's scene thesis, signature composition, narrative arc, entrance map, and scene breakdown
+-- One sub-agent for `INFO_ARCHITECTURE.md` drafting the site map and page roles
++- A page sub-agent drafts that page's scene thesis, signature composition, narrative arc, entrance map, and scene breakdown
++- One sub-agent may draft the `INFO_ARCHITECTURE.md` site map and page roles
+ 
+diff --git a/skills/cinematic-design-system/references/phase-3-compile.md b/skills/cinematic-design-system/references/phase-3-compile.md
+index 5054e13..138f89a 100644
+--- a/skills/cinematic-design-system/references/phase-3-compile.md
++++ b/skills/cinematic-design-system/references/phase-3-compile.md
+@@ -169,13 +169,2 @@ Also run the final ten+ review questions from `anti-garbage.md` → *Final Revie
+ 
+-## Sub-Agent Delegation
+-
+-Phase 3 can be delegated per FILM_TEMPLATE section once UX_DESIGN.md is locked:
+-
+-- One sub-agent drafts §1 Visual Theme + §2 Colors (tightly coupled)
+-- One sub-agent drafts §3 Typography + §4 Components
+-- One sub-agent drafts §5 Layout + §6 Depth
+-- One sub-agent drafts §7 Do's and Don'ts + §8 Responsive + §9 Agent Prompt Guide
+-
+-The lead agent runs the final anti-garbage filter and writes the review before closing Phase 3.
+-
+ ## Phase 3 Completion Gate

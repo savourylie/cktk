@@ -18,7 +18,7 @@ Analysis: what specific lighting behavior, framing logic, scene rhythm, and mate
 3. **Are you picking the film or picking the film's reputation?**
    Films that are heavily discussed in design, tech, or film culture writing carry a reputation bias. If your reasoning relies on that reputation ("everyone knows this film has a dark, sharp aesthetic") rather than on specific scenes, shots, or director decisions — that is association, not analysis. Rebuild the justification from the film itself.
 
-If any answer is unsatisfactory, choose a different film before proceeding to decisions.md.
+If any answer is unsatisfactory, choose a different film before continuing Phase 1.
 
 Use this during Phase 2 when choosing hero archetypes, narrative arcs, and section archetypes.
 

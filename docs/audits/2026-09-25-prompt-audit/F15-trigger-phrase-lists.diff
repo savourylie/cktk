@@ -1,0 +1,123 @@
+diff --git a/skills/create-worktree-linear/SKILL.md b/skills/create-worktree-linear/SKILL.md
+index 50c49f4..8639c77 100644
+--- a/skills/create-worktree-linear/SKILL.md
++++ b/skills/create-worktree-linear/SKILL.md
+@@ -2,3 +2,3 @@
+ name: create-worktree-linear
+-description: "Create one or more git worktrees for Linear issues, each as an isolated checkout under .worktrees/ENG-42-slug/ on its own linear-ENG-42-slug branch. Source of truth is Linear, not docs/tickets/. Optionally pass a base branch as the last argument (defaults to main, fetched fresh from origin). Requires Linear MCP; makes no Linear writes. Triggers on: /create-worktree-linear, /create-worktree-linear ENG-42, create worktree for Linear issue, worktree this Linear issue, isolated branch for Linear ticket, parallel Linear issue work"
++description: "Create one or more git worktrees for Linear issues, each as an isolated checkout under .worktrees/ENG-42-slug/ on its own linear-ENG-42-slug branch. Source of truth is Linear, not docs/tickets/. Optionally pass a base branch as the last argument (defaults to main, fetched fresh from origin). Requires Linear MCP; makes no Linear writes. Use when the user wants an isolated checkout for a Linear issue, or to work on several issues in parallel."
+ user-invocable: true
+diff --git a/skills/create-worktree/SKILL.md b/skills/create-worktree/SKILL.md
+index 1049c5c..e6a115f 100644
+--- a/skills/create-worktree/SKILL.md
++++ b/skills/create-worktree/SKILL.md
+@@ -2,3 +2,3 @@
+ name: create-worktree
+-description: "Create one or more git worktrees for tickets from docs/tickets/, each as an isolated checkout under .worktrees/NNN-slug/ on its own branch. Optionally pass a base branch as the last argument (defaults to main, fetched fresh from origin). Triggers on: /create-worktree, create worktree, worktree this ticket, set up worktree, isolated branch for ticket, parallel ticket work, work on ticket in parallel"
++description: "Create one or more git worktrees for tickets from docs/tickets/, each as an isolated checkout under .worktrees/NNN-slug/ on its own branch. Optionally pass a base branch as the last argument (defaults to main, fetched fresh from origin). Use when the user wants an isolated checkout for a local ticket, or to work on several tickets in parallel."
+ user-invocable: true
+diff --git a/skills/feature-catalog/SKILL.md b/skills/feature-catalog/SKILL.md
+index e37dd6a..290a4b4 100644
+--- a/skills/feature-catalog/SKILL.md
++++ b/skills/feature-catalog/SKILL.md
+@@ -9,4 +9,3 @@ description: >
+   by understanding its capabilities, (4) audit what a product can do for planning or documentation,
+-  (5) generate product documentation from code. Triggers on: list features, feature inventory,
+-  what does this app do, feature map, catalog features, feature audit, product capabilities.
++  (5) generate product documentation from code.
+   Do NOT use for: generating PRDs, creating tickets, reviewing code quality, or security audits.
+diff --git a/skills/gen-image-agy/SKILL.md b/skills/gen-image-agy/SKILL.md
+index 1d73d45..82e2ff1 100644
+--- a/skills/gen-image-agy/SKILL.md
++++ b/skills/gen-image-agy/SKILL.md
+@@ -3,3 +3,3 @@ name: gen-image-agy
+ user-invocable: true
+-description: "Generate images, illustrations, icons, logos, banners, sprites, textures, or avatars with Google's Nano Banana (Gemini image) model via the locally installed Antigravity CLI (`agy`), run headless inside a PTY — billed to the user's Google AI Pro subscription over OAuth, with no Gemini API key and no per-image API billing. Saves the PNG into the project (default ./images/). Use whenever the user wants to generate, create, make, draw, render, or design an image / icon / logo / banner / graphic / asset on their Google / Gemini / Nano Banana / Antigravity / AI Pro quota — even if they don't name the model. Triggers on: /gen-image-agy, generate an image with agy, nano banana image, use my Google AI Pro to make a picture, antigravity image, gemini image. Prefer gen-image-codex when the user names OpenAI / gpt-image / ChatGPT / Codex. Do NOT use for: design systems or tokens (design-system / cinematic-design-system), UX specs (ux-design), or flat vector icons better as inline SVG."
++description: "Generate images, illustrations, icons, logos, banners, sprites, textures, or avatars with Google's Nano Banana (Gemini image) model via the locally installed Antigravity CLI (`agy`), run headless inside a PTY — billed to the user's Google AI Pro subscription over OAuth, with no Gemini API key and no per-image API billing. Saves the PNG into the project (default ./images/). Use whenever the user wants to generate, create, make, draw, render, or design an image / icon / logo / banner / graphic / asset on their Google / Gemini / Nano Banana / Antigravity / AI Pro quota — even if they don't name the model. Prefer gen-image-codex when the user names OpenAI / gpt-image / ChatGPT / Codex. Do NOT use for: design systems or tokens (design-system / cinematic-design-system), UX specs (ux-design), or flat vector icons better as inline SVG."
+ ---
+diff --git a/skills/gen-image-codex/SKILL.md b/skills/gen-image-codex/SKILL.md
+index 6bf9621..8bb48e2 100644
+--- a/skills/gen-image-codex/SKILL.md
++++ b/skills/gen-image-codex/SKILL.md
+@@ -3,3 +3,3 @@ name: gen-image-codex
+ user-invocable: true
+-description: "Generate images, illustrations, icons, logos, banners, sprites, textures, or avatars with OpenAI's gpt-image-2 via the locally installed Codex CLI — billed through the user's ChatGPT subscription, with no API key or per-image API billing. Shells out to `codex exec` with the built-in $imagegen tool and saves the PNG into the project (default ./images/). Use whenever the user asks to generate, create, make, draw, render, or design an image / icon / logo / banner / graphic / asset — even if they don't name a model — or when a UI, landing page, or game needs art generated and wired in. Also edits an existing image via --image. Triggers on: /gen-image-codex, generate an image, create an illustration, make an icon, design a logo, render a banner, app icon, game sprite, hero image, placeholder art, og:image. Do NOT use for: full design systems or tokens (use the design-system / cinematic-design-system skills), UX specs (ux-design), or flat vector icons better as inline SVG."
++description: "Generate images, illustrations, icons, logos, banners, sprites, textures, or avatars with OpenAI's gpt-image-2 via the locally installed Codex CLI — billed through the user's ChatGPT subscription, with no API key or per-image API billing. Shells out to `codex exec` with the built-in $imagegen tool and saves the PNG into the project (default ./images/). Use whenever the user asks to generate, create, make, draw, render, or design an image / icon / logo / banner / graphic / asset — even if they don't name a model — or when a UI, landing page, or game needs art generated and wired in. Also edits an existing image via --image. Do NOT use for: full design systems or tokens (use the design-system / cinematic-design-system skills), UX specs (ux-design), or flat vector icons better as inline SVG."
+ ---
+diff --git a/skills/init-project/SKILL.md b/skills/init-project/SKILL.md
+index 5975f34..a604a4d 100644
+--- a/skills/init-project/SKILL.md
++++ b/skills/init-project/SKILL.md
+@@ -2,3 +2,3 @@
+ name: init-project
+-description: "Record where this repository's project lives — its Linear team and project, its Notion hub and decision log, and the repository paths holding requirements — into a committed .ai/cktk/project.json so other skills stop asking. Discovers answers from README/PRD/design docs first, validates every binding against the live services (including write access), and never records an unvalidated binding as confirmed. Re-runnable for single-field corrections. Triggers on: /init-project, bind this repo to Linear, set up project bindings, connect the Notion workspace, where does this project live, configure cktk for this repo"
++description: "Record where this repository's project lives — its Linear team and project, its Notion hub and decision log, and the repository paths holding requirements — into a committed .ai/cktk/project.json so other skills stop asking. Discovers answers from README/PRD/design docs first, validates every binding against the live services (including write access), and never records an unvalidated binding as confirmed. Re-runnable for single-field corrections. Use when the user wants this repository bound to its Linear project or Notion workspace, or asks where the project lives."
+ user-invocable: true
+diff --git a/skills/interact-html/SKILL.md b/skills/interact-html/SKILL.md
+index 0507a9f..2278370 100644
+--- a/skills/interact-html/SKILL.md
++++ b/skills/interact-html/SKILL.md
+@@ -2,3 +2,3 @@
+ name: interact-html
+-description: "Render an agent-user interaction — clarifying questions, option picks, design directions, decision briefings — as a self-contained interactive HTML page under .ai/interactions/, collect the user's answers through a local one-shot server or a paste-back fallback, then archive the resolved page as a decision record. Use when the user wants to answer questions in a browser instead of the terminal, asks to see options as a page, or has expressed a standing preference for HTML interactions. Triggers on: /interact-html, ask via browser, render questions as a page, show me the options visually, HTML interaction, interactive page for this decision."
++description: "Render an agent-user interaction — clarifying questions, option picks, design directions, decision briefings — as a self-contained interactive HTML page under .ai/interactions/, collect the user's answers through a local one-shot server or a paste-back fallback, then archive the resolved page as a decision record. Use when the user wants to answer questions in a browser instead of the terminal, asks to see options as a page, or has expressed a standing preference for HTML interactions."
+ user-invocable: true
+diff --git a/skills/merge-worktree-linear/SKILL.md b/skills/merge-worktree-linear/SKILL.md
+index 24f4ea7..b19e2fa 100644
+--- a/skills/merge-worktree-linear/SKILL.md
++++ b/skills/merge-worktree-linear/SKILL.md
+@@ -2,3 +2,3 @@
+ name: merge-worktree-linear
+-description: "Merge one or more Linear issue worktrees back into their base branch, then remove the worktree directory and delete the local branch. The cleanup half of /create-worktree-linear. Detects already-merged branches (e.g. merged via GitHub PR) and just cleans up in that case. Auto-commits any uncommitted implementation code in the worktree before merging (interactive Y/n prompt, defaults to yes). Pass `no-cleanup` to keep the local branch. Does not require Linear MCP and writes nothing to Linear. Triggers on: /merge-worktree-linear, merge Linear worktree, land Linear issue branch, clean up worktree after Linear issue, done with Linear issue worktree"
++description: "Merge one or more Linear issue worktrees back into their base branch, then remove the worktree directory and delete the local branch. The cleanup half of /create-worktree-linear. Detects already-merged branches (e.g. merged via GitHub PR) and just cleans up in that case. Auto-commits any uncommitted implementation code in the worktree before merging (interactive Y/n prompt, defaults to yes). Pass `no-cleanup` to keep the local branch. Does not require Linear MCP and writes nothing to Linear. Use when the user is done with a Linear issue worktree and wants it landed or cleaned up."
+ user-invocable: true
+diff --git a/skills/merge-worktree/SKILL.md b/skills/merge-worktree/SKILL.md
+index e1ac948..4c7b5bb 100644
+--- a/skills/merge-worktree/SKILL.md
++++ b/skills/merge-worktree/SKILL.md
+@@ -2,3 +2,3 @@
+ name: merge-worktree
+-description: "Merge one or more ticket worktrees back into their base branch, then remove the worktree directory and delete the local branch. The cleanup half of /create-worktree. Detects already-merged branches (e.g., merged via GitHub PR) and just cleans up in that case. Auto-commits any uncommitted implementation code in the worktree before merging (interactive Y/n prompt, defaults to yes) — users do NOT need to run /commit-ticket or git commit before /merge-worktree. Pass `no-cleanup` to keep the local branch around after merging (worktree directory is still removed). Triggers on: /merge-worktree, merge worktree, finish ticket worktree, land worktree, clean up worktree after ticket, remove worktree after merging, done with ticket worktree, ticket worktree finished"
++description: "Merge one or more ticket worktrees back into their base branch, then remove the worktree directory and delete the local branch. The cleanup half of /create-worktree. Detects already-merged branches (e.g., merged via GitHub PR) and just cleans up in that case. Auto-commits any uncommitted implementation code in the worktree before merging (interactive Y/n prompt, defaults to yes) — users do NOT need to run /commit-ticket or git commit before /merge-worktree. Pass `no-cleanup` to keep the local branch around after merging (worktree directory is still removed). Use when the user is done with a ticket worktree and wants it landed or cleaned up."
+ user-invocable: true
+diff --git a/skills/readme-builder/SKILL.md b/skills/readme-builder/SKILL.md
+index ed1b681..53d7d0b 100644
+--- a/skills/readme-builder/SKILL.md
++++ b/skills/readme-builder/SKILL.md
+@@ -3,3 +3,3 @@ name: readme-builder
+ user-invocable: true
+-description: "Create or refresh README.md for a software project. Auto-detects framework, package manager, scripts, env vars; reads existing docs (AGENTS.md, CONTRIBUTING.md, docs/, package.json, pyproject.toml, docker-compose.yml); writes a sectioned README with tagline, quick start, development commands, environment variables, architecture overview, usage, testing, deployment, troubleshooting, and contributing. For browser-renderable apps it captures screenshots of major UI flows via agent-browser and embeds them; pass `no-screenshots` for a pure-text README. When README.md already exists, refreshes recognizable sections from current code while preserving custom user-authored content verbatim. Triggers on: /readme-builder, create README, write README, generate README, update README, refresh README, build documentation for this repo, add a quick-start, document this project, README from code. Do NOT use for: feature catalogs, PRDs, tickets, code review, or API reference docs."
++description: "Create or refresh README.md for a software project. Auto-detects framework, package manager, scripts, env vars; reads existing docs (AGENTS.md, CONTRIBUTING.md, docs/, package.json, pyproject.toml, docker-compose.yml); writes a sectioned README with tagline, quick start, development commands, environment variables, architecture overview, usage, testing, deployment, troubleshooting, and contributing. For browser-renderable apps it captures screenshots of major UI flows via agent-browser and embeds them; pass `no-screenshots` for a pure-text README. When README.md already exists, refreshes recognizable sections from current code while preserving custom user-authored content verbatim. Use when the user wants a project README created, refreshed, or extended from the code. Do NOT use for: feature catalogs, PRDs, tickets, code review, or API reference docs."
+ ---
+diff --git a/skills/review-ticket/SKILL.md b/skills/review-ticket/SKILL.md
+index 3bd1f02..a594936 100644
+--- a/skills/review-ticket/SKILL.md
++++ b/skills/review-ticket/SKILL.md
+@@ -2,3 +2,3 @@
+ name: review-ticket
+-description: "Review code changes for bugs and issues, including a committed feature branch against a base branch with Linear ticket context. Triggers on: /review-ticket, review code, review changes, review my diff, code review, find bugs, review uncommitted, review against main, review this branch, check my changes, review against ticket, review a Linear issue, review ENG-42, review Linear ticket against main, review this commit, review commit abc123"
++description: "Review code changes for bugs and issues, including a committed feature branch against a base branch with Linear ticket context. Use when the user asks for a code review or bug check of uncommitted or staged changes, a branch, a pull request, or a single commit, or wants changes checked against a docs/tickets ticket or a Linear issue."
+ user-invocable: true
+diff --git a/skills/ux-design/SKILL.md b/skills/ux-design/SKILL.md
+index d429fdb..83d21ee 100644
+--- a/skills/ux-design/SKILL.md
++++ b/skills/ux-design/SKILL.md
+@@ -7,5 +7,3 @@ description: >
+   to create UX design documentation, UX specifications, wireframes, user flows, or design artifacts
+-  from a PRD. Triggers on requests like "create UX design", "generate UX spec from PRD", "UX
+-  foundations from requirements", "turn PRD into UX design", or any mention of translating product
+-  requirements into UX deliverables.
++  from a PRD, or wants product requirements translated into UX deliverables.
+ ---
+diff --git a/skills/ux-redesign/SKILL.md b/skills/ux-redesign/SKILL.md
+index 86b967d..b463178 100644
+--- a/skills/ux-redesign/SKILL.md
++++ b/skills/ux-redesign/SKILL.md
+@@ -10,5 +10,4 @@ description: >
+   redesign an existing UX spec, compare their codebase against UX design, improve an existing
+-  UX_DESIGN.md, or run a UX gap analysis. Triggers on: "redesign UX", "audit UX implementation",
+-  "compare code to UX spec", "improve UX design", "UX gap analysis", "UX audit", or any mention
+-  of evaluating or improving an existing UX design based on codebase implementation.
++  UX_DESIGN.md, run a UX gap analysis, or otherwise evaluate or improve an existing UX design
++  against its implementation.
+ ---

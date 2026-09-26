@@ -1,0 +1,9 @@
+diff --git a/skills/review-ticket/SKILL.md b/skills/review-ticket/SKILL.md
+index 5ff4137..3bd1f02 100644
+--- a/skills/review-ticket/SKILL.md
++++ b/skills/review-ticket/SKILL.md
+@@ -144,3 +144,3 @@ and CLAUDE.md compliance. No issues found.
+ - **Re-review:** If the user says "re-review", "review again", or "rerun", produce the full structured output format again.
+-- **No fix generation unless asked.** The review identifies issues. Only generate fixes if the user explicitly asks.
++- **Don't apply fixes unless asked.** The review identifies issues; a finding's `suggestion` block is the only fix content it includes. Edit files only when the user explicitly asks.
+ 

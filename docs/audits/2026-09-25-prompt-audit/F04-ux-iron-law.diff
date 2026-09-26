@@ -1,0 +1,100 @@
+diff --git a/skills/ux-design/SKILL.md b/skills/ux-design/SKILL.md
+index eadd28a..f07be29 100644
+--- a/skills/ux-design/SKILL.md
++++ b/skills/ux-design/SKILL.md
+@@ -14,22 +14,9 @@ description: >
+ 
+-Transform a PRD into a UX design specification using **6 forced designer mindset passes**. Each pass asks different questions that visual-first approaches skip. UX foundations come BEFORE visual specifications.
++Transform a PRD into a UX design specification using **6 forced designer mindset passes**. Each pass asks different questions that visual-first approaches skip. UX foundations come before visual specifications.
+ 
+-## The Iron Law
++## Foundations before visuals
+ 
+-```
+-NO VISUAL SPECS UNTIL ALL 6 PASSES COMPLETE
+-```
+-
+-**Not negotiable:**
+-- Don't mention colors, typography, or spacing until Pass 6 is done
+-- Don't describe screen layouts until information architecture is explicit
+-- Don't design components until affordances are mapped
++Finish all six passes before writing visual specifications: colors, typography, and spacing wait until Pass 6 is done, screen layouts wait until the information architecture is explicit, and components wait until affordances are mapped. Visual specs written ahead of the passes usually need redesign, because they encode a mental model and structure nobody examined.
+ 
+-**No exceptions for urgency:**
+-- "I'm in a hurry" -- Passes take minutes; fixing bad UX takes days
+-- "Just give me screens" -- Screens without foundations need rework
+-- "Skip the analysis" -- Analysis IS the value; screens are just output
+-- "The PRD is simple enough" -- Simple PRDs still need mental model analysis
+-
+-Skipping passes to "save time" produces specs that need redesign. The 6 passes ARE the shortcut.
++If the user asks to skip the passes because the PRD looks simple or time is short, say in a sentence that the passes are what keep the screens from needing rework, then run them. A simple PRD still gets every pass; the passes are short when there is little to find.
+ 
+@@ -129,18 +116,2 @@ For the full procedure, required outputs, and examples for each pass, read `refe
+ 
+-## Red Flags -- STOP and Restart
+-
+-If you catch yourself doing any of these, STOP and return to the passes:
+-
+-| Violation | What You're Skipping |
+-|-----------|---------------------|
+-| Describing colors/fonts | All foundational passes |
+-| "The main screen shows..." | Pass 1-2 (mental model, IA) |
+-| Designing components before actions mapped | Pass 3 (affordances) |
+-| No friction point analysis | Pass 4 (cognitive load) |
+-| States only in component specs | Pass 5 (holistic state design) |
+-| No "where could they fail?" | Pass 6 (flow integrity) |
+-| "User is in a hurry" | ALL passes -- urgency is a trap |
+-| "Just this once, skip to visuals" | ALL passes -- exceptions become habits |
+-| "The PRD is simple enough" | ALL passes -- simple PRDs still need mental model analysis |
+-
+ ## ASCII Visual Conventions
+diff --git a/skills/ux-redesign/SKILL.md b/skills/ux-redesign/SKILL.md
+index 73e2f4b..42eecf6 100644
+--- a/skills/ux-redesign/SKILL.md
++++ b/skills/ux-redesign/SKILL.md
+@@ -19,19 +19,8 @@ Audit an existing codebase against its UX spec, then redesign. Uses the same **6
+ 
+-## The Iron Law
++## Two gates
+ 
+-```
+-NO REDESIGN UNTIL AUDIT IS COMPLETE
+-NO VISUAL SPECS UNTIL ALL 6 PASSES COMPLETE
+-```
+-
+-**Two gates, both non-negotiable:**
++1. **Gate 1:** Write the full audit report before starting any redesign pass. The audit grounds the redesign in the implementation: it catches drift from both the PRD and the spec, including problems nobody has noticed yet.
++2. **Gate 2:** Complete all 6 redesign passes before generating visual specifications.
+ 
+-1. **Gate 1:** Write the full audit report before starting any redesign pass
+-2. **Gate 2:** Complete all 6 redesign passes before generating visual specifications
+-
+-**No exceptions:**
+-- "Just fix the obvious stuff" -- The audit catches non-obvious stuff too
+-- "The code is close enough to spec" -- Then the audit will confirm that quickly
+-- "Skip the audit, I know what's wrong" -- You know what's VISIBLE. The audit finds what's hidden.
+-- "The PRD hasn't changed" -- The implementation may have drifted from both PRD and spec
++If the user asks to skip the audit because they already know what's wrong or the code looks close to spec, say in a sentence that the audit also finds what isn't visible and is quick when the code matches, then run it.
+ 
+@@ -164,18 +153,5 @@ For full procedures, required outputs, and redesign-specific guidance for each p
+ 
+-## Red Flags -- STOP and Restart
+-
+-If you catch yourself doing any of these, STOP and return to the correct phase:
+-
+-| Violation | What You're Skipping |
+-|-----------|---------------------|
+-| Redesigning before audit is written | Gate 1: the entire codebase analysis |
+-| Describing colors/fonts before Pass 6 | All foundational passes |
+-| "The main screen shows..." before Pass 1-2 | Mental model and IA analysis |
+-| Designing components before actions mapped | Pass 3 (affordances) |
+-| No friction point analysis | Pass 4 (cognitive load) |
+-| States only in component specs | Pass 5 (holistic state design) |
+-| No "where could they fail?" | Pass 6 (flow integrity) |
+-| Ignoring existing implementation | The point of this skill -- redesign is grounded in reality |
+-| Copy-pasting original UX_DESIGN.md | Every section should reflect audit findings |
+-| Skipping codebase inspection | Can't compare spec to reality without reading reality |
++## Grounding
++
++Every redesigned section reflects the audit findings and the inspected code. Copying the original `docs/UX_DESIGN.md` forward, or redesigning without the codebase inspection, is not a redesign.
+ 

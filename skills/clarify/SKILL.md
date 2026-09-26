@@ -110,21 +110,7 @@ When the answer is not simple, this structure helps:
 
 Do not apply these headings mechanically when a short direct answer would do.
 
-## Phase 5: Final check, then hand back
-
-Before responding, verify:
-
-- Did I retrieve the project context this explanation depends on?
-- Is it clear which ticket, feature, or component I am talking about?
-- Is the scope explicit?
-- Does every important reference have an obvious target?
-- Did I introduce any unexplained abbreviation?
-- Did I assume terminology just because it appears in a ticket or document?
-- Did I skip a reasoning step because the code or documentation already made it obvious to me?
-- Am I distinguishing this specific implementation from the general concept?
-- For Chinese, are subjects, scope, and relationships explicit enough?
-
-If any answer is wrong, revise before responding.
+## Phase 5: Hand back
 
 Close with one question: whether that landed, or which part is still unclear. Then continue the development work that was interrupted.
 

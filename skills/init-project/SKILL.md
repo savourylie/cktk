@@ -1,6 +1,6 @@
 ---
 name: init-project
-description: "Record where this repository's project lives — its Linear team and project, its Notion hub and decision log, and the repository paths holding requirements — into a committed .ai/cktk/project.json so other skills stop asking. Discovers answers from README/PRD/design docs first, validates every binding against the live services (including write access), and never records an unvalidated binding as confirmed. Re-runnable for single-field corrections. Triggers on: /init-project, bind this repo to Linear, set up project bindings, connect the Notion workspace, where does this project live, configure cktk for this repo"
+description: "Record where this repository's project lives — its Linear team and project, its Notion hub and decision log, and the repository paths holding requirements — into a committed .ai/cktk/project.json so other skills stop asking. Discovers answers from README/PRD/design docs first, validates every binding against the live services (including write access), and never records an unvalidated binding as confirmed. Re-runnable for single-field corrections. Use when the user wants this repository bound to its Linear project or Notion workspace, or asks where the project lives."
 user-invocable: true
 ---
 

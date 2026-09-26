@@ -34,7 +34,7 @@ Use this file to decide what to read next. Load the smallest useful subset.
 ## Phase 3
 
 - `implementation-guardrails.md`
-  - Use to enforce entrance-map variety, external library decisions, JS-required interaction handling, quality checklists, and post-screening adjustment rules.
+  - Build-time rules (external libraries, JavaScript, screening) for pages built later from the bundle; the docs-only phases do not load it.
 - `data/camera-shots-50.md`
   - Use for section entrance and reveal behavior.
 - `data/interaction-effects-50.md`

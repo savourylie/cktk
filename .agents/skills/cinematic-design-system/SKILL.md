@@ -41,7 +41,7 @@ The shared design system is derived last, back from locked page compositions. Wr
 | 0 | Start Questionnaire | — | (this file) |
 | 1 | Decisions | `docs/RESEARCH.md` | `phase-1-decisions.md`, `demo-uniqueness.md`, `anti-convergence.md`, `reference-protocol.md`, `data/directors-200.md` |
 | 2 | Storyboard | `docs/UX_DESIGN.md` + `docs/INFO_ARCHITECTURE.md` | `phase-2-storyboard.md`, `premium-calibration.md`, `anti-convergence.md`, Phase 2 data files |
-| 3 | Back-derive design | `docs/DESIGN.md` | `phase-3-compile.md`, `anti-garbage.md`, `implementation-guardrails.md`, Phase 3 data files |
+| 3 | Back-derive design | `docs/DESIGN.md` | `phase-3-compile.md`, `anti-garbage.md`, Phase 3 data files |
 | 4 | Render previews | `docs/preview.html` + `docs/preview-dark.html` | `phase-4-preview.md`, `assets/FILM_TEMPLATE/preview*.html`, `docs/DESIGN.md` |
 
 Read `references/phase-1-decisions.md`, `references/phase-2-storyboard.md`, `references/phase-3-compile.md`, and `references/phase-4-preview.md` for full procedural details — including loading order, gates, and completion criteria.

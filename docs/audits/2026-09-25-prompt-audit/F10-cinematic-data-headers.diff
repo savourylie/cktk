@@ -1,0 +1,81 @@
+diff --git a/skills/cinematic-design-system/references/data/hero-archetypes.md b/skills/cinematic-design-system/references/data/hero-archetypes.md
+index 2b37a49..6e31f06 100644
+--- a/skills/cinematic-design-system/references/data/hero-archetypes.md
++++ b/skills/cinematic-design-system/references/data/hero-archetypes.md
+@@ -2,4 +2,3 @@
+ 
+-> ⚠️ Every hero MUST include visual elements beyond text. See `visual-elements.md` for the library.
+-> Minimum 2 visual elements per hero. Text-only heroes are GARBAGE (see anti-garbage.md).
++> Every hero includes visual elements beyond text: see `visual-elements.md` for the library and `anti-garbage.md` → Visual Density Rules for the minimum count. A text-only hero reads as a template.
+ 
+@@ -7,3 +6,3 @@ Every hero section must start from an archetype. Archetypes define the **skeleto
+ 
+-**Usage:** Step 3.9 — after Director's Brief, before Storyboard. Select archetype via Director Preference Pool mechanism.
++**Usage:** Phase 2 — after the Director Brief, before the per-page scene breakdowns. Select archetype via Director Preference Pool mechanism.
+ 
+diff --git a/skills/cinematic-design-system/references/data/image-direction.md b/skills/cinematic-design-system/references/data/image-direction.md
+index f78e4a4..2d372d6 100644
+--- a/skills/cinematic-design-system/references/data/image-direction.md
++++ b/skills/cinematic-design-system/references/data/image-direction.md
+@@ -2,4 +2,4 @@
+ 
+-This skill generates TEXT-DRIVEN cinematic websites. Images are the user's responsibility.
+-But we MUST provide clear direction on what images to use and how to treat them.
++This skill produces a text-driven design bundle; images are the user's responsibility.
++The bundle still gives clear direction on what images to use and how to treat them.
+ 
+diff --git a/skills/cinematic-design-system/references/data/narrative-beats.md b/skills/cinematic-design-system/references/data/narrative-beats.md
+index d0628f5..d277271 100644
+--- a/skills/cinematic-design-system/references/data/narrative-beats.md
++++ b/skills/cinematic-design-system/references/data/narrative-beats.md
+@@ -6,3 +6,3 @@ Narrative beats are **abstract storytelling moments** that map to one or more se
+ 
+-**Usage:** Step 3.95 — after Hero Archetype, select the director's narrative arc. Each beat resolves to a section function (from `section-functions.md`), then each function resolves to a structural archetype (from `section-archetypes.md`).
++**Usage:** Phase 2 per-page work — after choosing the hero archetype, select the director's narrative arc. Each beat resolves to a section function (from `section-functions.md`), then each function resolves to a structural archetype (from `section-archetypes.md`).
+ 
+@@ -20,3 +20,3 @@ Narrative beats are **abstract storytelling moments** that map to one or more se
+ 
+-**CRITICAL:** The page arc MUST be different per director. If two directors produce the same beat sequence, something is wrong.
++The page arc differs per director; if two directors produce the same beat sequence, revisit the arc selection.
+ 
+@@ -77,3 +77,3 @@ Each director has a **default beat sequence** for a homepage. This is the starti
+ 
+-**CRITICAL Anti-Bias Rule:** These templates exist to PREVENT AI from defaulting to the same Hero → Articles → Features → Stats → CTA → Footer pattern. The AI MUST follow the director's arc template, not its own preference.
++**Anti-bias rule:** Follow the director's arc template rather than your own preference. The templates exist to replace the default Hero → Articles → Features → Stats → CTA → Footer pattern.
+ 
+diff --git a/skills/cinematic-design-system/references/data/section-archetypes.md b/skills/cinematic-design-system/references/data/section-archetypes.md
+index b1d0932..236ad09 100644
+--- a/skills/cinematic-design-system/references/data/section-archetypes.md
++++ b/skills/cinematic-design-system/references/data/section-archetypes.md
+@@ -4,9 +4,9 @@ Every section function (from `section-functions.md`) has multiple structural arc
+ - **Layout** → reference from `compositions.md`
+-- **Entrance** → MANDATORY reference from `camera-shots-50.md`
+-- **Interaction** → MANDATORY reference from `interaction-effects-50.md`
++- **Entrance** → required reference from `camera-shots-50.md`
++- **Interaction** → required reference from `interaction-effects-50.md`
+ - **Director fit** → Tier 1/2/3
+ 
+-**CRITICAL:** Every archetype MUST reference specific entries from camera-shots and interaction-effects libraries. If an archetype has no interaction reference, it means "no hover/click/scroll effect" — which must be an intentional cinematic choice (e.g., "Villeneuve's restraint"), NOT laziness.
++Every archetype references specific entries from the camera-shots and interaction-effects libraries. An archetype with no interaction reference means "no hover/click/scroll effect", which should be a deliberate cinematic choice (e.g., "Villeneuve's restraint") stated as such.
+ 
+-**Usage:** Step 3.95 — after selecting narrative beats and resolving to functions, select the archetype for each function via director pool + hash mechanism.
++**Usage:** Phase 2 per-page work — after selecting narrative beats and resolving to functions, select the archetype for each function via director pool + hash mechanism.
+ 
+diff --git a/skills/cinematic-design-system/references/data/section-functions.md b/skills/cinematic-design-system/references/data/section-functions.md
+index f5a3c39..95c257e 100644
+--- a/skills/cinematic-design-system/references/data/section-functions.md
++++ b/skills/cinematic-design-system/references/data/section-functions.md
+@@ -4,3 +4,3 @@ Every section on a page serves a **function**. This library catalogs all availab
+ 
+-**Usage:** Step 3.95 — after Hero Archetype selection, build the page arc by selecting narrative beats, then resolve each beat to a function from this library.
++**Usage:** Phase 2 per-page work — after choosing the hero archetype, build the page arc by selecting narrative beats, then resolve each beat to a function from this library.
+ 
+diff --git a/skills/cinematic-design-system/references/data/typography-cinema.md b/skills/cinematic-design-system/references/data/typography-cinema.md
+index 63f3b58..a966153 100644
+--- a/skills/cinematic-design-system/references/data/typography-cinema.md
++++ b/skills/cinematic-design-system/references/data/typography-cinema.md
+@@ -4,3 +4,3 @@
+ 
+-**Read this library during Step 4 storyboard.** Every hero and key section MUST use at least one of these typography techniques — not just "font-size: 3rem; text-align: center".
++**Read this library in Phase 3 for DESIGN.md §3.** Every hero and key section uses at least one of these typography techniques — not just "font-size: 3rem; text-align: center".
+ 

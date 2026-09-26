@@ -1,8 +1,8 @@
 # Implementation Guardrails
 
-Use this during Phase 3 and Phase 4.
+Use this when building pages from the finished design bundle. The skill's four phases produce documents and do not load it; `phase-3-compile.md` carries the motion and citation rules that apply to the docs.
 
-This file restores the concrete anti-laziness rules that prevent the agent from collapsing back to generic web output while compiling and building.
+These rules keep a build from collapsing back to generic web output.
 
 ## External Library Decision
 

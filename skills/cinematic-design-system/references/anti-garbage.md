@@ -61,8 +61,8 @@ If the reference site's aesthetic is fundamentally incompatible with the chosen 
 
 - Do not repeat the same entrance on adjacent sections.
 - Use simple motion only when restraint is part of the chosen director's language.
-- If an interaction library entry needs JavaScript, include the JavaScript in the compiled spec.
-- If a page uses a heavy interaction, standout reveal, signature composition, or hero atmosphere device, the compiled spec must cite the corresponding library source id.
+- If an interaction library entry needs JavaScript, cite its library source id rather than copying the code into the design docs; the id is how a later build finds the implementation.
+- If a page uses a heavy interaction, standout reveal, signature composition, or hero atmosphere device, the spec must cite the corresponding library source id.
 - If no library source id is cited for a major visual move, treat the spec as incomplete unless it is explicitly justified as `Custom`.
 - Maximum 1 heavy interaction per page.
 - Maximum 2 obviously showy motion moments per page.
@@ -91,7 +91,7 @@ Ask these questions:
 1. If the logo were removed, would the page still feel like the chosen film or director?
 2. Would two adjacent sections still feel distinct in layout and motion?
 3. Does the page have at least one memorable visual idea beyond typography and spacing?
-4. Does the implementation follow the compiled spec instead of drifting back to generic web patterns?
+4. Do the documents specify film-driven patterns instead of drifting back to generic web patterns?
 5. Does the page feel expensive because of editing and control, not because of extra decoration?
 6. Is there any section that looks like a stock creative template dropped into the page?
 7. Do the interior pages still express the director through structure and pacing, or only through palette and type?

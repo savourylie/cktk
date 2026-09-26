@@ -1,7 +1,7 @@
 # Image Direction Guide — 圖片不是 AI 的工作，但指導是
 
-This skill generates TEXT-DRIVEN cinematic websites. Images are the user's responsibility.
-But we MUST provide clear direction on what images to use and how to treat them.
+This skill produces a text-driven design bundle; images are the user's responsibility.
+The bundle still gives clear direction on what images to use and how to treat them.
 
 ## What This Skill Does with Images
 

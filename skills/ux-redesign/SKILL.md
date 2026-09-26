@@ -8,32 +8,20 @@ description: >
   already exist. Inspects the actual codebase routes, layouts, and components (code only) to
   compare implementation against spec. Use when the user wants to audit their UX implementation,
   redesign an existing UX spec, compare their codebase against UX design, improve an existing
-  UX_DESIGN.md, or run a UX gap analysis. Triggers on: "redesign UX", "audit UX implementation",
-  "compare code to UX spec", "improve UX design", "UX gap analysis", "UX audit", or any mention
-  of evaluating or improving an existing UX design based on codebase implementation.
+  UX_DESIGN.md, run a UX gap analysis, or otherwise evaluate or improve an existing UX design
+  against its implementation.
 ---
 
 # UX Redesign: Audit & Improve
 
 Audit an existing codebase against its UX spec, then redesign. Uses the same **6 forced designer mindset passes** as `/ux-design`, adapted for evaluating what was built and deciding what should change.
 
-## The Iron Law
+## Two gates
 
-```
-NO REDESIGN UNTIL AUDIT IS COMPLETE
-NO VISUAL SPECS UNTIL ALL 6 PASSES COMPLETE
-```
+1. **Gate 1:** Write the full audit report before starting any redesign pass. The audit grounds the redesign in the implementation: it catches drift from both the PRD and the spec, including problems nobody has noticed yet.
+2. **Gate 2:** Complete all 6 redesign passes before generating visual specifications.
 
-**Two gates, both non-negotiable:**
-
-1. **Gate 1:** Write the full audit report before starting any redesign pass
-2. **Gate 2:** Complete all 6 redesign passes before generating visual specifications
-
-**No exceptions:**
-- "Just fix the obvious stuff" -- The audit catches non-obvious stuff too
-- "The code is close enough to spec" -- Then the audit will confirm that quickly
-- "Skip the audit, I know what's wrong" -- You know what's VISIBLE. The audit finds what's hidden.
-- "The PRD hasn't changed" -- The implementation may have drifted from both PRD and spec
+If the user asks to skip the audit or the passes, say in a sentence what that costs — the audit also finds drift nobody has noticed yet, and specs written ahead of the passes usually need rework — then do as they asked. Note in the redesigned `docs/UX_DESIGN.md` which steps were skipped.
 
 ## Input
 
@@ -100,7 +88,7 @@ For full procedures, required outputs, and redesign-specific guidance for each p
   - `[Phase: Audit]`
   - `[Pass N/6: Pass Name]`
   - `[Phase: Visual Specifications]`
-- **Write audit BEFORE redesign.** Gate 1 is enforced -- `docs/reports/UX_DESIGN_REPORT.md` must be written before Pass 1 starts.
+- **Write the audit before the redesign.** `docs/reports/UX_DESIGN_REPORT.md` is written before Pass 1 starts, unless the user chose to skip the audit.
 - **No per-pass feedback.** Complete all 6 passes before presenting work.
 - **Write to file.** Both outputs go to files, not conversation.
 - **Single review checkpoint.** After both files are written, present a summary and ask the user if they want revisions.
@@ -162,22 +150,9 @@ For full procedures, required outputs, and redesign-specific guidance for each p
 - Design rationale
 ```
 
-## Red Flags -- STOP and Restart
+## Grounding
 
-If you catch yourself doing any of these, STOP and return to the correct phase:
-
-| Violation | What You're Skipping |
-|-----------|---------------------|
-| Redesigning before audit is written | Gate 1: the entire codebase analysis |
-| Describing colors/fonts before Pass 6 | All foundational passes |
-| "The main screen shows..." before Pass 1-2 | Mental model and IA analysis |
-| Designing components before actions mapped | Pass 3 (affordances) |
-| No friction point analysis | Pass 4 (cognitive load) |
-| States only in component specs | Pass 5 (holistic state design) |
-| No "where could they fail?" | Pass 6 (flow integrity) |
-| Ignoring existing implementation | The point of this skill -- redesign is grounded in reality |
-| Copy-pasting original UX_DESIGN.md | Every section should reflect audit findings |
-| Skipping codebase inspection | Can't compare spec to reality without reading reality |
+Every redesigned section reflects the inspected code and, when the audit ran, its findings. Copying the original `docs/UX_DESIGN.md` forward, or redesigning without the codebase inspection, is not a redesign.
 
 ## ASCII Visual Conventions
 

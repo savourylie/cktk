@@ -1,0 +1,96 @@
+diff --git a/skills/clarify/SKILL.md b/skills/clarify/SKILL.md
+index 138996a..82a1747 100644
+--- a/skills/clarify/SKILL.md
++++ b/skills/clarify/SKILL.md
+@@ -112,17 +112,3 @@ Do not apply these headings mechanically when a short direct answer would do.
+ 
+-## Phase 5: Final check, then hand back
+-
+-Before responding, verify:
+-
+-- Did I retrieve the project context this explanation depends on?
+-- Is it clear which ticket, feature, or component I am talking about?
+-- Is the scope explicit?
+-- Does every important reference have an obvious target?
+-- Did I introduce any unexplained abbreviation?
+-- Did I assume terminology just because it appears in a ticket or document?
+-- Did I skip a reasoning step because the code or documentation already made it obvious to me?
+-- Am I distinguishing this specific implementation from the general concept?
+-- For Chinese, are subjects, scope, and relationships explicit enough?
+-
+-If any answer is wrong, revise before responding.
++## Phase 5: Hand back
+ 
+diff --git a/skills/clarify/references/explaining-clearly.md b/skills/clarify/references/explaining-clearly.md
+index 603ab55..106f43b 100644
+--- a/skills/clarify/references/explaining-clearly.md
++++ b/skills/clarify/references/explaining-clearly.md
+@@ -186,19 +186 @@ Do not apply English readability formulas such as Flesch-Kincaid directly to Chi
+ Do not include these headings mechanically when the answer is simple.
+-
+----
+-
+-## 10. Final check
+-
+-Before responding, verify:
+-
+-- Did I retrieve relevant Linear / Notion / ticket / repository context if the explanation depends on project-specific facts?
+-- Is it clear which ticket, feature, or component I am talking about?
+-- Is the scope explicit?
+-- Does every important reference have an obvious target?
+-- Did I introduce unexplained abbreviations?
+-- Did I assume terminology merely because it appears in a ticket or document?
+-- Did I skip a reasoning step because I already knew it from the code or documentation?
+-- Am I distinguishing the specific implementation from the general concept?
+-- For Chinese, have I made subjects, scope, and relationships sufficiently explicit?
+-
+-If not, revise before responding.
+diff --git a/skills/feature-catalog/SKILL.md b/skills/feature-catalog/SKILL.md
+index da5cf3b..e37dd6a 100644
+--- a/skills/feature-catalog/SKILL.md
++++ b/skills/feature-catalog/SKILL.md
+@@ -205,19 +205,2 @@ Write the catalog to `docs/FEATURES.md` (or a user-specified path).
+ 
+-## Checklist
+-
+-Before delivering the catalog:
+-
+-- [ ] Application type and framework correctly identified
+-- [ ] All route/page entry points discovered
+-- [ ] Navigation components read to confirm user-visible structure
+-- [ ] Component-level interactions extracted (actions, forms, controls)
+-- [ ] Supporting capabilities captured (auth, notifications, settings)
+-- [ ] Completeness sweep performed (strings, flags, schemas, tests)
+-- [ ] Features described from user perspective, not implementation
+-- [ ] Categories use application's own terminology where possible
+-- [ ] 4-8 categories with no orphaned features
+-- [ ] Output written to docs/FEATURES.md
+-
+----
+-
+ ## References
+diff --git a/skills/readme-builder/SKILL.md b/skills/readme-builder/SKILL.md
+index 0017850..ed1b681 100644
+--- a/skills/readme-builder/SKILL.md
++++ b/skills/readme-builder/SKILL.md
+@@ -268,20 +268,2 @@ Examples:
+ 
+-## Checklist
+-
+-Before reporting completion, confirm:
+-
+-- [ ] `$ARGUMENTS` parsed; unknown tokens rejected.
+-- [ ] Project type detected (or user disambiguated `unknown` / `monorepo`).
+-- [ ] All applicable manifest / doc / config files inspected.
+-- [ ] Scripts, env vars, test setup, architecture cues, and entry points captured.
+-- [ ] Screenshots phase ran (captured, skipped by flag, skipped by type, or failed cleanly).
+-- [ ] Existing README's custom sections preserved verbatim.
+-- [ ] Existing README's intentional top-of-file content (badges, HTML) preserved.
+-- [ ] No fabricated commands, env vars, or deployment targets.
+-- [ ] TODOs used wherever a confident statement couldn't be made.
+-- [ ] `README.md` written; no commit made.
+-- [ ] Summary printed with TODO list.
+-
+----
+-
+ ## References

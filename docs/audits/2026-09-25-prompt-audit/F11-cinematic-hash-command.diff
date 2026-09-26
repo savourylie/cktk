@@ -1,0 +1,29 @@
+diff --git a/skills/cinematic-design-system/references/anti-convergence.md b/skills/cinematic-design-system/references/anti-convergence.md
+index c77eb95..6907f8c 100644
+--- a/skills/cinematic-design-system/references/anti-convergence.md
++++ b/skills/cinematic-design-system/references/anti-convergence.md
+@@ -30,4 +30,9 @@ When a library offers multiple director-compatible options, do not always pick t
+ 
+-- Build a director-compatible pool first.
+-- Use a stable site-name hash as the starting position.
++- Build a director-compatible pool first, in the order the library lists it.
++- Compute the starting position with a command instead of estimating a hash. `N` is the pool size and `OFFSET` is the page index (0 for the homepage):
++
++  ```bash
++  echo $(( ( $(printf '%s' "<site name>" | cksum | cut -d' ' -f1) + OFFSET ) % N ))
++  ```
++
+ - Walk the pool from that position, skipping entries that violate page-role or uniqueness constraints.
+diff --git a/skills/cinematic-design-system/references/data/narrative-beats.md b/skills/cinematic-design-system/references/data/narrative-beats.md
+index d277271..b9cc19f 100644
+--- a/skills/cinematic-design-system/references/data/narrative-beats.md
++++ b/skills/cinematic-design-system/references/data/narrative-beats.md
+@@ -435,5 +435,5 @@ Read the director's default arc + variants from above.
+ 
+-### Step 2: Select Arc (hash-based, NOT AI preference)
+-Use site-name hash to pick which variant:
+-- Hash % (number of variants + 1) → 0 = default, 1 = Variant A, 2 = Variant B
++### Step 2: Select Arc (hash-based, not personal preference)
++Run the command in `anti-convergence.md` → Hash-Based Selection with `N` = number of variants + 1:
++- 0 = default, 1 = Variant A, 2 = Variant B
+ 

@@ -1,6 +1,6 @@
 # Premium Calibration
 
-Use this after the director brief and before the compiled spec.
+Use this after the director brief and before Phase 3.
 The goal is not to replace the film language. The goal is to stop the design from collapsing into generic "creative template" output.
 
 ## What Premium Means Here

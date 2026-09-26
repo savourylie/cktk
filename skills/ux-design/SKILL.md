@@ -5,33 +5,18 @@ description: >
   using a 6-pass forced designer mindset. Reads docs/PRD.md (required) and docs/FEATURES.md (optional
   structured feature catalog) as inputs, writes docs/UX_DESIGN.md as output. Use when the user wants
   to create UX design documentation, UX specifications, wireframes, user flows, or design artifacts
-  from a PRD. Triggers on requests like "create UX design", "generate UX spec from PRD", "UX
-  foundations from requirements", "turn PRD into UX design", or any mention of translating product
-  requirements into UX deliverables.
+  from a PRD, or wants product requirements translated into UX deliverables.
 ---
 
 # UX Design Specification Generator
 
-Transform a PRD into a UX design specification using **6 forced designer mindset passes**. Each pass asks different questions that visual-first approaches skip. UX foundations come BEFORE visual specifications.
+Transform a PRD into a UX design specification using **6 forced designer mindset passes**. Each pass asks different questions that visual-first approaches skip. UX foundations come before visual specifications.
 
-## The Iron Law
+## Foundations before visuals
 
-```
-NO VISUAL SPECS UNTIL ALL 6 PASSES COMPLETE
-```
+Finish all six passes before writing visual specifications: colors, typography, and spacing wait until Pass 6 is done, screen layouts wait until the information architecture is explicit, and components wait until affordances are mapped. Visual specs written ahead of the passes usually need redesign, because they encode a mental model and structure nobody examined.
 
-**Not negotiable:**
-- Don't mention colors, typography, or spacing until Pass 6 is done
-- Don't describe screen layouts until information architecture is explicit
-- Don't design components until affordances are mapped
-
-**No exceptions for urgency:**
-- "I'm in a hurry" -- Passes take minutes; fixing bad UX takes days
-- "Just give me screens" -- Screens without foundations need rework
-- "Skip the analysis" -- Analysis IS the value; screens are just output
-- "The PRD is simple enough" -- Simple PRDs still need mental model analysis
-
-Skipping passes to "save time" produces specs that need redesign. The 6 passes ARE the shortcut.
+If the user asks to skip the passes, say in a sentence what that costs — screens built on an unexamined mental model and structure usually need rework — then do as they asked. Mark the skipped passes in `docs/UX_DESIGN.md` so later readers know which foundations are missing.
 
 ## Input
 
@@ -126,22 +111,6 @@ For the full procedure, required outputs, and examples for each pass, read `refe
 - Edge cases
 - Design rationale
 ```
-
-## Red Flags -- STOP and Restart
-
-If you catch yourself doing any of these, STOP and return to the passes:
-
-| Violation | What You're Skipping |
-|-----------|---------------------|
-| Describing colors/fonts | All foundational passes |
-| "The main screen shows..." | Pass 1-2 (mental model, IA) |
-| Designing components before actions mapped | Pass 3 (affordances) |
-| No friction point analysis | Pass 4 (cognitive load) |
-| States only in component specs | Pass 5 (holistic state design) |
-| No "where could they fail?" | Pass 6 (flow integrity) |
-| "User is in a hurry" | ALL passes -- urgency is a trap |
-| "Just this once, skip to visuals" | ALL passes -- exceptions become habits |
-| "The PRD is simple enough" | ALL passes -- simple PRDs still need mental model analysis |
 
 ## ASCII Visual Conventions
 

@@ -1,0 +1,111 @@
+diff --git a/skills/wcag-accessibility-checker/SKILL.md b/skills/wcag-accessibility-checker/SKILL.md
+index 92d322c..906e59f 100644
+--- a/skills/wcag-accessibility-checker/SKILL.md
++++ b/skills/wcag-accessibility-checker/SKILL.md
+@@ -237,106 +237 @@ Write the report to a file in the project root (e.g., `wcag-audit-report.md`).
+ | axe-core runner | `scripts/run_axe.js` | Automated runtime testing via Playwright |
+-
+----
+-
+-## Quick Reference: Common React Accessibility Patterns
+-
+-### Images
+-
+-```tsx
+-// Wrong — missing alt
+-<img src="/hero.jpg" />
+-<Image src="/hero.jpg" width={800} height={400} />
+-
+-// Correct — informational
+-<img src="/hero.jpg" alt="Team collaborating at a whiteboard" />
+-
+-// Correct — decorative
+-<img src="/divider.svg" alt="" role="presentation" />
+-```
+-
+-### Interactive elements
+-
+-```tsx
+-// Wrong — div with click handler
+-<div onClick={handleClick}>Submit</div>
+-
+-// Correct — use semantic HTML
+-<button onClick={handleClick}>Submit</button>
+-
+-// If div is unavoidable, add role + keyboard support
+-<div
+-  role="button"
+-  tabIndex={0}
+-  onClick={handleClick}
+-  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); }}
+->
+-  Submit
+-</div>
+-```
+-
+-### Form inputs
+-
+-```tsx
+-// Wrong — no label association
+-<input type="email" placeholder="Email" />
+-
+-// Correct — explicit label
+-<label htmlFor="email">Email</label>
+-<input id="email" type="email" />
+-
+-// Correct — aria-label for visually hidden label
+-<input type="search" aria-label="Search products" />
+-```
+-
+-### Focus management
+-
+-```tsx
+-// Wrong — removing focus indicator
+-button:focus { outline: none; }
+-
+-// Correct — custom focus indicator
+-button:focus-visible {
+-  outline: 2px solid #005fcc;
+-  outline-offset: 2px;
+-}
+-```
+-
+-### Status messages
+-
+-```tsx
+-// Wrong — toast without live region
+-<div className="toast">{message}</div>
+-
+-// Correct — announced to screen readers
+-<div role="status" aria-live="polite">{message}</div>
+-
+-// For urgent messages
+-<div role="alert" aria-live="assertive">{errorMessage}</div>
+-```
+-
+-### Language
+-
+-```tsx
+-// Wrong (Next.js)
+-<Html>
+-
+-// Correct
+-<Html lang="en">
+-
+-// Next.js App Router — in app/layout.tsx
+-export default function RootLayout({ children }) {
+-  return <html lang="en">...</html>;
+-}
+-```
+-
+-### Animations
+-
+-```tsx
+-// Respect user motion preferences
+-@media (prefers-reduced-motion: reduce) {
+-  * { animation: none !important; transition: none !important; }
+-}
+-
+-// Or in JS
+-const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+-```

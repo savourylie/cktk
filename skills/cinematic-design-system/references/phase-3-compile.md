@@ -2,7 +2,7 @@
 
 **Output**: `docs/DESIGN.md` (copy `assets/FILM_TEMPLATE/DESIGN.md` and fill it in)
 
-**Read at entry**: this file, `anti-garbage.md`, `implementation-guardrails.md` (motion and citation rules apply; the build-specific rules apply loosely).
+**Read at entry**: this file and `anti-garbage.md`.
 
 Then progressively load the Phase 3 data libraries, **only what each FILM_TEMPLATE section needs**:
 
@@ -21,7 +21,7 @@ Then progressively load the Phase 3 data libraries, **only what each FILM_TEMPLA
 
 Turn the locked `UX_DESIGN.md` (site grammar + per-page scene theses + signature compositions + motion orchestration) into a **back-derived shared design system** following the FILM_TEMPLATE 9-section structure. Write to `docs/DESIGN.md`.
 
-This is the phase cinematic-ui normally skips or inverts. The shared system comes **last** here, not first.
+The shared system comes **last** here, not first.
 
 ## The Iron Law
 
@@ -133,9 +133,9 @@ The FILM_TEMPLATE DESIGN.md has 9 sections. Each section has a defined upstream 
 
 This section is what makes DESIGN.md *executable* for a downstream AI. It should be rich enough that a fresh agent reading only §9 can produce recognizable UI.
 
-## Motion Discipline (From `implementation-guardrails.md`)
+## Motion Discipline
 
-Even though Phase 3 produces specs and not runtime code, the motion rules from `implementation-guardrails.md` still apply when describing component hover/focus/active states:
+Phase 3 produces specs, not runtime code, but these motion rules still apply when describing component hover/focus/active states:
 
 - Maximum 1 heavy interaction per page (the docs-mode interpretation: mention at most one signature interaction in DESIGN.md §4 Distinctive Components)
 - Maximum 2 attention-seeking reveal patterns per page

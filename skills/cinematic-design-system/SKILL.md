@@ -167,7 +167,7 @@ In extraction mode, these rules do not apply — the identity fields are derived
 
 ## Phase 3 — Back-derive the Design System → `docs/DESIGN.md`
 
-**Read at entry**: `references/phase-3-compile.md`, `references/anti-garbage.md`, `references/implementation-guardrails.md` (motion and citation rules apply; build-specific rules apply loosely).
+**Read at entry**: `references/phase-3-compile.md`, `references/anti-garbage.md`.
 
 Then progressively load Phase 3 data files **only as each FILM_TEMPLATE section needs them**:
 
@@ -239,7 +239,7 @@ Keep this SKILL.md lean. Load references only for the current phase.
 - **Always read at session start**: `references/library-index.md`, `references/premium-calibration.md`
 - **Phase 1**: `references/phase-1-decisions.md`, `references/demo-uniqueness.md`, `references/anti-convergence.md`, `references/reference-protocol.md` (conditional), `references/data/directors-200.md`
 - **Phase 2**: `references/phase-2-storyboard.md`, `references/data/hero-archetypes.md`, `references/data/narrative-beats.md`, `references/data/section-functions.md`, `references/data/section-archetypes.md`, `references/data/dna-index.tsv`, `references/data/design-dna-db.txt` (on hit)
-- **Phase 3**: `references/phase-3-compile.md`, `references/anti-garbage.md`, `references/implementation-guardrails.md`, plus Phase 3 data files as each DESIGN.md section needs them
+- **Phase 3**: `references/phase-3-compile.md`, `references/anti-garbage.md`, plus Phase 3 data files as each DESIGN.md section needs them
 - **Phase 4**: `references/phase-4-preview.md`, `docs/DESIGN.md`, `assets/FILM_TEMPLATE/preview.html`, `assets/FILM_TEMPLATE/preview-dark.html`
 
 ## Relationship to Other cktk Skills

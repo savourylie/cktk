@@ -1,0 +1,17 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index ea13e97..c15e4a7 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -15,7 +15,7 @@ Keep these rules in place when editing the repo:
+ 5. Prefer explicit `$skill-name` examples in Codex docs for any workflow that changes the repo or calls external services.
+-6. **When a skill invokes another skill, read the callee's preconditions before writing the call.** Check three things: its hard refusals (`create-worktree`, `merge-worktree`, and both implement twins have them), its uncommitted side effects, and which argument selects the mode you actually want. Every defect found in the 2026-07-25 delegation audit was a caller that had not:
+-   - `implement-ticket` delegated to `merge-worktree` from inside the worktree that skill explicitly refuses to run in;
+-   - `create-worktree` edits `$MAIN_ROOT/.gitignore` and deliberately does not commit, which then trips `merge-worktree`'s clean-checkout refusal;
+-   - `implement-ticket` invoked `review-ticket` with no argument, silently getting generic review instead of ticket mode.
++6. **When a skill invokes another skill, read the callee's preconditions before writing the call.** Check three things: its hard refusals (`create-worktree`, `merge-worktree`, and both implement twins have them), its uncommitted side effects, and which argument selects the mode you actually want. For example:
++   - `merge-worktree` refuses to run from inside the worktree it removes;
++   - `create-worktree` edits `$MAIN_ROOT/.gitignore` and deliberately does not commit, which trips `merge-worktree`'s clean-checkout refusal;
++   - `review-ticket` with no argument runs a generic review; ticket mode needs the bare `NNN`.
+ 
+-   The same applies in reverse: when you change a skill, grep for callers and for conditions keyed on state you are making more common. `implement-ticket` beginning to create `ticket-NNN-<slug>` on every run made a dormant branch-name test in `update-ticket` start firing in a case it was never written for.
++   The same applies in reverse: when you change a skill, grep for its callers and for conditions keyed on state your change makes more common. A new default can wake a dormant check written for a different case — for example, a skill that starts creating a `ticket-NNN-<slug>` branch on every run can trigger a branch-name test elsewhere that assumed such branches were rare.

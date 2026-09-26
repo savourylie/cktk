@@ -2,13 +2,13 @@
 
 Every section function (from `section-functions.md`) has multiple structural archetypes. Each archetype locks:
 - **Layout** → reference from `compositions.md`
-- **Entrance** → MANDATORY reference from `camera-shots-50.md`
-- **Interaction** → MANDATORY reference from `interaction-effects-50.md`
+- **Entrance** → required reference from `camera-shots-50.md`
+- **Interaction** → required reference from `interaction-effects-50.md`
 - **Director fit** → Tier 1/2/3
 
-**CRITICAL:** Every archetype MUST reference specific entries from camera-shots and interaction-effects libraries. If an archetype has no interaction reference, it means "no hover/click/scroll effect" — which must be an intentional cinematic choice (e.g., "Villeneuve's restraint"), NOT laziness.
+Every archetype references specific entries from the camera-shots and interaction-effects libraries. An archetype with no interaction reference means "no hover/click/scroll effect", which should be a deliberate cinematic choice (e.g., "Villeneuve's restraint") stated as such.
 
-**Usage:** Step 3.95 — after selecting narrative beats and resolving to functions, select the archetype for each function via director pool + hash mechanism.
+**Usage:** Phase 2 per-page work — after selecting narrative beats and resolving to functions, select the archetype for each function via director pool + hash mechanism.
 
 ---
 
@@ -680,7 +680,7 @@ Every section function (from `section-functions.md`) has multiple structural arc
 2. Read the archetypes for that function type (this file)
 3. Filter: keep only Tier 1 + Tier 2 for the chosen director
 4. Select via hash + skip (same mechanism as hero archetype and camera shots)
-5. Record the selection in storyboard.md with:
+5. Record the selection in the page's *Scene breakdown* in `docs/UX_DESIGN.md` with:
    - Archetype ID (e.g., AG-4)
    - Composition reference (compositions.md #)
    - Entrance reference (camera-shots.md #)

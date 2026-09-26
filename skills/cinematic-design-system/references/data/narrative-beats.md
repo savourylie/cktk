@@ -4,7 +4,7 @@ A page is NOT a list of sections. A page is a **film** — with beats, rhythm, a
 
 Narrative beats are **abstract storytelling moments** that map to one or more section functions. Different directors use different beats in different orders, creating fundamentally different page structures.
 
-**Usage:** Step 3.95 — after Hero Archetype, select the director's narrative arc. Each beat resolves to a section function (from `section-functions.md`), then each function resolves to a structural archetype (from `section-archetypes.md`).
+**Usage:** Phase 2 per-page work — after choosing the hero archetype, select the director's narrative arc. Each beat resolves to a section function (from `section-functions.md`), then each function resolves to a structural archetype (from `section-archetypes.md`).
 
 ---
 
@@ -18,7 +18,7 @@ Narrative beats are **abstract storytelling moments** that map to one or more se
 5. Apply Director Preference Pool + hash-based selection at each step
 ```
 
-**CRITICAL:** The page arc MUST be different per director. If two directors produce the same beat sequence, something is wrong.
+The page arc differs per director; if two directors produce the same beat sequence, revisit the arc selection.
 
 ---
 
@@ -75,7 +75,7 @@ Narrative beats are **abstract storytelling moments** that map to one or more se
 
 Each director has a **default beat sequence** for a homepage. This is the starting point — the hash-based pool mechanism can vary it per project, but the director's temperament defines the baseline.
 
-**CRITICAL Anti-Bias Rule:** These templates exist to PREVENT AI from defaulting to the same Hero → Articles → Features → Stats → CTA → Footer pattern. The AI MUST follow the director's arc template, not its own preference.
+**Anti-bias rule:** Follow the director's arc template rather than your own preference. The templates exist to replace the default Hero → Articles → Features → Stats → CTA → Footer pattern.
 
 ---
 
@@ -444,7 +444,7 @@ Some beats may not apply to the site's content. Replacement rules:
 - If adding beats: only add from the director's NON-forbidden list
 - If removing beats: minimum 5 beats per page
 
-### Step 4: Record in storyboard.md
+### Step 4: Record in `docs/UX_DESIGN.md` (the page's *Narrative arc*)
 
 ```markdown
 ## Page Narrative Arc

@@ -1,0 +1,52 @@
+diff --git a/skills/cinematic-design-system/SKILL.md b/skills/cinematic-design-system/SKILL.md
+index 06f4b08..6434896 100644
+--- a/skills/cinematic-design-system/SKILL.md
++++ b/skills/cinematic-design-system/SKILL.md
+@@ -167,3 +167,3 @@ In extraction mode, these rules do not apply — the identity fields are derived
+ 
+-**Read at entry**: `references/phase-3-compile.md`, `references/anti-garbage.md`, `references/implementation-guardrails.md` (motion and citation rules apply; build-specific rules apply loosely).
++**Read at entry**: `references/phase-3-compile.md`, `references/anti-garbage.md`.
+ 
+@@ -239,3 +239,3 @@ Keep this SKILL.md lean. Load references only for the current phase.
+ - **Phase 2**: `references/phase-2-storyboard.md`, `references/data/hero-archetypes.md`, `references/data/narrative-beats.md`, `references/data/section-functions.md`, `references/data/section-archetypes.md`, `references/data/dna-index.tsv`, `references/data/design-dna-db.txt` (on hit)
+-- **Phase 3**: `references/phase-3-compile.md`, `references/anti-garbage.md`, `references/implementation-guardrails.md`, plus Phase 3 data files as each DESIGN.md section needs them
++- **Phase 3**: `references/phase-3-compile.md`, `references/anti-garbage.md`, plus Phase 3 data files as each DESIGN.md section needs them
+ - **Phase 4**: `references/phase-4-preview.md`, `docs/DESIGN.md`, `assets/FILM_TEMPLATE/preview.html`, `assets/FILM_TEMPLATE/preview-dark.html`
+diff --git a/skills/cinematic-design-system/references/implementation-guardrails.md b/skills/cinematic-design-system/references/implementation-guardrails.md
+index ee4baac..4420060 100644
+--- a/skills/cinematic-design-system/references/implementation-guardrails.md
++++ b/skills/cinematic-design-system/references/implementation-guardrails.md
+@@ -2,5 +2,5 @@
+ 
+-Use this during Phase 3 and Phase 4.
++Use this when building pages from the finished design bundle. The skill's four phases produce documents and do not load it; `phase-3-compile.md` carries the motion and citation rules that apply to the docs.
+ 
+-This file restores the concrete anti-laziness rules that prevent the agent from collapsing back to generic web output while compiling and building.
++These rules keep a build from collapsing back to generic web output.
+ 
+diff --git a/skills/cinematic-design-system/references/library-index.md b/skills/cinematic-design-system/references/library-index.md
+index 21dc84e..95f0199 100644
+--- a/skills/cinematic-design-system/references/library-index.md
++++ b/skills/cinematic-design-system/references/library-index.md
+@@ -36,3 +36,3 @@ Use this file to decide what to read next. Load the smallest useful subset.
+ - `implementation-guardrails.md`
+-  - Use to enforce entrance-map variety, external library decisions, JS-required interaction handling, quality checklists, and post-screening adjustment rules.
++  - Build-time rules (external libraries, JavaScript, screening) for pages built later from the bundle; the docs-only phases do not load it.
+ - `data/camera-shots-50.md`
+diff --git a/skills/cinematic-design-system/references/phase-3-compile.md b/skills/cinematic-design-system/references/phase-3-compile.md
+index 138f89a..e019a28 100644
+--- a/skills/cinematic-design-system/references/phase-3-compile.md
++++ b/skills/cinematic-design-system/references/phase-3-compile.md
+@@ -4,3 +4,3 @@
+ 
+-**Read at entry**: this file, `anti-garbage.md`, `implementation-guardrails.md` (motion and citation rules apply; the build-specific rules apply loosely).
++**Read at entry**: this file and `anti-garbage.md`.
+ 
+@@ -131,5 +131,5 @@ This section is what makes DESIGN.md *executable* for a downstream AI. It should
+ 
+-## Motion Discipline (From `implementation-guardrails.md`)
++## Motion Discipline
+ 
+-Even though Phase 3 produces specs and not runtime code, the motion rules from `implementation-guardrails.md` still apply when describing component hover/focus/active states:
++Phase 3 produces specs, not runtime code, but these motion rules still apply when describing component hover/focus/active states:
+ 

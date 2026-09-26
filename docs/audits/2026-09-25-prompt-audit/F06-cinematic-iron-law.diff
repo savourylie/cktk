@@ -1,0 +1,47 @@
+diff --git a/skills/cinematic-design-system/SKILL.md b/skills/cinematic-design-system/SKILL.md
+index ae1c181..06f4b08 100644
+--- a/skills/cinematic-design-system/SKILL.md
++++ b/skills/cinematic-design-system/SKILL.md
+@@ -9,7 +9,5 @@ Generates a full cinematic design system bundle — **four Markdown docs plus tw
+ 
+-## THE IRON LAW
++## Write DESIGN.md last
+ 
+-> **DO NOT write `docs/DESIGN.md` until `docs/UX_DESIGN.md` is LOCKED.**
+-
+-The shared design system is **back-derived** from per-page compositions in Phase 3. Writing DESIGN.md before Phase 2 completes front-loads a shared component system, which flattens the pages into a template. That is the exact failure mode this skill exists to prevent. If you find yourself reaching for DESIGN.md tokens during Phase 2, stop and go back.
++Write `docs/DESIGN.md` only after `docs/UX_DESIGN.md` is locked. The shared design system is **back-derived** from per-page compositions in Phase 3; writing it earlier front-loads a shared component system, which flattens the pages into a template — the failure this skill exists to prevent.
+ 
+@@ -34,3 +32,3 @@ Six files in `docs/` in the user's project:
+ 
+-## The Four Phases (non-negotiable order)
++## The Four Phases (in order)
+ 
+diff --git a/skills/cinematic-design-system/references/phase-2-storyboard.md b/skills/cinematic-design-system/references/phase-2-storyboard.md
+index 0d78c87..bfac857 100644
+--- a/skills/cinematic-design-system/references/phase-2-storyboard.md
++++ b/skills/cinematic-design-system/references/phase-2-storyboard.md
+@@ -20,5 +20,5 @@ Phase 2 does **not** write DESIGN.md. The shared design system is back-derived i
+ 
+-## The Non-Negotiable Ordering Rule
++## Ordering Rule
+ 
+-Work the four sub-steps in this order. **Do not skip forward.**
++Work the four sub-steps in this order.
+ 
+diff --git a/skills/cinematic-design-system/references/phase-3-compile.md b/skills/cinematic-design-system/references/phase-3-compile.md
+index 80df412..5054e13 100644
+--- a/skills/cinematic-design-system/references/phase-3-compile.md
++++ b/skills/cinematic-design-system/references/phase-3-compile.md
+@@ -25,9 +25,5 @@ This is the phase cinematic-ui normally skips or inverts. The shared system come
+ 
+-## The Iron Law
++## Start from the locked storyboard
+ 
+-> **DO NOT write DESIGN.md until UX_DESIGN.md is locked.**
+-
+-Writing DESIGN.md before Phase 2 completes front-loads a shared component system, which flattens the per-page scenes into a template. That is the exact failure mode this skill exists to prevent.
+-
+-If you find yourself wanting to sketch DESIGN.md tokens during Phase 2 "just to see how it'll feel", stop. Go back. Finish Phase 2 first.
++Begin only when `UX_DESIGN.md` is locked; if it is still changing, finish Phase 2 first. Everything below derives from it, and a DESIGN.md written against an unlocked storyboard front-loads a shared component system that flattens the per-page scenes into a template.
+ 

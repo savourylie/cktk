@@ -27,7 +27,6 @@ Flag an issue only when ALL of the following hold:
 ## Quantity and Style
 
 - Output all findings that the author would fix if they knew about it.
-- If there is no finding that a person would definitely want to see and fix, prefer outputting no findings.
 - Do not stop at the first qualifying finding. Continue until you've listed every qualifying finding.
 - Ignore trivial style unless it obscures meaning or violates documented standards.
 - Use one comment per distinct issue.
@@ -49,7 +48,7 @@ Do NOT flag any of the following:
 - **Pre-existing issues** — bugs that existed before the diff; only flag issues introduced in the change.
 - **Linter/typechecker-catchable issues** — missing imports, type errors, formatting issues, pedantic style (newlines, spacing). Assume CI will catch these.
 - **Intentional changes** — changes in functionality that are likely intentional or directly related to the broader change.
-- **Pedantic nitpicks** — issues that a senior engineer would not call out.
+- **Pure style or naming preferences** — nits that change no behavior, test result, or reader's understanding.
 - **Issues on unmodified lines** — real issues on lines the author did not modify.
 - **Lint-ignored code** — issues explicitly silenced with lint-ignore or equivalent comments.
 - **General code quality** — lack of test coverage, general security posture, poor documentation, unless explicitly required in CLAUDE.md.

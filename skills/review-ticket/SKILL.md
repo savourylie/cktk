@@ -1,6 +1,6 @@
 ---
 name: review-ticket
-description: "Review code changes for bugs and issues, including a committed feature branch against a base branch with Linear ticket context. Triggers on: /review-ticket, review code, review changes, review my diff, code review, find bugs, review uncommitted, review against main, review this branch, check my changes, review against ticket, review a Linear issue, review ENG-42, review Linear ticket against main, review this commit, review commit abc123"
+description: "Review code changes for bugs and issues, including a committed feature branch against a base branch with Linear ticket context. Use for any code review or bug check of uncommitted or staged changes, a branch, a pull request, or a single commit, including plain requests such as \"review my diff\" or \"code review\", and for checking changes against a docs/tickets ticket or a Linear issue."
 user-invocable: true
 ---
 
@@ -68,7 +68,7 @@ When `--base` is omitted, preserve the existing default-branch behavior: try `ma
 2. Focus exclusively on issues **introduced in the diff**. Do not flag pre-existing problems.
 3. For each potential finding, evaluate it against the 8 bug detection criteria. Only include it if all criteria are met.
 4. Assign each finding a **priority** (P0-P3) and a **confidence** score (0-100%).
-5. Only report findings with confidence >= 70%.
+5. Report every finding that meets the criteria, including ones you are unsure about. List findings below 70% confidence under **Lower-Confidence Findings** instead of dropping them, so the reader decides what to act on.
 6. **Ticket and both Linear modes:** In addition to bug and regression detection, evaluate:
    - Does the diff implement what the ticket/issue describes?
    - Are there acceptance criteria in the ticket/issue that are not addressed by the changes?
@@ -101,6 +101,9 @@ and what impact it has.
 
 (repeat for each finding, ordered by priority then confidence)
 
+### Lower-Confidence Findings
+(same format, for findings below 70% confidence; omit this section when there are none)
+
 ### Ticket Alignment (ticket and Linear modes)
 **Ticket**: `docs/tickets/42-user-auth.md`   (ticket mode)
 **Issue**: ENG-42 — {title}                  (Linear mode; include the issue URL if known)
@@ -114,7 +117,7 @@ and what impact it has.
 If no issues found, explain what categories were examined.]
 ```
 
-If no findings meet the confidence threshold:
+If there are no findings at any confidence:
 
 ```
 ## Code Review
@@ -126,7 +129,7 @@ If no findings meet the confidence threshold:
 ### No Issues Found
 
 Reviewed [count] files for bugs, security issues, logic errors,
-and CLAUDE.md compliance. No issues met the reporting threshold.
+and CLAUDE.md compliance. No issues found.
 
 ### Summary
 [Brief description of what was checked and why the changes look correct.]
@@ -134,12 +137,12 @@ and CLAUDE.md compliance. No issues met the reporting threshold.
 
 ## Behavioral Rules
 
-- **Prefer silence over noise.** If unsure whether something is a real bug, do not report it. False positives erode trust.
+- **Label uncertainty instead of withholding it.** A finding you are unsure about goes under Lower-Confidence Findings with its confidence score; the score and the separate section keep a possible bug from being read as a confirmed one.
 - **Large diffs (500+ lines):** Prioritize the highest-risk files first (security-sensitive, core logic, data handling). Review all files but allocate attention proportionally to risk.
 - **CLAUDE.md compliance:** If project guidelines exist, check adherence — but only flag violations that are clearly called out in the CLAUDE.md, not loose interpretations.
 - **After initial review:** Switch to conversational mode for follow-up questions, explanations, or discussion. Respond in plain text.
 - **Re-review:** If the user says "re-review", "review again", or "rerun", produce the full structured output format again.
-- **No fix generation unless asked.** The review identifies issues. Only generate fixes if the user explicitly asks.
+- **Don't apply fixes unless asked.** The review identifies issues; a finding's `suggestion` block is the only fix content it includes. Edit files only when the user explicitly asks.
 
 ## Usage Examples
 

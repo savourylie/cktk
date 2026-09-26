@@ -1,0 +1,43 @@
+diff --git a/skills/review-ticket/SKILL.md b/skills/review-ticket/SKILL.md
+index 352ebd0..5ff4137 100644
+--- a/skills/review-ticket/SKILL.md
++++ b/skills/review-ticket/SKILL.md
+@@ -70,3 +70,3 @@ When `--base` is omitted, preserve the existing default-branch behavior: try `ma
+ 4. Assign each finding a **priority** (P0-P3) and a **confidence** score (0-100%).
+-5. Only report findings with confidence >= 70%.
++5. Report every finding that meets the criteria, including ones you are unsure about. List findings below 70% confidence under **Lower-Confidence Findings** instead of dropping them, so the reader decides what to act on.
+ 6. **Ticket and both Linear modes:** In addition to bug and regression detection, evaluate:
+@@ -103,2 +103,5 @@ and what impact it has.
+ 
++### Lower-Confidence Findings
++(same format, for findings below 70% confidence; omit this section when there are none)
++
+ ### Ticket Alignment (ticket and Linear modes)
+@@ -116,3 +119,3 @@ If no issues found, explain what categories were examined.]
+ 
+-If no findings meet the confidence threshold:
++If there are no findings at any confidence:
+ 
+@@ -128,3 +131,3 @@ If no findings meet the confidence threshold:
+ Reviewed [count] files for bugs, security issues, logic errors,
+-and CLAUDE.md compliance. No issues met the reporting threshold.
++and CLAUDE.md compliance. No issues found.
+ 
+@@ -136,3 +139,3 @@ and CLAUDE.md compliance. No issues met the reporting threshold.
+ 
+-- **Prefer silence over noise.** If unsure whether something is a real bug, do not report it. False positives erode trust.
++- **Label uncertainty instead of withholding it.** A finding you are unsure about goes under Lower-Confidence Findings with its confidence score; the score and the separate section keep a possible bug from being read as a confirmed one.
+ - **Large diffs (500+ lines):** Prioritize the highest-risk files first (security-sensitive, core logic, data handling). Review all files but allocate attention proportionally to risk.
+diff --git a/skills/review-ticket/references/review-guidelines.md b/skills/review-ticket/references/review-guidelines.md
+index 97c0a33..104831d 100644
+--- a/skills/review-ticket/references/review-guidelines.md
++++ b/skills/review-ticket/references/review-guidelines.md
+@@ -29,3 +29,2 @@ Flag an issue only when ALL of the following hold:
+ - Output all findings that the author would fix if they knew about it.
+-- If there is no finding that a person would definitely want to see and fix, prefer outputting no findings.
+ - Do not stop at the first qualifying finding. Continue until you've listed every qualifying finding.
+@@ -51,3 +50,3 @@ Do NOT flag any of the following:
+ - **Intentional changes** — changes in functionality that are likely intentional or directly related to the broader change.
+-- **Pedantic nitpicks** — issues that a senior engineer would not call out.
++- **Pure style or naming preferences** — nits that change no behavior, test result, or reader's understanding.
+ - **Issues on unmodified lines** — real issues on lines the author did not modify.

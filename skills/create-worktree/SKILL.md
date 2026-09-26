@@ -1,6 +1,6 @@
 ---
 name: create-worktree
-description: "Create one or more git worktrees for tickets from docs/tickets/, each as an isolated checkout under .worktrees/NNN-slug/ on its own branch. Optionally pass a base branch as the last argument (defaults to main, fetched fresh from origin). Triggers on: /create-worktree, create worktree, worktree this ticket, set up worktree, isolated branch for ticket, parallel ticket work, work on ticket in parallel"
+description: "Create one or more git worktrees for tickets from docs/tickets/, each as an isolated checkout under .worktrees/NNN-slug/ on its own branch. Optionally pass a base branch as the last argument (defaults to main, fetched fresh from origin). Use when the user wants an isolated checkout for a local ticket, or to work on several tickets in parallel."
 user-invocable: true
 ---
 

@@ -1,11 +1,10 @@
 # Hero Archetypes Library — 30 Cinematic Hero Structures
 
-> ⚠️ Every hero MUST include visual elements beyond text. See `visual-elements.md` for the library.
-> Minimum 2 visual elements per hero. Text-only heroes are GARBAGE (see anti-garbage.md).
+> Every hero includes visual elements beyond text: see `visual-elements.md` for the library and `anti-garbage.md` → Visual Density Rules for the minimum count. A text-only hero reads as a template.
 
 Every hero section must start from an archetype. Archetypes define the **skeleton** (locked) while leaving **skin** (flex) to the director + DNA system.
 
-**Usage:** Step 3.9 — after Director's Brief, before Storyboard. Select archetype via Director Preference Pool mechanism.
+**Usage:** Phase 2 — after the Director Brief, before the per-page scene breakdowns. Select archetype via Director Preference Pool mechanism.
 
 ---
 
@@ -16,7 +15,7 @@ Every hero section must start from an archetype. Archetypes define the **skeleto
 2. Pool: typically 12-18 archetypes survive filtering
 3. Select: use site-name hash to pick starting position, walk the pool
 4. Resolve flex: each flex dimension enters Director's Preference Pool for validation
-5. Record in storyboard.md before Scene 1
+5. Record in `docs/UX_DESIGN.md` before Scene 1
 ```
 
 ### Archetype Entry Format
@@ -133,7 +132,7 @@ Every hero section must start from an archetype. Archetypes define the **skeleto
 **背景本身就是視覺元素**（材質、動態漸層、粒子）。浮動元素要少而精（1-2 個高對比 badge）。
 
 ### 使用規則
-1. Phase 2 選定 Archetype 後，選 1-2 個 Pattern 作為**混搭起點**（記錄在 storyboard.md）
+1. Phase 2 選定 Archetype 後，選 1-2 個 Pattern 作為**混搭起點**（記錄在 `docs/UX_DESIGN.md`）
 2. **必須變形**：改變比例、旋轉方向、合併兩個 Pattern、移動元素位置、加入導演特色
 3. Phase 3 compile 時，寫出**具體的、已經混搭變形過的** CSS grid/position 佈局
 4. 浮動元素的**數量、位置、大小**都要根據導演風格調整：

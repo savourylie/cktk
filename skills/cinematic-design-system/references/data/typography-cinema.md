@@ -2,7 +2,7 @@
 
 文字不是放在頁面上的標籤。文字是演員、是建築、是光。
 
-**Read this library during Step 4 storyboard.** Every hero and key section MUST use at least one of these typography techniques — not just "font-size: 3rem; text-align: center".
+**Read this library in Phase 3 for DESIGN.md §3.** Every hero and key section uses at least one of these typography techniques — not just "font-size: 3rem; text-align: center".
 
 A film has loud scenes AND quiet scenes. Use Category 6 for the quiet moments.
 

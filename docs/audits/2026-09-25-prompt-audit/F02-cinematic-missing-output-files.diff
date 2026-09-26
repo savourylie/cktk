@@ -1,0 +1,50 @@
+diff --git a/skills/cinematic-design-system/references/anti-convergence.md b/skills/cinematic-design-system/references/anti-convergence.md
+index 889bbff..c77eb95 100644
+--- a/skills/cinematic-design-system/references/anti-convergence.md
++++ b/skills/cinematic-design-system/references/anti-convergence.md
+@@ -20,3 +20,3 @@ Analysis: what specific lighting behavior, framing logic, scene rhythm, and mate
+ 
+-If any answer is unsatisfactory, choose a different film before proceeding to decisions.md.
++If any answer is unsatisfactory, choose a different film before continuing Phase 1.
+ 
+diff --git a/skills/cinematic-design-system/references/data/hero-archetypes.md b/skills/cinematic-design-system/references/data/hero-archetypes.md
+index c07d534..2b37a49 100644
+--- a/skills/cinematic-design-system/references/data/hero-archetypes.md
++++ b/skills/cinematic-design-system/references/data/hero-archetypes.md
+@@ -18,3 +18,3 @@ Every hero section must start from an archetype. Archetypes define the **skeleto
+ 4. Resolve flex: each flex dimension enters Director's Preference Pool for validation
+-5. Record in storyboard.md before Scene 1
++5. Record in `docs/UX_DESIGN.md` before Scene 1
+ ```
+@@ -135,3 +135,3 @@ Every hero section must start from an archetype. Archetypes define the **skeleto
+ ### 使用規則
+-1. Phase 2 選定 Archetype 後，選 1-2 個 Pattern 作為**混搭起點**（記錄在 storyboard.md）
++1. Phase 2 選定 Archetype 後，選 1-2 個 Pattern 作為**混搭起點**（記錄在 `docs/UX_DESIGN.md`）
+ 2. **必須變形**：改變比例、旋轉方向、合併兩個 Pattern、移動元素位置、加入導演特色
+diff --git a/skills/cinematic-design-system/references/data/narrative-beats.md b/skills/cinematic-design-system/references/data/narrative-beats.md
+index 230143c..d0628f5 100644
+--- a/skills/cinematic-design-system/references/data/narrative-beats.md
++++ b/skills/cinematic-design-system/references/data/narrative-beats.md
+@@ -446,3 +446,3 @@ Some beats may not apply to the site's content. Replacement rules:
+ 
+-### Step 4: Record in storyboard.md
++### Step 4: Record in `docs/UX_DESIGN.md` (the page's *Narrative arc*)
+ 
+diff --git a/skills/cinematic-design-system/references/data/section-archetypes.md b/skills/cinematic-design-system/references/data/section-archetypes.md
+index c7f9737..b1d0932 100644
+--- a/skills/cinematic-design-system/references/data/section-archetypes.md
++++ b/skills/cinematic-design-system/references/data/section-archetypes.md
+@@ -682,3 +682,3 @@ Every section function (from `section-functions.md`) has multiple structural arc
+ 4. Select via hash + skip (same mechanism as hero archetype and camera shots)
+-5. Record the selection in storyboard.md with:
++5. Record the selection in the page's *Scene breakdown* in `docs/UX_DESIGN.md` with:
+    - Archetype ID (e.g., AG-4)
+diff --git a/skills/cinematic-design-system/references/reference-protocol.md b/skills/cinematic-design-system/references/reference-protocol.md
+index b75cfea..d08f40b 100644
+--- a/skills/cinematic-design-system/references/reference-protocol.md
++++ b/skills/cinematic-design-system/references/reference-protocol.md
+@@ -56,3 +56,3 @@ Then rewrite all three through the chosen film and director.
+ 
+-Record this in `decisions.md`:
++Record this in `docs/RESEARCH.md` under *Reference Decomposition*:
+ 

@@ -2,7 +2,7 @@
 
 Every section on a page serves a **function**. This library catalogs all available functions. Narrative Beats (see `narrative-beats.md`) map to these functions. Section Archetypes (see `section-archetypes.md`) define structural variants for each.
 
-**Usage:** Step 3.95 — after Hero Archetype selection, build the page arc by selecting narrative beats, then resolve each beat to a function from this library.
+**Usage:** Phase 2 per-page work — after choosing the hero archetype, build the page arc by selecting narrative beats, then resolve each beat to a function from this library.
 
 **Scope:** Covers ALL page types — homepage, article pages, about, contact, landing pages, category listings, etc.
 

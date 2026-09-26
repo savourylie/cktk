@@ -1,0 +1,25 @@
+diff --git a/skills/cinematic-design-system/references/anti-garbage.md b/skills/cinematic-design-system/references/anti-garbage.md
+index 10debbe..ecff118 100644
+--- a/skills/cinematic-design-system/references/anti-garbage.md
++++ b/skills/cinematic-design-system/references/anti-garbage.md
+@@ -63,4 +63,4 @@ If the reference site's aesthetic is fundamentally incompatible with the chosen
+ - Use simple motion only when restraint is part of the chosen director's language.
+-- If an interaction library entry needs JavaScript, include the JavaScript in the compiled spec.
+-- If a page uses a heavy interaction, standout reveal, signature composition, or hero atmosphere device, the compiled spec must cite the corresponding library source id.
++- If an interaction library entry needs JavaScript, cite its library source id rather than copying the code into the design docs; the id is how a later build finds the implementation.
++- If a page uses a heavy interaction, standout reveal, signature composition, or hero atmosphere device, the spec must cite the corresponding library source id.
+ - If no library source id is cited for a major visual move, treat the spec as incomplete unless it is explicitly justified as `Custom`.
+@@ -93,3 +93,3 @@ Ask these questions:
+ 3. Does the page have at least one memorable visual idea beyond typography and spacing?
+-4. Does the implementation follow the compiled spec instead of drifting back to generic web patterns?
++4. Do the documents specify film-driven patterns instead of drifting back to generic web patterns?
+ 5. Does the page feel expensive because of editing and control, not because of extra decoration?
+diff --git a/skills/cinematic-design-system/references/premium-calibration.md b/skills/cinematic-design-system/references/premium-calibration.md
+index 97d286e..32c2514 100644
+--- a/skills/cinematic-design-system/references/premium-calibration.md
++++ b/skills/cinematic-design-system/references/premium-calibration.md
+@@ -2,3 +2,3 @@
+ 
+-Use this after the director brief and before the compiled spec.
++Use this after the director brief and before Phase 3.
+ The goal is not to replace the film language. The goal is to stop the design from collapsing into generic "creative template" output.

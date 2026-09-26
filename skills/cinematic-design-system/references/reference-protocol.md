@@ -54,7 +54,7 @@ Then rewrite all three through the chosen film and director.
 
 ## Output Format
 
-Record this in `decisions.md`:
+Record this in `docs/RESEARCH.md` under *Reference Decomposition*:
 
 - `Reference A contributes:`
 - `Reference B contributes:`

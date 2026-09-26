@@ -1,6 +1,6 @@
 ---
 name: interact-html
-description: "Render an agent-user interaction — clarifying questions, option picks, design directions, decision briefings — as a self-contained interactive HTML page under .ai/interactions/, collect the user's answers through a local one-shot server or a paste-back fallback, then archive the resolved page as a decision record. Use when the user wants to answer questions in a browser instead of the terminal, asks to see options as a page, or has expressed a standing preference for HTML interactions. Triggers on: /interact-html, ask via browser, render questions as a page, show me the options visually, HTML interaction, interactive page for this decision."
+description: "Render an agent-user interaction — clarifying questions, option picks, design directions, decision briefings — as a self-contained interactive HTML page under .ai/interactions/, collect the user's answers through a local one-shot server or a paste-back fallback, then archive the resolved page as a decision record. Use when the user wants to answer questions in a browser instead of the terminal, asks to see options as a page, or has expressed a standing preference for HTML interactions."
 user-invocable: true
 disable-model-invocation: false
 argument-hint: "[topic, questions, or options to render]"

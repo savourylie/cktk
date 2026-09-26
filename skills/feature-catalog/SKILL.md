@@ -7,8 +7,7 @@ description: >
   produces a categorized Markdown document. Use when a user wants to: (1) list all features in
   a codebase, (2) create a feature inventory or feature map, (3) onboard to an unfamiliar project
   by understanding its capabilities, (4) audit what a product can do for planning or documentation,
-  (5) generate product documentation from code. Triggers on: list features, feature inventory,
-  what does this app do, feature map, catalog features, feature audit, product capabilities.
+  (5) generate product documentation from code.
   Do NOT use for: generating PRDs, creating tickets, reviewing code quality, or security audits.
 ---
 
@@ -200,23 +199,6 @@ Write the catalog to `docs/FEATURES.md` (or a user-specified path).
 - **Descriptions**: Always start with what the user can do, not how the code works
 - **Order within categories**: Primary features first, supporting features after
 - **No code references in output**: The catalog is a product document, not a code map
-
----
-
-## Checklist
-
-Before delivering the catalog:
-
-- [ ] Application type and framework correctly identified
-- [ ] All route/page entry points discovered
-- [ ] Navigation components read to confirm user-visible structure
-- [ ] Component-level interactions extracted (actions, forms, controls)
-- [ ] Supporting capabilities captured (auth, notifications, settings)
-- [ ] Completeness sweep performed (strings, flags, schemas, tests)
-- [ ] Features described from user perspective, not implementation
-- [ ] Categories use application's own terminology where possible
-- [ ] 4-8 categories with no orphaned features
-- [ ] Output written to docs/FEATURES.md
 
 ---
 

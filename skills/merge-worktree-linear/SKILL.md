@@ -1,6 +1,6 @@
 ---
 name: merge-worktree-linear
-description: "Merge one or more Linear issue worktrees back into their base branch, then remove the worktree directory and delete the local branch. The cleanup half of /create-worktree-linear. Detects already-merged branches (e.g. merged via GitHub PR) and just cleans up in that case. Auto-commits any uncommitted implementation code in the worktree before merging (interactive Y/n prompt, defaults to yes). Pass `no-cleanup` to keep the local branch. Does not require Linear MCP and writes nothing to Linear. Triggers on: /merge-worktree-linear, merge Linear worktree, land Linear issue branch, clean up worktree after Linear issue, done with Linear issue worktree"
+description: "Merge one or more Linear issue worktrees back into their base branch, then remove the worktree directory and delete the local branch. The cleanup half of /create-worktree-linear. Detects already-merged branches (e.g. merged via GitHub PR) and just cleans up in that case. Auto-commits any uncommitted implementation code in the worktree before merging (interactive Y/n prompt, defaults to yes). Pass `no-cleanup` to keep the local branch. Does not require Linear MCP and writes nothing to Linear. Use when the user is done with a Linear issue worktree and wants it landed or cleaned up."
 user-invocable: true
 ---
 

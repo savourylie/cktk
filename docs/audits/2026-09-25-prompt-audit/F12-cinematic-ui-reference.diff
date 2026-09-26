@@ -1,0 +1,9 @@
+diff --git a/skills/cinematic-design-system/references/phase-3-compile.md b/skills/cinematic-design-system/references/phase-3-compile.md
+index e019a28..fcc93e9 100644
+--- a/skills/cinematic-design-system/references/phase-3-compile.md
++++ b/skills/cinematic-design-system/references/phase-3-compile.md
+@@ -23,3 +23,3 @@ Turn the locked `UX_DESIGN.md` (site grammar + per-page scene theses + signature
+ 
+-This is the phase cinematic-ui normally skips or inverts. The shared system comes **last** here, not first.
++The shared system comes **last** here, not first.
+ 
