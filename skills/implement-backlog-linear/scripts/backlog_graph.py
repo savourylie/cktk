@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -25,6 +26,7 @@ TERMINAL_STATES = frozenset({"completed", "canceled"})
 ISSUE_ID = re.compile(r"^([A-Za-z][A-Za-z0-9]*)-(\d+)$")
 ID_PREFIX = re.compile(r"^([A-Za-z][A-Za-z0-9]*-\d+)-")
 LANDED_SUBJECT = re.compile(r"^Merge linear-([A-Za-z][A-Za-z0-9]*-\d+)-\S* into (\S+)$")
+COUNT_KEYS = ("AI-ELIGIBLE", "DONE", "PARKED", "HUMAN-GATED", "BLOCKED")
 
 
 class InputError(Exception):
@@ -399,6 +401,175 @@ def cmd_plan(args):
     return 0
 
 
+def next_step(plan, state, landed=frozenset()):
+    """Decide what a run does next from its plan and fresh Linear state."""
+    me = plan.get("me")
+    order = plan["order"]
+    planned = set(order)
+    current = {norm_id(k): v for k, v in (state.get("issues") or {}).items()}
+    external = {norm_id(k): v for k, v in (state.get("external") or {}).items()}
+    in_flight = {norm_id(i) for i in state.get("in_flight") or ()}
+    blockers = {i: set(plan["edges"].get(i, ())) for i in order}
+    done, parked, removed = [], [], {}
+    for issue_id in order:
+        info = current.get(issue_id)
+        if info is None:
+            raise InputError(f"state is missing planned issue {issue_id}")
+        labels = label_set(info.get("labels"))
+        state_type = str(info.get("state_type") or "").lower()
+        if state_type == "completed":
+            done.append(issue_id)
+        elif PARK_LABEL in labels:
+            parked.append(issue_id)
+        elif labels & GATE_LABELS:
+            removed[issue_id] = {"reason": "human-gate", "label": sorted(labels & GATE_LABELS)[0]}
+        elif state_type == "canceled":
+            removed[issue_id] = {"reason": "canceled"}
+        elif info.get("assignee") and info["assignee"] != me:
+            removed[issue_id] = {"reason": "someone-else"}
+        else:
+            new = []
+            for blocker in info.get("blocked_by") or ():
+                blocker = norm_id(blocker)
+                if blocker in planned:
+                    blockers[issue_id].add(blocker)
+                elif (external.get(blocker) or current.get(blocker) or {}).get("state_type") != "completed":
+                    new.append(blocker)
+            if new:
+                removed[issue_id] = {"reason": "new-blocker", "via": sort_ids(new)}
+    finished = set(done)
+    out = set(parked) | set(removed)
+    changed = True
+    while changed:
+        changed = False
+        for issue_id in order:
+            if issue_id in finished or issue_id in out:
+                continue
+            via = sort_ids(b for b in blockers[issue_id] if b in out)
+            if via:
+                removed[issue_id] = {"reason": "blocked", "via": via}
+                out.add(issue_id)
+                changed = True
+    active = [i for i in order if i not in finished and i not in out]
+    landed_not_done = [i for i in active if i in landed]
+    ready = [i for i in active
+             if i not in in_flight and i not in landed and all(b in finished for b in blockers[i])]
+    if active and not ready and not landed_not_done and not in_flight.intersection(active):
+        for issue_id in active:
+            removed[issue_id] = {"reason": "stuck",
+                                 "via": sort_ids(b for b in blockers[issue_id] if b not in finished)}
+        active = []
+    counts = count_status(plan, active, done, parked, removed)
+    return {
+        "ready": ready,
+        "in_flight": [i for i in active if i in in_flight],
+        "landed_not_done": landed_not_done,
+        "done": done,
+        "parked": parked,
+        "removed": {i: removed[i] for i in sort_ids(removed)},
+        "counts": counts,
+        "status_line": status_line(plan["run_id"], counts),
+    }
+
+
+def count_status(plan, active, done, parked, removed):
+    excluded = plan["excluded"]
+    parked_all = set(parked) | {i for i, v in excluded.items()
+                                if v["reason"] == "human-gate" and v["label"] == PARK_LABEL}
+    gated_all = {i for i, v in excluded.items()
+                 if v["reason"] == "human-gate" and v["label"] != PARK_LABEL}
+    gated_all |= {i for i, v in removed.items() if v["reason"] == "human-gate"}
+    others = (set(excluded) | set(removed)) - parked_all - gated_all
+    return {"AI-ELIGIBLE": len(active), "DONE": len(done), "PARKED": len(parked_all),
+            "HUMAN-GATED": len(gated_all), "BLOCKED": len(others)}
+
+
+def status_line(run_id, counts):
+    parts = " · ".join(f"{key} {counts[key]}" for key in COUNT_KEYS)
+    return f"STATUS implement-backlog-linear RUN {run_id} · {parts}"
+
+
+def halted_line(run_id, reason):
+    return f"STATUS implement-backlog-linear RUN {run_id} · HALTED · {' '.join(reason.split())}"
+
+
+def cmd_next(args):
+    plan = read_json(args.plan)
+    state = read_json(args.state)
+    landed = frozenset(landed_on(args.repo, plan["base"])) if args.repo else frozenset()
+    print(json.dumps(next_step(plan, state, landed), ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_halted(args):
+    print(halted_line(read_json(args.plan)["run_id"], args.reason))
+    return 0
+
+
+def scan_results(results_dir, known):
+    new, malformed = [], []
+    for path in sorted(Path(results_dir).glob("*.json")):
+        name = path.name[: -len(".json")]
+        if name in known:
+            continue
+        try:
+            json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            malformed.append(name)
+            continue
+        new.append(name)
+    return new, malformed
+
+
+def cmd_wait(args):
+    known = {part.strip() for part in args.known.split(",") if part.strip()}
+    deadline = time.monotonic() + args.timeout
+    while True:
+        new, malformed = scan_results(args.results_dir, known)
+        if new or malformed:
+            print(json.dumps({"new": new, "malformed": malformed}))
+            return 0
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            print(json.dumps({"new": [], "malformed": [], "timed_out": True}))
+            return 124
+        time.sleep(min(args.interval, remaining))
+
+
+def read_lock(lock):
+    try:
+        return json.loads(lock.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"run_id": None, "unreadable": True}
+
+
+def cmd_lock(args):
+    lock = Path(args.runs_dir) / "ACTIVE"
+    if lock.exists():
+        holder = read_lock(lock)
+        if holder.get("run_id") != args.run_id:
+            print(json.dumps({"locked_by": holder, "lock": str(lock)}))
+            return 3
+    write_json(lock, {"run_id": args.run_id, "host": args.host,
+                      "taken_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+    print(json.dumps({"lock": str(lock), "run_id": args.run_id}))
+    return 0
+
+
+def cmd_unlock(args):
+    lock = Path(args.runs_dir) / "ACTIVE"
+    if not lock.exists():
+        print(json.dumps({"released": False}))
+        return 0
+    holder = read_lock(lock)
+    if holder.get("run_id") != args.run_id:
+        print(json.dumps({"locked_by": holder, "lock": str(lock)}))
+        return 3
+    lock.unlink()
+    print(json.dumps({"released": True}))
+    return 0
+
+
 def build_parser():
     parser = argparse.ArgumentParser(prog="backlog_graph.py",
                                      description="Plan, schedule, and report implement-backlog-linear runs.")
@@ -414,6 +585,32 @@ def build_parser():
     plan.add_argument("--now", help="ISO-8601 time; defaults to the current time")
     plan.add_argument("--dry-run", action="store_true", help="print the plan without creating a run directory")
     plan.set_defaults(handler=cmd_plan)
+    step = sub.add_parser("next", help="decide what a run does next")
+    step.add_argument("--plan", required=True)
+    step.add_argument("--state", required=True)
+    step.add_argument("--repo")
+    step.set_defaults(handler=cmd_next)
+
+    halted = sub.add_parser("halted", help="print the halted status line")
+    halted.add_argument("--plan", required=True)
+    halted.add_argument("--reason", required=True)
+    halted.set_defaults(handler=cmd_halted)
+
+    wait = sub.add_parser("wait", help="block until a new result file appears")
+    wait.add_argument("--results-dir", required=True)
+    wait.add_argument("--known", default="")
+    wait.add_argument("--timeout", type=float, default=540.0)
+    wait.add_argument("--interval", type=float, default=5.0)
+    wait.set_defaults(handler=cmd_wait)
+
+    for name, handler in (("lock", cmd_lock), ("unlock", cmd_unlock)):
+        command = sub.add_parser(name, help=f"{name} the repository's active run")
+        command.add_argument("--runs-dir", required=True)
+        command.add_argument("--run-id", required=True)
+        if name == "lock":
+            command.add_argument("--host", default="unknown")
+        command.set_defaults(handler=handler)
+
     return parser
 
 

@@ -46,6 +46,20 @@ def run_cli(*args):
                           capture_output=True, text=True, timeout=60)
 
 
+def planned(*issues, **options):
+    """A plan as stored in plan.json, for next-step tests."""
+    plan = plan_for(*issues, **options)
+    plan.update({"run_id": "ENG-website-20260926-1430", "me": ME, "base": "main"})
+    return plan
+
+
+def state(issues, in_flight=(), external=None):
+    """A state.json body; a bare string is a state type with no labels."""
+    return {"issues": {k: (v if isinstance(v, dict) else {"state_type": v, "labels": []})
+                       for k, v in issues.items()},
+            "in_flight": list(in_flight), "external": external or {}}
+
+
 class ScopeTests(unittest.TestCase):
     def test_requested_project_keeps_only_its_issues(self):
         plan = plan_for(issue("ENG-1"), issue("ENG-2", project=API), requested=WEB)
@@ -275,6 +289,148 @@ class PlanCommandTests(unittest.TestCase):
         self.assertEqual(output["order"], ["ENG-5", "ENG-7"])
         self.assertEqual(output["excluded"]["ENG-6"], {"reason": "running-elsewhere"})
         self.assertEqual(output["repo"], os.path.realpath(repo))
+
+
+class NextStepTests(unittest.TestCase):
+    def setUp(self):
+        # ENG-1 → ENG-2 → ENG-3 is a chain, ENG-4 stands alone, ENG-9 is gated at plan time.
+        self.plan = planned(issue("ENG-1"), issue("ENG-2", blocked_by=["ENG-1"]),
+                            issue("ENG-3", blocked_by=["ENG-2"]), issue("ENG-4"),
+                            issue("ENG-9", labels=["human-setup"]))
+
+    def test_ready_follows_completed_blockers(self):
+        step = graph.next_step(self.plan, state({"ENG-1": "backlog", "ENG-2": "backlog",
+                                                 "ENG-3": "backlog", "ENG-4": "backlog"}))
+        self.assertEqual(step["ready"], ["ENG-1", "ENG-4"])
+        step = graph.next_step(self.plan, state({"ENG-1": "completed", "ENG-2": "backlog",
+                                                 "ENG-3": "backlog", "ENG-4": "started"},
+                                                in_flight=["ENG-4"]))
+        self.assertEqual(step["ready"], ["ENG-2"])
+        self.assertEqual(step["in_flight"], ["ENG-4"])
+        self.assertEqual(step["done"], ["ENG-1"])
+
+    def test_a_parked_issue_takes_its_dependents_out(self):
+        step = graph.next_step(self.plan, state({
+            "ENG-1": {"state_type": "started", "labels": ["human-blocked"]},
+            "ENG-2": "backlog", "ENG-3": "backlog", "ENG-4": "completed"}))
+        self.assertEqual(step["parked"], ["ENG-1"])
+        self.assertEqual(step["removed"]["ENG-2"], {"reason": "blocked", "via": ["ENG-1"]})
+        self.assertEqual(step["removed"]["ENG-3"], {"reason": "blocked", "via": ["ENG-2"]})
+        self.assertEqual(step["counts"]["AI-ELIGIBLE"], 0)
+
+    def test_new_gates_cancellation_and_reassignment_shrink_the_plan(self):
+        step = graph.next_step(self.plan, state({
+            "ENG-1": {"state_type": "backlog", "labels": ["human-acceptance"]},
+            "ENG-2": "backlog", "ENG-3": "backlog",
+            "ENG-4": {"state_type": "backlog", "labels": [], "assignee": "someone"}}))
+        self.assertEqual(step["removed"]["ENG-1"], {"reason": "human-gate", "label": "human-acceptance"})
+        self.assertEqual(step["removed"]["ENG-4"], {"reason": "someone-else"})
+        self.assertEqual(step["ready"], [])
+        step = graph.next_step(self.plan, state({"ENG-1": "canceled", "ENG-2": "backlog",
+                                                 "ENG-3": "backlog", "ENG-4": "backlog"}))
+        self.assertEqual(step["removed"]["ENG-1"], {"reason": "canceled"})
+        self.assertEqual(step["removed"]["ENG-2"], {"reason": "blocked", "via": ["ENG-1"]})
+
+    def test_completion_elsewhere_counts_as_done(self):
+        step = graph.next_step(self.plan, state({"ENG-1": "completed", "ENG-2": "completed",
+                                                 "ENG-3": "backlog", "ENG-4": "completed"}))
+        self.assertEqual(step["ready"], ["ENG-3"])
+        self.assertEqual(step["counts"]["DONE"], 3)
+
+    def test_landed_but_not_done_resumes_at_the_linear_update(self):
+        step = graph.next_step(self.plan, state({"ENG-1": "started", "ENG-2": "backlog",
+                                                 "ENG-3": "backlog", "ENG-4": "backlog"}),
+                               landed=frozenset({"ENG-1"}))
+        self.assertEqual(step["landed_not_done"], ["ENG-1"])
+        self.assertEqual(step["ready"], ["ENG-4"])
+
+    def test_a_new_unfinished_blocker_outside_the_plan_removes_the_issue(self):
+        step = graph.next_step(self.plan, state(
+            {"ENG-1": "backlog", "ENG-2": "backlog", "ENG-3": "backlog",
+             "ENG-4": {"state_type": "backlog", "labels": [], "blocked_by": ["DATA-7", "OPS-1"]}},
+            external={"DATA-7": {"state_type": "started"}, "OPS-1": {"state_type": "completed"}}))
+        self.assertEqual(step["removed"]["ENG-4"], {"reason": "new-blocker", "via": ["DATA-7"]})
+
+    def test_a_run_that_cannot_progress_ends_as_stuck(self):
+        step = graph.next_step(self.plan, state({
+            "ENG-1": {"state_type": "backlog", "labels": [], "blocked_by": ["ENG-3"]},
+            "ENG-2": "backlog", "ENG-3": "backlog", "ENG-4": "completed"}))
+        self.assertEqual(step["ready"], [])
+        self.assertEqual(step["removed"]["ENG-1"], {"reason": "stuck", "via": ["ENG-3"]})
+        self.assertEqual(step["counts"]["AI-ELIGIBLE"], 0)
+
+    def test_status_lines(self):
+        step = graph.next_step(self.plan, state({
+            "ENG-1": "completed", "ENG-2": "backlog", "ENG-3": "backlog",
+            "ENG-4": {"state_type": "started", "labels": ["human-blocked"]}}))
+        self.assertEqual(step["status_line"],
+                         "STATUS implement-backlog-linear RUN ENG-website-20260926-1430 · "
+                         "AI-ELIGIBLE 2 · DONE 1 · PARKED 1 · HUMAN-GATED 1 · BLOCKED 0")
+        self.assertEqual(graph.halted_line("ENG-website-20260926-1430", "base diverged\nfrom origin/main"),
+                         "STATUS implement-backlog-linear RUN ENG-website-20260926-1430 · "
+                         "HALTED · base diverged from origin/main")
+
+    def test_a_missing_planned_issue_is_an_input_error(self):
+        with self.assertRaises(graph.InputError):
+            graph.next_step(self.plan, state({"ENG-1": "backlog"}))
+
+
+class CommandTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="cktk-backlog-test-")
+        self.addCleanup(self.temp.cleanup)
+        self.dir = Path(self.temp.name).resolve()
+
+    def test_wait_reports_new_results_and_ignores_partial_writes(self):
+        results = self.dir / "results"
+        results.mkdir()
+        (results / "ENG-1.json").write_text('{"verdict": "complete"}', encoding="utf-8")
+        (results / "ENG-2.json.tmp").write_text('{"verdi', encoding="utf-8")
+        (results / "ENG-3.json").write_text('{"verdi', encoding="utf-8")
+        (results / "ENG-9.json").write_text("{}", encoding="utf-8")
+        result = run_cli("wait", "--results-dir", results, "--known", "ENG-9",
+                         "--timeout", "5", "--interval", "0.1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"new": ["ENG-1"], "malformed": ["ENG-3"]})
+
+    def test_wait_times_out_when_only_known_results_exist(self):
+        results = self.dir / "results"
+        results.mkdir()
+        (results / "ENG-1.json").write_text("{}", encoding="utf-8")
+        result = run_cli("wait", "--results-dir", results, "--known", "ENG-1",
+                         "--timeout", "0.3", "--interval", "0.1")
+        self.assertEqual(result.returncode, 124)
+        self.assertTrue(json.loads(result.stdout)["timed_out"])
+
+    def test_a_lock_is_taken_over_by_its_own_run_and_refused_to_others(self):
+        runs = self.dir / "runs"
+        self.assertEqual(run_cli("lock", "--runs-dir", runs, "--run-id", "RUN-A", "--host", "claude").returncode, 0)
+        self.assertEqual(run_cli("lock", "--runs-dir", runs, "--run-id", "RUN-A", "--host", "codex").returncode, 0)
+        refused = run_cli("lock", "--runs-dir", runs, "--run-id", "RUN-B")
+        self.assertEqual(refused.returncode, 3)
+        self.assertEqual(json.loads(refused.stdout)["lock"], str(runs / "ACTIVE"))
+        self.assertEqual(run_cli("unlock", "--runs-dir", runs, "--run-id", "RUN-B").returncode, 3)
+        self.assertEqual(run_cli("unlock", "--runs-dir", runs, "--run-id", "RUN-A").returncode, 0)
+        self.assertFalse((runs / "ACTIVE").exists())
+
+    def test_an_unreadable_lock_is_never_taken_over(self):
+        runs = self.dir / "runs"
+        runs.mkdir()
+        (runs / "ACTIVE").write_text("{", encoding="utf-8")
+        self.assertEqual(run_cli("lock", "--runs-dir", runs, "--run-id", "RUN-A").returncode, 3)
+
+    def test_next_and_halted_commands(self):
+        plan_path = self.dir / "plan.json"
+        plan_path.write_text(json.dumps(planned(issue("ENG-1"))), encoding="utf-8")
+        state_path = self.dir / "state.json"
+        state_path.write_text(json.dumps(state({"ENG-1": "backlog"})), encoding="utf-8")
+        result = run_cli("next", "--plan", plan_path, "--state", state_path)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["ready"], ["ENG-1"])
+        result = run_cli("halted", "--plan", plan_path, "--reason", "Linear access failed")
+        self.assertEqual(result.stdout.strip(),
+                         "STATUS implement-backlog-linear RUN ENG-website-20260926-1430 · "
+                         "HALTED · Linear access failed")
 
 
 if __name__ == "__main__":
