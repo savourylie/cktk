@@ -165,6 +165,8 @@ The implementation brief (kept in `references/subagent-briefs.md`) gives the sub
 
 **Waiting.** Under Claude Code's `/goal`, every ended turn is a check, and repeated unmet checks in one turn pause the goal, so an orchestrator that ends its turn to wait for subagents may pause its own goal. Codex blocks with `wait_agent`. Claude Code has no blocking wait for background work — `Monitor` and background shell commands only notify — so the spike (§13) chooses among three outcomes: (A) ending the turn is safe because background work does not use up goal checks; (B) the orchestrator waits in the foreground with the planner's bounded `wait`; (C) Claude Code runs issues inline with `PARALLEL` 1.
 
+**Spike result (2026-09-26, Claude Code 2.1.283):** Outcome A. In a headless `/goal` run, the main agent dispatched two background subagents and ended its turn three times: after dispatching, and after each completion notification. At the two turn ends while a subagent was still running, the session's Stop hooks ran without the goal's evaluator; the evaluator ran only at the last turn end, with no background work left, and recorded the goal as met. No pause appeared, and both result files were written. Headless `stream-json` output prints no evaluator lines, so the evidence is the session transcript's `stop_hook_summary` hook lists and `goal_status` entries. `references/execution.md` uses the matching Claude Code waiting paragraph.
+
 **Resuming.** Progress is derived from Linear and git, not stored:
 
 - a planned issue with a `Merge linear-<ID>-…` commit on the base that is not completed in Linear resumes at the Linear update (§7.4);
@@ -277,7 +279,7 @@ Reverse check (rule 6): every document mentioning `create-worktree` was read, an
 
 ## Risks
 
-- **Waiting in Claude Code** (§6) stays unresolved until the spike.
+- **Waiting in Claude Code** (§6) was settled by the spike. A later Claude Code release can change goal-check behavior; if a run's goal pauses unexpectedly after an upgrade, repeat the spike.
 - **Sandboxed Codex subagents** must write `.git/worktrees/` metadata and `MAIN_ROOT/.worktrees/`. `implement-ticket-linear`'s worktree mode already needs this; the rehearsal confirms it.
 - **Shared test resources** across parallel worktrees are mitigated only by the `PARALLEL` hint.
 - **Orchestrator context** grows with each issue's summary. Derivable progress makes compaction survivable, not free.
