@@ -54,7 +54,7 @@ Linear MCP `list_issues` returns `labels`, `statusType`, `project`, `assigneeId`
 12. **A crashed or errored subagent is retried once. Two consecutive issues failing on the same environment problem halt the run.**
 13. **Optional document follow-ups:** `always` runs, `ask` is skipped and reported with its prepared content, `never` is skipped.
 14. **A halt is an exit of the goal**, and the halt report reprints the `/goal` line for resuming.
-15. **An `[Epic]` issue with no open sub-issues is not work yet.** Decided after the nomi-plus planning run, where NOM-44's description said its sub-issues would be defined once its architecture was agreed.
+15. **An `[Epic]` issue with no sub-issues at all is not work yet.** Decided after the nomi-plus planning run, where NOM-44's description said its sub-issues would be defined once its architecture was agreed.
 
 ## Design
 
@@ -97,9 +97,9 @@ Classify each in-scope non-terminal issue by the first matching row:
 
 Completed, canceled, and duplicate issues are terminal and never become work.
 
-An issue whose title starts with `[Epic]` and that has no open sub-issue in scope is excluded as `epic-not-broken-down`: it is a container whose work has not been split into issues yet. An `[Epic]` issue with open sub-issues follows the parent rule below.
+An issue whose title starts with `[Epic]` and that has no sub-issues at all, in any state, team, or project, is excluded as `epic-not-broken-down`: it is a container whose work has not been split into issues yet. An `[Epic]` issue with open sub-issues follows the parent rule below.
 
-**Edges.** Native blocks / blocked-by relations, fetched with one `get_issue(includeRelations: true)` per non-terminal issue, plus an implicit edge making every parent wait for each of its sub-issues. Related, duplicate, and prose links are not edges.
+**Edges.** Native blocks / blocked-by relations, fetched with one `get_issue(includeRelations: true)` per non-terminal issue, plus an implicit edge making every parent wait for each of its open sub-issues, gathered with `list_issues(parentId)` across teams and projects; an open sub-issue outside the scope blocks its parent like any outside blocker, and a canceled or duplicate sub-issue does not hold it. Related, duplicate, and prose links are not edges.
 
 **Eligible set.** Starting from the candidates, repeatedly remove any issue with a blocker that is neither completed nor still in the set, until nothing changes. Record why each issue was removed:
 
@@ -128,7 +128,7 @@ The run directory is `$MAIN_ROOT/.worktrees/.cktk/runs/<run-id>/`. It holds `pla
 
 Runs at every start and resume, from `MAIN_ROOT`:
 
-1. Load `plan.json` and verify it belongs to this repository. Take the lock `$MAIN_ROOT/.worktrees/.cktk/runs/ACTIVE`, which names the run and host. A lock naming this run is taken over, since that is a resume; a lock naming another run stops execution and names the lock file to remove if that session is gone.
+1. Load `plan.json` and verify it belongs to this repository. Halt, before any write, when `.ai/cktk/project.json` binds this scope `read-only`: execution writes to Linear, and planning already printed no `/goal` line for such a scope. Take the lock `$MAIN_ROOT/.worktrees/.cktk/runs/ACTIVE`, which names the run and host. A lock naming this run is taken over, since that is a resume; a lock naming another run stops execution and names the lock file to remove if that session is gone.
 2. Re-read every planned issue:
    - newly completed: counts as done elsewhere; its dependents proceed normally;
    - newly canceled, gated, or assigned to someone else: removed, together with its planned dependents;
@@ -137,13 +137,14 @@ Runs at every start and resume, from `MAIN_ROOT`:
 4. Fetch `origin/<base>`. Fast-forward a local base that is behind; halt if the two have diverged.
 5. If the committed `.gitignore` on the base lacks `.worktrees/`, add the line and commit `chore: ignore .worktrees/`. This happens before any subagent creates a worktree.
 6. Ensure the `human-blocked` label exists on the team; create it if it is missing.
-7. Detect the host's subagent facility. Without one, `PARALLEL` becomes 1 and issues run in topological order.
+7. Clear the dispatch markers in `<run dir>/dispatched/`: a new `RUN:` invocation cannot own subagents started by an earlier one. A paused goal is continued with the host's resume, not a new invocation.
+8. Detect the host's subagent facility. Without one, `PARALLEL` becomes 1 and issues run in topological order.
 
 ### 6. Scheduling and subagents
 
 An issue is **ready** when every blocker, explicit or implicit, is completed in Linear and, for a planned blocker, landed on the base. Immediately before dispatch, re-read the issue: if it is now completed (Linear can auto-close a parent), treat it as done; if it is now canceled, gated, or reassigned, remove it and its dependents.
 
-Keep up to `PARALLEL` subagents busy, one issue each, and fill a free slot as soon as an issue is ready.
+Keep up to `PARALLEL` subagents busy, one issue each, and fill a free slot as soon as an issue is ready. Each dispatch writes a marker `<run dir>/dispatched/<ISSUE>`, removed once the issue's result is routed; `next` counts markers as in flight, so compaction cannot cause a second dispatch into the same worktree.
 
 The implementation brief (kept in `references/subagent-briefs.md`) gives the subagent `MAIN_ROOT`, the base, the run id, the issue, and the cktk source path, and requires it to:
 
@@ -172,7 +173,7 @@ The implementation brief (kept in `references/subagent-briefs.md`) gives the sub
 
 **Resuming.** Progress is derived from Linear and git, not stored:
 
-- a planned issue with a `Merge linear-<ID>-…` commit on the base that is not completed in Linear resumes at the Linear update (§7.4);
+- a planned issue with a `Merge linear-<ID>-…` commit that landed on the base after the plan (after the `base_sha` it records) and is not completed in Linear resumes at the Linear update (§7.4); older landing merges never count, so a reopened issue is implemented again;
 - an issue with a result file whose commits are on its branch resumes at the merge queue;
 - an issue `started` with a worktree or branch is dispatched again, and `implement-ticket-linear` continues from that worktree or branch.
 
@@ -180,7 +181,7 @@ The implementation brief (kept in `references/subagent-briefs.md`) gives the sub
 
 Serial, first come first served, run by the orchestrator:
 
-1. **Sync.** In the issue's worktree, merge the local base into the issue branch. If that merge is a no-op, the subagent's checks stand. Otherwise rerun the issue's checks and the repository's required checks in the worktree.
+1. **Sync.** First require a clean worktree whose HEAD contains every commit the result lists; otherwise the result is routed as `failed`. The merge helper's auto-commit is never used. Then, in the issue's worktree, merge the local base into the issue branch. If that merge is a no-op, the subagent's checks stand. Otherwise rerun the issue's checks and the repository's required checks in the worktree.
 2. **Repair once.** A conflict or failing check goes to a conflict brief: the issue, the issues whose merges on the base touched the conflicting files (identified by their `Merge linear-<ID>-…` subjects), and the instruction to keep both intents and rerun the checks. A business trade-off between two issues is returned, not decided. Failure parks the issue: an unfinished merge is aborted with `git merge --abort`, and a committed attempt stays and is named in the parking comment. Nothing is reset.
 3. **Land.** From `MAIN_ROOT`, invoke `merge-worktree-linear <ID> <base>`. Its preconditions hold by construction: the caller is outside the worktree, the main checkout is clean, and the worktree is committed. Because the queue is serial and the base has not moved since the sync, the merge is conflict-free and lands exactly the tested tree. The helper removes the worktree and the local branch.
 4. **Update Linear.** Invoke `update-ticket-linear <ID>` in auto mode with `WORK_DIR = MAIN_ROOT`, the merge commit, the subagent's verification evidence, and the optional-document policy of decision 13. It marks the issue Done and moves unblocked dependents to the team's ready state. If it will not mark Done, the issue is parked with its code already on the base, and its dependents stay blocked.
@@ -192,7 +193,7 @@ A parent with nothing left to build returns `complete` with no commits. The merg
 
 Triggers:
 
-- a subagent verdict of `incomplete` or `needs-decision`;
+- a subagent verdict of `needs-decision`, or `incomplete` for a reason other than the environment (an `environment` blocker is retried like `failed` first);
 - a failed repair (§7.2);
 - a refused Done (§7.4);
 - a second crash or tool error, after one automatic retry in the same worktree.
@@ -212,7 +213,7 @@ Triggers are conditions that affect every issue:
 - the base diverges from origin, including `merge-worktree-linear`'s fast-forward refusal;
 - Linear reads or writes fail for access reasons;
 - the plan is missing or belongs to another repository;
-- two consecutive issues fail with the same environment error, such as the same dependency installation or service start failure.
+- two consecutive issues fail with the same environment error — `failed`, or `incomplete` with an `environment` blocker — such as the same dependency installation or service start failure.
 
 Actions: dispatch nothing new, let running subagents finish (their work stays in their worktrees for the next run), release the lock, and print the halt report, ending with the same `/goal` line.
 

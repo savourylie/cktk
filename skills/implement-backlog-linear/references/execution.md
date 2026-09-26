@@ -6,14 +6,14 @@
 
 At every start and resume, from `MAIN_ROOT`:
 
-1. Load `$RUN_DIR/plan.json`. If it is missing, or its `repo` is not this `MAIN_ROOT`, [halt](stopping.md#halt-the-run).
+1. Load `$RUN_DIR/plan.json`. If it is missing, or its `repo` is not this `MAIN_ROOT`, or `.ai/cktk/project.json` binds this scope `read-only`, [halt](stopping.md#halt-the-run).
 2. Take the lock:
 
    ```sh
    python3 "$SKILL_DIR/scripts/backlog_graph.py" lock --runs-dir "$RUNS" --run-id <run-id> --host <host>
    ```
 
-   Exit 3 means another run holds `$RUNS/ACTIVE`: halt and name that file, which the user removes if that session is gone. A lock that names this run is a resume, and the command takes it over.
+   Exit 3 means another run holds `$RUNS/ACTIVE`: halt and name that file, which the user removes if that session is gone. A lock that names this run is a resume, and the command takes it over. Then clear `$RUN_DIR/dispatched/`: a new `RUN:` invocation cannot own subagents started by an earlier one. To continue a paused goal, use the host's resume instead of invoking `RUN:` again.
 3. [Refresh the state](#refresh-the-state). Issues it reports as removed leave the plan; nothing is ever added.
 4. The main checkout must be on the base and clean. Switch a clean checkout on another branch to the base, and say so. Any other change halts the run, except one state that step 6 repairs: `.gitignore` lacks the `.worktrees/` line or carries it as its only uncommitted change, and the only other entry is an untracked `.worktrees/`.
 5. When `origin` exists, fetch `origin/<base>`. Fast-forward a local base that is behind; halt if the two have diverged.
@@ -35,7 +35,7 @@ Before each dispatch round and after each landing, read the plan's issues fresh:
 }
 ```
 
-`in_flight` lists issues dispatched or waiting in the merge queue. `blocked_by` is needed only for issues whose relations were just read, and `external` gives the state type of any blocker outside the plan that they name. Then run:
+`in_flight` lists issues dispatched or waiting in the merge queue; `next` also counts every dispatch marker as in flight. `blocked_by` is needed only for issues whose relations were just read, and `external` gives the state type of any blocker outside the plan that they name. Then run:
 
 ```sh
 python3 "$SKILL_DIR/scripts/backlog_graph.py" next --plan "$RUN_DIR/plan.json" --state "$RUN_DIR/state.json" --repo "$MAIN_ROOT"
@@ -50,7 +50,7 @@ Act on its output:
 
 ## Dispatch
 
-Keep up to `PARALLEL` subagents busy, one issue each, and fill a free slot as soon as an issue is ready. Use the implementation brief in [subagent briefs](subagent-briefs.md).
+Keep up to `PARALLEL` subagents busy, one issue each, and fill a free slot as soon as an issue is ready. Use the implementation brief in [subagent briefs](subagent-briefs.md). Before dispatching an issue, create the marker `$RUN_DIR/dispatched/<ISSUE>`, and remove it once the issue's result is routed: landed, parked, or renamed for a retry. The markers keep an issue from being dispatched twice after this session's context is compacted.
 
 Before dispatching a ready issue, look for `$RUN_DIR/results/<ISSUE>.json` from an earlier session: a `complete` result whose commits are on the issue's branch goes straight to the [merge queue](merge-queue.md), and counts as in flight. A started issue with a worktree or branch but no usable result is dispatched again; `implement-ticket-linear` continues its existing work.
 
@@ -79,7 +79,7 @@ Read `$RUN_DIR/results/<ISSUE>.json`. First [refresh the state](#refresh-the-sta
 | Verdict | Next |
 | --- | --- |
 | `complete` | The [merge queue](merge-queue.md) |
-| `incomplete` or `needs-decision` | [Park](stopping.md#park-an-issue) with the result's `blocker` |
-| `failed`, or a malformed result | Rename the result to `<ISSUE>.json.failed` and dispatch once more, to the same worktree. If `<ISSUE>.json.failed` already exists, this is the second failure: park the issue |
+| `incomplete` for a reason other than the environment, or `needs-decision` | [Park](stopping.md#park-an-issue) with the result's `blocker` |
+| `failed`, a malformed result, or an `incomplete` result whose `blocker.kind` is `environment` | Rename the result to `<ISSUE>.json.failed` and dispatch once more, to the same worktree. If `<ISSUE>.json.failed` already exists, this is the second failure: park the issue |
 
-When two consecutive results fail with the same environment error, such as the same dependency installation or service start failure, [halt](stopping.md#halt-the-run) instead: the problem is not in the issues.
+When two consecutive results fail with the same environment error — `failed` results, or `incomplete` ones with an `environment` blocker, such as the same dependency installation or service start failure — [halt](stopping.md#halt-the-run) instead: the problem is not in the issues.

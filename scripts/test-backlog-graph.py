@@ -323,9 +323,55 @@ class PlanCommandTests(unittest.TestCase):
         result = run_cli("plan", "--snapshot", path, "--runs-dir", self.runs, "--repo", repo, "--dry-run")
         self.assertEqual(result.returncode, 0, result.stderr)
         output = json.loads(result.stdout)
-        self.assertEqual(output["order"], ["ENG-5", "ENG-7"])
+        self.assertEqual(output["order"], ["ENG-5"])
         self.assertEqual(output["excluded"]["ENG-6"], {"reason": "running-elsewhere"})
+        self.assertEqual(output["excluded"]["ENG-7"], {"reason": "running-elsewhere"})
         self.assertEqual(output["repo"], os.path.realpath(repo))
+        tip = subprocess.run(["git", "-C", str(repo), "rev-parse", "main"], capture_output=True, text=True).stdout.strip()
+        self.assertEqual(output["base_sha"], tip)
+
+    def test_next_counts_only_landings_after_the_plan(self):
+        repo = self.dir / "repo"
+
+        def git(*args):
+            subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True)
+
+        def land(branch):
+            git("switch", "-q", "-c", branch)
+            git(*IDENT, "commit", "-q", "--allow-empty", "-m", "work")
+            git("switch", "-q", "main")
+            git(*IDENT, "merge", "-q", "--no-ff", "-m", f"Merge {branch} into main", branch)
+            git("branch", "-q", "-D", branch)
+
+        subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True)
+        git(*IDENT, "commit", "-q", "--allow-empty", "-m", "init")
+        land("linear-ENG-1-reopened-after-an-earlier-landing")
+        path = self.write_snapshot(snapshot(issue("ENG-1", state="unstarted"), issue("ENG-2")))
+        result = run_cli("plan", "--snapshot", path, "--runs-dir", self.runs, "--repo", repo)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        plan = json.loads(result.stdout)
+        land("linear-ENG-2-landed-by-this-run")
+        state_path = self.dir / "state.json"
+        state_path.write_text(json.dumps(state({"ENG-1": "unstarted", "ENG-2": "started"})), encoding="utf-8")
+        step = run_cli("next", "--plan", Path(plan["run_dir"]) / "plan.json", "--state", state_path, "--repo", repo)
+        self.assertEqual(step.returncode, 0, step.stderr)
+        output = json.loads(step.stdout)
+        self.assertEqual(output["landed_not_done"], ["ENG-2"])
+        self.assertEqual(output["ready"], ["ENG-1"])
+
+    def test_dispatched_markers_count_as_in_flight(self):
+        path = self.write_snapshot(snapshot(issue("ENG-1"), issue("ENG-2"), requested=WEB))
+        plan = json.loads(run_cli("plan", "--snapshot", path, "--runs-dir", self.runs).stdout)
+        run_dir = Path(plan["run_dir"])
+        (run_dir / "dispatched").mkdir()
+        (run_dir / "dispatched" / "ENG-1").write_text("", encoding="utf-8")
+        state_path = self.dir / "state.json"
+        state_path.write_text(json.dumps(state({"ENG-1": "started", "ENG-2": "backlog"})), encoding="utf-8")
+        result = run_cli("next", "--plan", run_dir / "plan.json", "--state", state_path)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        output = json.loads(result.stdout)
+        self.assertEqual(output["in_flight"], ["ENG-1"])
+        self.assertEqual(output["ready"], ["ENG-2"])
 
 
 class NextStepTests(unittest.TestCase):
@@ -474,6 +520,63 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(result.stdout.strip(),
                          "STATUS implement-backlog-linear RUN ENG-website-20260926-1430 · "
                          "HALTED · Linear access failed")
+
+
+class InputValidationTests(unittest.TestCase):
+    def test_label_objects_are_read_by_name(self):
+        plan = plan_for(issue("ENG-1", labels=[{"id": "l1", "name": "Human-Setup"}]), issue("ENG-2"))
+        self.assertEqual(plan["excluded"]["ENG-1"], {"reason": "human-gate", "label": "human-setup"})
+        self.assertEqual(plan["order"], ["ENG-2"])
+
+    def test_unreadable_labels_are_an_input_error(self):
+        with self.assertRaises(graph.InputError):
+            graph.load_snapshot(snapshot(issue("ENG-1", labels=[42])))
+
+    def test_me_must_be_a_real_user_id(self):
+        for me in (None, "", "me", "ME"):
+            data = snapshot(issue("ENG-1"))
+            data["me"] = me
+            with self.assertRaises(graph.InputError):
+                graph.load_snapshot(data)
+
+    def test_state_entries_must_carry_labels(self):
+        with self.assertRaises(graph.InputError):
+            graph.next_step(planned(issue("ENG-1")), {"issues": {"ENG-1": {"state_type": "started"}}})
+
+    def test_parked_label_objects_are_recognized_during_a_run(self):
+        plan = planned(issue("ENG-1"), issue("ENG-2", blocked_by=["ENG-1"]))
+        step = graph.next_step(plan, state({
+            "ENG-1": {"state_type": "started", "labels": [{"name": "human-blocked"}]},
+            "ENG-2": "backlog"}))
+        self.assertEqual(step["parked"], ["ENG-1"])
+        self.assertEqual(step["removed"]["ENG-2"], {"reason": "blocked", "via": ["ENG-1"]})
+
+
+class SubIssueTests(unittest.TestCase):
+    def test_an_open_sub_issue_outside_the_scope_blocks_its_parent(self):
+        parent = issue("ENG-1")
+        parent["sub_issues"] = ["OPS-4"]
+        plan = plan_for(parent, issue("ENG-2"), external=[{"id": "OPS-4", "state_type": "started"}])
+        self.assertEqual(plan["excluded"]["ENG-1"]["roots"], ["outside-scope:OPS-4"])
+        self.assertEqual(plan["order"], ["ENG-2"])
+
+    def test_an_epic_whose_sub_issues_are_all_done_is_verified(self):
+        epic = issue("ENG-1", title="[Epic] Memory layer")
+        epic["sub_issues"] = ["ENG-8"]
+        plan = plan_for(epic, external=[{"id": "ENG-8", "state_type": "completed"}])
+        self.assertEqual(plan["order"], ["ENG-1"])
+
+    def test_a_canceled_sub_issue_does_not_hold_its_parent(self):
+        parent = issue("ENG-1")
+        parent["sub_issues"] = ["ENG-9"]
+        plan = plan_for(parent, external=[{"id": "ENG-9", "state_type": "canceled"}])
+        self.assertEqual(plan["order"], ["ENG-1"])
+
+    def test_an_epic_with_no_sub_issues_at_all_is_not_broken_down(self):
+        epic = issue("ENG-1", title="[Epic] Calling")
+        epic["sub_issues"] = []
+        plan = plan_for(epic)
+        self.assertEqual(plan["excluded"]["ENG-1"], {"reason": "epic-not-broken-down"})
 
 
 if __name__ == "__main__":

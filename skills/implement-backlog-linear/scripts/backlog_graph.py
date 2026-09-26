@@ -51,7 +51,15 @@ def sort_ids(ids):
 
 
 def label_set(labels):
-    return {str(label).strip().lower() for label in labels or ()}
+    """Lowercased label names; a label is a name or an object with one. Anything else fails closed."""
+    names = set()
+    for label in labels or ():
+        if isinstance(label, dict):
+            label = label.get("name")
+        if not isinstance(label, str):
+            raise InputError(f"unreadable label {label!r}; expected a label name")
+        names.add(label.strip().lower())
+    return names
 
 
 def project_of(value):
@@ -81,9 +89,11 @@ def load_snapshot(data):
             "parent": norm_id(raw["parent"]) if raw.get("parent") else None,
             "blocked_by": set(),
             "local_work": bool(raw.get("local_work")),
+            "sub_issues": set(),
         })
         entry["labels"] |= label_set(raw.get("labels"))
         entry["blocked_by"] |= {norm_id(b) for b in raw.get("blocked_by") or ()}
+        entry["sub_issues"] |= {norm_id(s) for s in raw.get("sub_issues") or ()}
         reverse.extend((norm_id(b), issue_id) for b in raw.get("blocks") or ())
     for blocked, blocker in reverse:
         if blocked in issues:
@@ -96,9 +106,12 @@ def load_snapshot(data):
     team = data.get("team") or {}
     if not team.get("key"):
         raise InputError("snapshot team.key is required")
+    me = data.get("me")
+    if not isinstance(me, str) or not me.strip() or me.strip().lower() == "me":
+        raise InputError("snapshot me must be the invoking user's Linear id")
     return {
         "team": {"id": str(team.get("id") or ""), "key": str(team["key"]).upper()},
-        "me": data.get("me"),
+        "me": me.strip(),
         "requested_project": project_of(data.get("requested_project")),
         "binding_project": project_of(data.get("binding_project")),
         "issues": issues,
@@ -235,13 +248,14 @@ def select(snapshot):
         else:
             candidates.append(issue_id)
     for issue_id in list(candidates):
-        has_sub_issues = any(issues[c]["parent"] == issue_id for c in scope_ids)
+        has_sub_issues = bool(issues[issue_id]["sub_issues"]) or any(issues[c]["parent"] == issue_id for c in scope_ids)
         if EPIC_TITLE.match(issues[issue_id]["title"]) and not has_sub_issues:
             excluded[issue_id] = {"reason": "epic-not-broken-down"}
             candidates.remove(issue_id)
     edges = {}
     for issue_id in candidates:
-        children = {c for c in scope_ids if issues[c]["parent"] == issue_id}
+        children = {c for c in scope_ids if issues[c]["parent"] == issue_id} | issues[issue_id]["sub_issues"]
+        children = {c for c in children if state_of(c, snapshot) not in ("canceled", "duplicate")}
         edges[issue_id] = issues[issue_id]["blocked_by"] | children
     eligible = set(candidates)
     changed = True
@@ -335,20 +349,23 @@ def landed_ids(subjects, base):
     return ids
 
 
-def landed_on(repo, base):
-    """Issue ids whose `Merge linear-<ID>-… into <base>` commit is on the local base."""
-    exists = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "--quiet", base],
-                            capture_output=True)
-    if exists.returncode != 0:
+def base_tip(repo, base):
+    result = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "--quiet", base],
+                            capture_output=True, text=True)
+    return result.stdout.strip() or None
+
+
+def landed_on(repo, base, since):
+    """Issue ids whose `Merge linear-<ID>-… into <base>` commit landed after `since` (the plan's base tip)."""
+    if not since or not base_tip(repo, base):
         return set()
-    return landed_ids(git(repo, "log", base, "--merges", "--format=%s"), base)
+    return landed_ids(git(repo, "log", f"{since}..{base}", "--merges", "--format=%s"), base)
 
 
-def local_work(repo, base):
-    """Issue ids with a registered worktree, a linear-* branch, or a landing merge on the base."""
+def local_work(repo):
+    """Issue ids with a registered .worktrees/<ID>-* worktree or a linear-<ID>-* branch."""
     ids = worktree_ids(git(repo, "worktree", "list", "--porcelain"), repo)
-    ids |= branch_ids(git(repo, "branch", "--list", "--format=%(refname:short)", "linear-*"))
-    return ids | landed_on(repo, base)
+    return ids | branch_ids(git(repo, "branch", "--list", "--format=%(refname:short)", "linear-*"))
 
 
 def now_utc(text=None):
@@ -379,7 +396,7 @@ def cmd_plan(args):
     raw = read_json(args.snapshot)
     snapshot = load_snapshot(raw)
     if args.repo:
-        found = local_work(args.repo, args.base)
+        found = local_work(args.repo)
         for issue in snapshot["issues"].values():
             issue["local_work"] = issue["id"] in found
     plan = select(snapshot)
@@ -393,6 +410,7 @@ def cmd_plan(args):
         "parallel": args.parallel,
         "host": args.host,
         "repo": os.path.realpath(args.repo) if args.repo else None,
+        "base_sha": base_tip(args.repo, args.base) if args.repo else None,
         "run_id": None,
         "run_dir": None,
     })
@@ -421,7 +439,9 @@ def next_step(plan, state, landed=frozenset()):
         info = current.get(issue_id)
         if info is None:
             raise InputError(f"state is missing planned issue {issue_id}")
-        labels = label_set(info.get("labels"))
+        if "labels" not in info:
+            raise InputError(f"state for {issue_id} is missing labels")
+        labels = label_set(info["labels"])
         state_type = str(info.get("state_type") or "").lower()
         if state_type == "completed":
             done.append(issue_id)
@@ -502,7 +522,11 @@ def halted_line(run_id, reason):
 def cmd_next(args):
     plan = read_json(args.plan)
     state = read_json(args.state)
-    landed = frozenset(landed_on(args.repo, plan["base"])) if args.repo else frozenset()
+    landed = frozenset(landed_on(args.repo, plan["base"], plan.get("base_sha"))) if args.repo else frozenset()
+    markers = Path(plan["run_dir"]) / "dispatched" if plan.get("run_dir") else None
+    if markers and markers.is_dir():
+        dispatched = [p.name for p in markers.iterdir() if ISSUE_ID.match(p.name)]
+        state = dict(state, in_flight=list(state.get("in_flight") or ()) + dispatched)
     print(json.dumps(next_step(plan, state, landed), ensure_ascii=False, indent=2))
     return 0
 

@@ -15,9 +15,10 @@ Resolve the invoking Linear user (the `me` user) for the assignment check.
 ## Gather the snapshot
 
 1. List the scope's open issues with one `list_issues` call per state type — `triage`, `backlog`, `unstarted`, and `started` — filtered by the team and, when given, the project. Follow every page. Request `id`, `title`, `statusType`, `labels`, `assigneeId`, `project`, and `parentId`.
-2. For each listed issue, call `get_issue` with `includeRelations: true`, and record the identifiers it is blocked by and the identifiers it blocks. When no `PROJECT` was given and step 1 already lists open issues from two or more projects, skip this step and the next: the planner stops on scope, and relations do not change that.
-3. For each referenced identifier that is not in the list, call `get_issue` once and record its state type. Completed blockers inside the scope are among them.
-4. Write `$MAIN_ROOT/.worktrees/.cktk/runs/snapshot-input.json` in this shape:
+2. For each listed issue, call `get_issue` with `includeRelations: true`, and record the identifiers it is blocked by and the identifiers it blocks. When no `PROJECT` was given and step 1 already lists open issues from two or more projects, skip steps 2 to 4: the planner stops on scope, and relations do not change that.
+3. For each listed issue, list its sub-issues with `list_issues` filtered only by `parentId` — no team or project filter — in any state, and record their identifiers as `sub_issues`. A parent waits for every open sub-issue, including one outside the scope.
+4. For each referenced identifier that is not in the list — a blocker, a blocked issue, or a sub-issue — call `get_issue` once and record its state type. Completed blockers inside the scope are among them.
+5. Write `$MAIN_ROOT/.worktrees/.cktk/runs/snapshot-input.json` in this shape:
 
 ```json
 {
@@ -35,7 +36,8 @@ Resolve the invoking Linear user (the `me` user) for the assignment check.
       "project": {"id": "<project id>", "name": "Website"},
       "parent": null,
       "blocked_by": ["ENG-10"],
-      "blocks": ["ENG-13"]
+      "blocks": ["ENG-13"],
+      "sub_issues": []
     }
   ],
   "external": [
@@ -46,7 +48,7 @@ Resolve the invoking Linear user (the `me` user) for the assignment check.
 
 Use `null` for an absent `requested_project`, `binding_project`, `assignee`, `project`, or `parent`. State types are Linear's: `triage`, `backlog`, `unstarted`, `started`, `completed`, `canceled`, and `duplicate`.
 
-Each relation read returns the issue's whole body. When step 1 lists more than about 20 issues, give steps 2 and 3, with the list from step 1, to one subagent that writes the snapshot file above and reports only counts and failures, so the issue bodies stay out of this session.
+Each relation read returns the issue's whole body. When step 1 lists more than about 20 issues, give steps 2 to 4, with the list from step 1, to one subagent that writes the snapshot file above and reports only counts and failures, so the issue bodies stay out of this session.
 
 ## Run the planner
 
@@ -57,7 +59,7 @@ python3 "$SKILL_DIR/scripts/backlog_graph.py" plan \
   --repo "$MAIN_ROOT" --base "<base>" --parallel <n> --host "<host>"
 ```
 
-`<host>` is the invoking runtime, such as `claude` or `codex`. With `--repo`, the planner finds local work — registered `.worktrees/<ID>-*` worktrees, `linear-<ID>-*` branches, and `Merge linear-<ID>-…` commits on the base — so that an issue an earlier run left started can resume.
+`<host>` is the invoking runtime, such as `claude` or `codex`. With `--repo`, the planner finds local work — registered `.worktrees/<ID>-*` worktrees and `linear-<ID>-*` branches — so that an issue an earlier run left started can resume. It also records the base tip as `base_sha`, so that execution counts only landings made after the plan.
 
 The output's `status` decides what follows:
 
@@ -82,11 +84,13 @@ In the user's language, show:
 | `someone-else` | Assigned to someone else |
 | `not-triaged` | Still in triage |
 | `running-elsewhere` | Started, with no work in this repository |
-| `epic-not-broken-down` | An issue titled `[Epic] …` with no open sub-issues: its work has not been split into issues yet |
+| `epic-not-broken-down` | An issue titled `[Epic] …` with no sub-issues at all: its work has not been split into issues yet |
 | `cycle` | Dependency cycle |
 | `blocked` | Blocked. `roots` names each cause as `<kind>:<issue>`: a gate label, `outside-scope`, `canceled` or `duplicate` (neither is delivery, so a person decides whether the relation still holds), `cycle`, `unknown`, or one of the reasons above |
 
-End with the `/goal` line. Localize its words but keep the quoted tokens, and use the host's explicit skill syntax — `/implement-backlog-linear` in Claude Code, `$implement-backlog-linear` in Codex:
+When the scope's binding is `read-only`, stop after presenting the plan and print no `/goal` line: execution writes to Linear, which that binding forbids.
+
+Otherwise, end with the `/goal` line. Localize its words but keep the quoted tokens, and use the host's explicit skill syntax — `/implement-backlog-linear` in Claude Code, `$implement-backlog-linear` in Codex:
 
 ```text
 /goal Run /implement-backlog-linear RUN: <run-id> until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"

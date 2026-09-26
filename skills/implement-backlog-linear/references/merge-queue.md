@@ -4,7 +4,9 @@ Only this session lands work, from `MAIN_ROOT`, one issue at a time and first co
 
 ## 1. Sync
 
-In the issue's worktree, merge the local base into the issue branch:
+First check the worktree: `git -C "<worktree>" status --porcelain` must print nothing, and every commit the result lists must be in its HEAD (`git -C "<worktree>" merge-base --is-ancestor <sha> HEAD`). Otherwise route the result as `failed` in [execution](execution.md#route-each-result). Never let the merge helper auto-commit: it would stage everything left in the worktree.
+
+Then, in the issue's worktree, merge the local base into the issue branch:
 
 ```sh
 git -C "<worktree>" merge --no-edit "<base>"
@@ -30,6 +32,8 @@ Each `Merge linear-<ID>-… into <base>` subject names one. Dispatch the repair 
 ## 3. Land
 
 Read `merge-worktree-linear`'s active host document, then invoke it from `MAIN_ROOT` with `<ISSUE> <base>`. Its preconditions hold here — this session is outside the worktree, the main checkout is clean, and the worktree's work is committed — so it raises no prompt. It merges with `--no-ff`, removes the worktree, and deletes the local branch. An issue with nothing to land is reported as already merged, and still goes on to the Linear update.
+
+Before invoking it, check again that the worktree is clean; checks you reran may have left files behind, and a dirty worktree is routed as `failed`, not landed. A merge that succeeded but kept the worktree still goes on to the Linear update; report the retained worktree.
 
 If it refuses, or reports a conflict, something moved the base or changed the main checkout during the run: [halt](stopping.md#halt-the-run).
 

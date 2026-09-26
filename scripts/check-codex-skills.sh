@@ -680,6 +680,17 @@ validate_backlog_contract() {
   require_literal "$briefs" "<ISSUE> worktree <BASE>"
   require_literal "$briefs" "never wait for an answer"
 
+  # Final-review fixes: environment results retry before parking, dispatches
+  # are recorded on disk, read-only bindings stop at the plan, the merge
+  # helper never auto-commits, sub-issues are gathered across the scope, and
+  # only landings after the plan count.
+  require_literal "$execution" 'whose `blocker.kind` is `environment`'
+  require_literal "$execution" '$RUN_DIR/dispatched/<ISSUE>'
+  require_literal "$planning" 'binding is `read-only`'
+  require_literal "$queue" 'Never let the merge helper auto-commit'
+  require_literal "$planning" '"sub_issues"'
+  forbid_stale_claim "$planning" 'commits on the base — so that'
+
   # The README walks through the two-step run and names the planner's tests.
   require_literal "$root/README.md" "**A whole Linear backlog**"
   require_literal "$root/README.md" 'until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"'
