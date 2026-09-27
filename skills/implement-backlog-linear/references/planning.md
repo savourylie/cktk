@@ -4,8 +4,9 @@ Planning is read-only: it makes no Linear writes and no commits. It writes only 
 
 ## Resolve the scope
 
-Read applicable repository instructions. If `.ai/cktk/project.json` exists, read the [project bindings contract](../../init-project/references/project-schema.md), and use its Linear team and project only when their status is `validated` or `read-only`.
+Read applicable repository instructions. If `.ai/cktk/project.json` exists, read the [project bindings contract](../../init-project/references/project-schema.md), and use its Linear team and project only when their status is `validated` or `read-only`. Take the first case that applies:
 
+- `EPIC`: resolve the epic with `get_issue`, by identifier or URL, and stop if Linear has no such issue. The run's team is `TEAM` when given, otherwise the epic's team. Resolve `PROJECT` when given, and pass a bound project only as `binding_project`: the planner stops when the team, `PROJECT`, or the binding disagrees with the epic. Sub-issues in another team or project, and blockers outside the epic's family, stay out of the run and hold what depends on them as `outside-scope`.
 - `TEAM` without `PROJECT`: plan the whole team. Pass a bound project to the planner only so that a scope stop can mark it.
 - Neither: use the bound team and project. Without a usable binding, ask for the team.
 - `PROJECT`: resolve it in Linear and confirm the team takes part in it.
@@ -25,6 +26,7 @@ Resolve the invoking Linear user (the `me` user) for the assignment check.
   "team": {"id": "<team id>", "key": "ENG"},
   "me": "<user id>",
   "requested_project": {"id": "<project id>", "name": "Website"},
+  "requested_epic": null,
   "binding_project": {"id": "<project id>", "name": "Website"},
   "issues": [
     {
@@ -46,9 +48,11 @@ Resolve the invoking Linear user (the `me` user) for the assignment check.
 }
 ```
 
-Use `null` for an absent `requested_project`, `binding_project`, `assignee`, `project`, or `parent`. State types are Linear's: `triage`, `backlog`, `unstarted`, `started`, `completed`, `canceled`, and `duplicate`.
+Use `null` for an absent `requested_project`, `requested_epic`, `binding_project`, `assignee`, `project`, or `parent`. State types are Linear's: `triage`, `backlog`, `unstarted`, `started`, `completed`, `canceled`, and `duplicate`.
 
-Each relation read returns the issue's whole body. When step 1 lists more than about 20 issues, give steps 2 to 4, with the list from step 1, to one subagent that writes the snapshot file above and reports only counts and failures, so the issue bodies stay out of this session.
+With `EPIC`, walk the epic's family in place of steps 1 and 3: list the epic's sub-issues with `list_issues` filtered only by `parentId` — no team, project, or state filter — then the sub-issues of every issue found, until a round finds no new issue. Request the fields of step 1, and record the epic and every issue found, in any state, in `issues`; `parent` links them, so `sub_issues` may stay empty. Step 2 then reads relations only for the open issues in the run's team and the epic's project, the ones the planner can select, and step 4 reads what those relations name outside the family. Set `requested_epic` to `{"id": "<epic identifier>"}`.
+
+Each relation read returns the issue's whole body. When more than about 20 issues need relation reads, give the remaining steps, with the issue list, to one subagent that writes the snapshot file above and reports only counts and failures, so the issue bodies stay out of this session.
 
 ## Run the planner
 
@@ -63,15 +67,24 @@ python3 "$SKILL_DIR/scripts/backlog_graph.py" plan \
 
 The output's `status` decides what follows:
 
-- `stop`: report `binding-mismatch` (this repository is bound to a different project) or `multiple-projects` (list the projects and mark the bound one), and ask for `PROJECT:`. No run directory exists.
-- `nothing-eligible`: report the exclusions, grouped as below. There is no run and no `/goal` line.
-- `planned`: present the plan. `run_id` names the run, and `run_dir` holds `plan.json` and `snapshot.json`.
+- `stop`: report the scope's `reason` as the table below says. No run directory exists.
+- `nothing-eligible`: report the exclusions, grouped as in [present the plan](#present-the-plan). There is no run and no `/goal` line.
+- `planned`: present the plan. `run_id` names the run, starting with the epic's identifier for an epic, and `run_dir` holds `plan.json` and `snapshot.json`.
+
+| Stop reason | Report |
+| --- | --- |
+| `binding-mismatch` | This repository is bound to a different project than the scope's; name both. Without `EPIC`, ask for `PROJECT:` |
+| `multiple-projects` | List the team's projects, mark the bound one, and ask for `PROJECT:` |
+| `epic-team-mismatch` | `TEAM` is not the epic's team |
+| `epic-project-mismatch` | `PROJECT` is not the epic's project |
+| `epic-closed` | The epic is completed, canceled, or a duplicate, so nothing runs under it |
+| `epic-not-found` | The snapshot lacks the epic; gather it again |
 
 ## Present the plan
 
 In the user's language, show:
 
-- the run id, the scope, and the result of the binding check;
+- the run id, the scope — for an epic, its identifier, title, and project — and the result of the binding check;
 - `PARALLEL`, recommending 1 when repository instructions show tests that share a port, database, or other fixed resource. The plan stores the value, so taking the recommendation means planning again with `PARALLEL: 1`;
 - `layers`: each issue with its title and its in-plan blockers from `edges`. Layers are for reading; execution starts an issue as soon as its blockers land;
 - `excluded`, grouped by reason, with the blocking path for dependency exclusions, such as `ENG-24 ← ENG-23 ← ENG-20`;

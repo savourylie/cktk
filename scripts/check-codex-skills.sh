@@ -691,6 +691,18 @@ validate_backlog_contract() {
   require_literal "$planning" '"sub_issues"'
   forbid_stale_claim "$planning" 'commits on the base — so that'
 
+  # EPIC narrows a run to one epic's family. Pin the mode, its snapshot
+  # field, every stop the planner reports for it, and the refresh that
+  # follows the epic's project.
+  local reason
+  require_literal "$skill_md" '`EPIC: <ID/URL>`'
+  require_literal "$planning" '"requested_epic"'
+  for reason in epic-team-mismatch epic-project-mismatch epic-closed epic-not-found; do
+    require_literal "$planning" "\`$reason\`"
+  done
+  require_literal "$execution" "the epic's project"
+  require_literal "$root/README.md" "EPIC: ENG-40"
+
   # The README walks through the two-step run and names the planner's tests.
   require_literal "$root/README.md" "**A whole Linear backlog**"
   require_literal "$root/README.md" 'until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"'

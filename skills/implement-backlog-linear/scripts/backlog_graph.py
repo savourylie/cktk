@@ -50,6 +50,10 @@ def sort_ids(ids):
     return sorted(ids, key=id_key)
 
 
+def team_of(issue_id):
+    return issue_id.rsplit("-", 1)[0]
+
+
 def label_set(labels):
     """Lowercased label names; a label is a name or an object with one. Anything else fails closed."""
     names = set()
@@ -113,14 +117,61 @@ def load_snapshot(data):
         "team": {"id": str(team.get("id") or ""), "key": str(team["key"]).upper()},
         "me": me.strip(),
         "requested_project": project_of(data.get("requested_project")),
+        "requested_epic": norm_id(data["requested_epic"]["id"]) if data.get("requested_epic") else None,
         "binding_project": project_of(data.get("binding_project")),
         "issues": issues,
         "external": external,
     }
 
 
+def children_map(issues):
+    """Each parent's sub-issues, whichever side of the link the snapshot recorded."""
+    kids = {}
+    for issue_id, info in issues.items():
+        if info["parent"]:
+            kids.setdefault(info["parent"], set()).add(issue_id)
+        if info["sub_issues"]:
+            kids.setdefault(issue_id, set()).update(info["sub_issues"])
+    return kids
+
+
+def descendants(issue_id, kids):
+    found, frontier = set(), [issue_id]
+    while frontier:
+        for child in kids.get(frontier.pop(), ()):
+            if child not in found:
+                found.add(child)
+                frontier.append(child)
+    return found
+
+
+def resolve_epic_scope(snapshot, epic_id):
+    """An epic, and its open descendants in the run's team and the epic's project."""
+    issues, team = snapshot["issues"], snapshot["team"]["key"]
+    if team_of(epic_id) != team:
+        return {"status": "stop", "reason": "epic-team-mismatch", "epic": epic_id}
+    if epic_id not in issues:
+        return {"status": "stop", "reason": "epic-not-found", "epic": epic_id}
+    if issues[epic_id]["state_type"] in TERMINAL_STATES:
+        return {"status": "stop", "reason": "epic-closed", "epic": epic_id}
+    project = issues[epic_id]["project"]
+    project_id = project["id"] if project else None
+    requested, bound = snapshot["requested_project"], snapshot["binding_project"]
+    if requested and requested["id"] != project_id:
+        return {"status": "stop", "reason": "epic-project-mismatch", "epic": epic_id,
+                "project": project, "requested": requested}
+    if bound and bound["id"] != project_id:
+        return {"status": "stop", "reason": "binding-mismatch", "epic": epic_id, "project": project, "bound": bound}
+    family = {epic_id} | descendants(epic_id, children_map(issues))
+    ids = [i for i in family if i in issues and issues[i]["state_type"] in OPEN_STATES and team_of(i) == team
+           and (issues[i]["project"] or {}).get("id") == project_id]
+    return {"status": "ok", "project": project, "epic": epic_id, "issue_ids": sort_ids(ids)}
+
+
 def resolve_scope(snapshot):
     """Apply the one-project-one-repository rule to the snapshot's open issues."""
+    if snapshot.get("requested_epic"):
+        return resolve_epic_scope(snapshot, snapshot["requested_epic"])
     issues = snapshot["issues"]
     open_ids = [i for i, v in issues.items() if v["state_type"] in OPEN_STATES]
     requested = snapshot["requested_project"]
@@ -247,15 +298,14 @@ def select(snapshot):
             excluded[issue_id] = verdict
         else:
             candidates.append(issue_id)
+    kids = children_map(issues)
     for issue_id in list(candidates):
-        has_sub_issues = bool(issues[issue_id]["sub_issues"]) or any(issues[c]["parent"] == issue_id for c in scope_ids)
-        if EPIC_TITLE.match(issues[issue_id]["title"]) and not has_sub_issues:
+        if EPIC_TITLE.match(issues[issue_id]["title"]) and not kids.get(issue_id):
             excluded[issue_id] = {"reason": "epic-not-broken-down"}
             candidates.remove(issue_id)
     edges = {}
     for issue_id in candidates:
-        children = {c for c in scope_ids if issues[c]["parent"] == issue_id} | issues[issue_id]["sub_issues"]
-        children = {c for c in children if state_of(c, snapshot) not in ("canceled", "duplicate")}
+        children = {c for c in descendants(issue_id, kids) if state_of(c, snapshot) not in ("canceled", "duplicate")}
         edges[issue_id] = issues[issue_id]["blocked_by"] | children
     eligible = set(candidates)
     changed = True
@@ -277,8 +327,13 @@ def select(snapshot):
                 excluded[issue_id] = {"reason": "cycle", "via": [b for b in in_plan[issue_id] if b in cyclic]}
             else:
                 excluded[issue_id] = {"reason": "blocked", "via": [b for b in in_plan[issue_id] if b in stuck]}
-    attach_roots(excluded, snapshot)
     order = [i for layer in layers for i in layer]
+    planned = set(order)
+    for issue_id, info in excluded.items():
+        if info["reason"] == "blocked" and issue_id in edges:
+            info["via"] = sort_ids(b for b in edges[issue_id]
+                                   if b not in planned and state_of(b, snapshot) != "completed")
+    attach_roots(excluded, snapshot)
     plan.update({
         "status": "planned" if order else "nothing-eligible",
         "order": order,
@@ -298,10 +353,11 @@ def slugify(text, limit=24):
     return slug
 
 
-def make_run_id(team_key, project, now, runs_dir):
-    """<TEAM>-<project slug>-<YYYYMMDD-HHMM>, with -2, -3, … when that directory exists."""
+def make_run_id(team_key, project, now, runs_dir, epic=None):
+    """<TEAM>-<project slug>-<YYYYMMDD-HHMM> (<EPIC>-<YYYYMMDD-HHMM> for an epic), with -2, -3, … when taken."""
     label = "team" if project is None else (slugify(project["name"]) or "project")
-    base = f"{team_key}-{label}-{now.strftime('%Y%m%d-%H%M')}"
+    stamp = now.strftime("%Y%m%d-%H%M")
+    base = f"{epic}-{stamp}" if epic else f"{team_key}-{label}-{stamp}"
     candidate, suffix = base, 2
     while (Path(runs_dir) / candidate).exists():
         candidate, suffix = f"{base}-{suffix}", suffix + 1
@@ -415,7 +471,8 @@ def cmd_plan(args):
         "run_dir": None,
     })
     if plan["status"] == "planned" and not args.dry_run:
-        run_id = make_run_id(snapshot["team"]["key"], plan["scope"]["project"], now.astimezone(), args.runs_dir)
+        run_id = make_run_id(snapshot["team"]["key"], plan["scope"]["project"], now.astimezone(), args.runs_dir,
+                             epic=plan["scope"].get("epic"))
         run_dir = Path(args.runs_dir) / run_id
         plan["run_id"], plan["run_dir"] = run_id, str(run_dir)
         write_json(run_dir / "plan.json", plan)

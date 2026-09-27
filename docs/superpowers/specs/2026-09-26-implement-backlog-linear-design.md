@@ -55,6 +55,7 @@ Linear MCP `list_issues` returns `labels`, `statusType`, `project`, `assigneeId`
 13. **Optional document follow-ups:** `always` runs, `ask` is skipped and reported with its prepared content, `never` is skipped.
 14. **A halt is an exit of the goal**, and the halt report reprints the `/goal` line for resuming.
 15. **An `[Epic]` issue with no sub-issues at all is not work yet.** Decided after the nomi-plus planning run, where NOM-44's description said its sub-issues would be defined once its architecture was agreed.
+16. **One epic can be the whole scope.** `EPIC: <issue>` runs the epic's open sub-issues at every depth that are in the run's team and the epic's project, then the epic itself under decision 7. Sub-issues in another team or project, and blockers outside the epic's family, are reported and never pulled in. Decided on 2026-09-27 as a mode of this skill rather than a separate `implement-epic-linear`: the pipeline is the same, and only the scope differs.
 
 ## Design
 
@@ -63,12 +64,13 @@ Linear MCP `list_issues` returns `labels`, `statusType`, `project`, `assigneeId`
 Keyed arguments, as in `create-tickets-linear`, case-insensitive:
 
 ```text
-implement-backlog-linear [TEAM: <key|name|id>] [PROJECT: <name|id|url>] [PARALLEL: <n>] [BASE: <branch>]
+implement-backlog-linear [TEAM: <key|name|id>] [PROJECT: <name|id|url>] [EPIC: <id|url>] [PARALLEL: <n>] [BASE: <branch>]
 implement-backlog-linear RUN: <run-id>
 ```
 
 - Without `RUN:` the skill plans. `PARALLEL` defaults to 3 and `BASE` to `main`.
-- `TEAM` is required unless a validated `.ai/cktk/project.json` supplies it. With neither `TEAM` nor `PROJECT`, the binding supplies both. An explicit `TEAM` without `PROJECT` follows the no-project rule in §2 even when a binding exists.
+- `EPIC` makes one epic the scope (§2). The run's team is the epic's; `TEAM` and `PROJECT`, when given, must match the epic.
+- `TEAM` is required unless `EPIC` or a validated `.ai/cktk/project.json` supplies it. With neither `TEAM` nor `PROJECT`, the binding supplies both. An explicit `TEAM` without `PROJECT` follows the no-project rule in §2 even when a binding exists.
 - `RUN:` executes a stored plan and takes every other setting from it; passing other arguments with `RUN:` is an error.
 - Codex metadata (`agents/openai.yaml`) sets `allow_implicit_invocation: false`: the workflow changes the repository and writes to Linear, so it runs only when named.
 
@@ -76,6 +78,7 @@ implement-backlog-linear RUN: <run-id>
 
 Resolve the team, then:
 
+- **Epic given:** the scope is the epic and its open descendants at every depth — reached through sub-issues in any state, team, or project — that are in the run's team and the epic's project, or have no project when the epic has none. Stop when the epic is missing or closed, when `TEAM` or `PROJECT` names another team or project than the epic's, or when a binding names another project. Descendants elsewhere and blockers outside the family stay out and hold their dependents as outside blockers.
 - **Project given:** candidates are that project's issues in that team. If `.ai/cktk/project.json` binds a different project, stop: this is the wrong repository.
 - **No project:** collect the projects of the team's non-terminal issues. Projects with no open issues do not count.
   - Two or more: stop, list them, mark the bound one when a binding exists, and ask for `PROJECT:`.
@@ -99,7 +102,7 @@ Completed, canceled, and duplicate issues are terminal and never become work.
 
 An issue whose title starts with `[Epic]` and that has no sub-issues at all, in any state, team, or project, is excluded as `epic-not-broken-down`: it is a container whose work has not been split into issues yet. An `[Epic]` issue with open sub-issues follows the parent rule below.
 
-**Edges.** Native blocks / blocked-by relations, fetched with one `get_issue(includeRelations: true)` per non-terminal issue, plus an implicit edge making every parent wait for each of its open sub-issues, gathered with `list_issues(parentId)` across teams and projects; an open sub-issue outside the scope blocks its parent like any outside blocker, and a canceled or duplicate sub-issue does not hold it. Related, duplicate, and prose links are not edges.
+**Edges.** Native blocks / blocked-by relations, fetched with one `get_issue(includeRelations: true)` per non-terminal issue, plus an implicit edge making every parent wait for each of its open sub-issues, gathered with `list_issues(parentId)` across teams and projects, and for every open descendant the snapshot links to it through either side of a parent link, so that a finished sub-issue with open children still holds its parent; an open sub-issue outside the scope blocks its parent like any outside blocker, and a canceled or duplicate sub-issue does not hold it. Related, duplicate, and prose links are not edges.
 
 **Eligible set.** Starting from the candidates, repeatedly remove any issue with a blocker that is neither completed nor still in the set, until nothing changes. Record why each issue was removed:
 
@@ -108,13 +111,15 @@ An issue whose title starts with `[Epic]` and that has no sub-issues at all, in 
 - blocked by a canceled or duplicate issue — cancellation is not delivery, so a person decides whether the relation still holds;
 - part of a dependency cycle (the members Kahn's algorithm cannot order, and their dependents).
 
+Each removed issue records every blocker that keeps it out, not only the first one found, so its causes do not depend on the order of removal.
+
 The remaining issues form a DAG, displayed in topological layers. Layers are for reading only; execution does not wait for a layer to finish.
 
 **Parallelism hint.** If repository instructions show tests that share a port, database, or other fixed resource, the plan recommends `PARALLEL: 1`.
 
 ### 4. The plan and its run directory
 
-The plan states the run id (its timestamp in local time), the scope and binding check, `PARALLEL`, the layered issues with their in-plan blockers, the excluded issues grouped by reason, and the two preparatory writes execution may make: committing a `.worktrees/` ignore line on the base, and creating the `human-blocked` team label. It ends with the `/goal` line in the user's language, keeping the quoted tokens verbatim and using the host's explicit skill syntax (`/…` in Claude Code, `$…` in Codex):
+The plan states the run id (`<TEAM>-<project slug>-<YYYYMMDD-HHMM>`, or `<EPIC>-<YYYYMMDD-HHMM>` for an epic, in local time), the scope and binding check, `PARALLEL`, the layered issues with their in-plan blockers, the excluded issues grouped by reason, and the two preparatory writes execution may make: committing a `.worktrees/` ignore line on the base, and creating the `human-blocked` team label. It ends with the `/goal` line in the user's language, keeping the quoted tokens verbatim and using the host's explicit skill syntax (`/…` in Claude Code, `$…` in Codex):
 
 ```text
 /goal Run /implement-backlog-linear RUN: ENG-website-20260926-1430 until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"

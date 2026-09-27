@@ -41,6 +41,12 @@ def plan_for(*issues, **options):
     return graph.select(graph.load_snapshot(snapshot(*issues, **options)))
 
 
+def epic_plan(epic_id, *issues, **options):
+    data = snapshot(*issues, **options)
+    data["requested_epic"] = {"id": epic_id}
+    return graph.select(graph.load_snapshot(data))
+
+
 def run_cli(*args, env=None):
     return subprocess.run([sys.executable, str(SCRIPT), *map(str, args)],
                           capture_output=True, text=True, timeout=60,
@@ -207,6 +213,64 @@ class EpicTests(unittest.TestCase):
         self.assertEqual(plan["order"], ["ENG-2"])
 
 
+class EpicScopeTests(unittest.TestCase):
+    def test_an_epic_scope_is_its_descendants_and_the_epic(self):
+        plan = epic_plan("ENG-1",
+                         issue("ENG-1", title="[Epic] Memory"),
+                         issue("ENG-2", parent="ENG-1"),
+                         issue("ENG-3", parent="ENG-2"),
+                         issue("ENG-9"))
+        self.assertEqual(plan["layers"], [["ENG-3"], ["ENG-2"], ["ENG-1"]])
+        self.assertNotIn("ENG-9", plan["excluded"])
+        self.assertEqual(plan["scope"]["epic"], "ENG-1")
+
+    def test_descendants_are_reached_through_a_finished_sub_issue(self):
+        plan = epic_plan("ENG-1",
+                         issue("ENG-1", title="[Epic] Memory"),
+                         issue("ENG-2", state="completed", parent="ENG-1"),
+                         issue("ENG-3", parent="ENG-2"), issue("ENG-9"))
+        self.assertEqual(plan["layers"], [["ENG-3"], ["ENG-1"]])
+
+    def test_other_projects_and_outside_blockers_stay_out(self):
+        plan = epic_plan("ENG-1",
+                         issue("ENG-1", title="[Epic] Memory"),
+                         issue("ENG-2", parent="ENG-1", blocked_by=["ENG-9"]),
+                         issue("ENG-4", parent="ENG-1", project=API),
+                         issue("ENG-5", parent="ENG-1"),
+                         issue("ENG-9"))
+        self.assertEqual(plan["order"], ["ENG-5"])
+        self.assertEqual(plan["excluded"]["ENG-2"]["roots"], ["outside-scope:ENG-9"])
+        self.assertEqual(plan["excluded"]["ENG-1"],
+                         {"reason": "blocked", "via": ["ENG-2", "ENG-4"],
+                          "roots": ["outside-scope:ENG-4", "outside-scope:ENG-9"]})
+        self.assertNotIn("ENG-4", plan["excluded"])
+
+    def test_descendants_in_other_teams_stay_out(self):
+        plan = epic_plan("ENG-1",
+                         issue("ENG-1", title="[Epic] Memory"),
+                         issue("ENG-2", parent="ENG-1"),
+                         issue("OPS-3", parent="ENG-1"))
+        self.assertEqual(plan["order"], ["ENG-2"])
+        self.assertEqual(plan["excluded"]["ENG-1"]["roots"], ["outside-scope:OPS-3"])
+        self.assertNotIn("OPS-3", plan["excluded"])
+
+    def test_sub_issues_known_only_by_reference_hold_the_epic(self):
+        epic = issue("ENG-1", title="[Epic] Memory")
+        epic["sub_issues"] = ["OPS-4"]
+        plan = epic_plan("ENG-1", epic, issue("ENG-2", parent="ENG-1"),
+                         external=[{"id": "OPS-4", "state_type": "started"}])
+        self.assertEqual(plan["order"], ["ENG-2"])
+        self.assertEqual(plan["excluded"]["ENG-1"]["roots"], ["outside-scope:OPS-4"])
+
+    def test_mismatches_and_missing_epics_stop(self):
+        for options, reason in (({"requested": API}, "epic-project-mismatch"), ({"bound": API}, "binding-mismatch")):
+            plan = epic_plan("ENG-1", issue("ENG-1", title="[Epic] X"), issue("ENG-2", parent="ENG-1"), **options)
+            self.assertEqual((plan["status"], plan["scope"]["reason"]), ("stop", reason))
+        self.assertEqual(epic_plan("ENG-7", issue("ENG-1"))["scope"]["reason"], "epic-not-found")
+        self.assertEqual(epic_plan("ENG-1", issue("ENG-1", state="completed"))["scope"]["reason"], "epic-closed")
+        self.assertEqual(epic_plan("OPS-1", issue("OPS-1", title="[Epic] X"))["scope"]["reason"], "epic-team-mismatch")
+
+
 class IdentifierTests(unittest.TestCase):
     def test_identifiers_are_normalized_and_ordered_numerically(self):
         plan = plan_for(issue("eng-10", blocked_by=["eng-9"]), issue("ENG-9"), issue("Eng-2"))
@@ -277,6 +341,14 @@ class PlanCommandTests(unittest.TestCase):
         self.assertEqual(stored["host"], "claude")
         self.assertTrue((run_dir / "snapshot.json").is_file())
         self.assertTrue((run_dir / "results").is_dir())
+
+    def test_epic_run_ids_name_the_epic(self):
+        data = snapshot(issue("ENG-1", title="[Epic] X"), issue("ENG-2", parent="ENG-1"))
+        data["requested_epic"] = {"id": "eng-1"}
+        result = run_cli("plan", "--snapshot", self.write_snapshot(data), "--runs-dir", self.runs,
+                         "--now", "2026-09-26T14:30:00Z", env={"TZ": "UTC"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["run_id"], "ENG-1-20260926-1430")
 
     def test_run_ids_use_local_time(self):
         path = self.write_snapshot(snapshot(issue("ENG-1"), requested=WEB))
@@ -565,6 +637,13 @@ class SubIssueTests(unittest.TestCase):
         epic["sub_issues"] = ["ENG-8"]
         plan = plan_for(epic, external=[{"id": "ENG-8", "state_type": "completed"}])
         self.assertEqual(plan["order"], ["ENG-1"])
+
+    def test_a_finished_sub_issue_with_open_children_still_holds_its_parent(self):
+        parent = issue("ENG-1")
+        parent["sub_issues"] = ["ENG-2"]
+        plan = plan_for(parent, issue("ENG-3", parent="ENG-2"),
+                        external=[{"id": "ENG-2", "state_type": "completed"}])
+        self.assertEqual(plan["layers"], [["ENG-3"], ["ENG-1"]])
 
     def test_a_canceled_sub_issue_does_not_hold_its_parent(self):
         parent = issue("ENG-1")

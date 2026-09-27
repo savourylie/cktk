@@ -23,7 +23,7 @@ At every start and resume, from `MAIN_ROOT`:
 
 ## Refresh the state
 
-Before each dispatch round and after each landing, read the plan's issues fresh: `list_issues` for the scope once per open state type, plus `completed`, `canceled`, and `duplicate` filtered to `updatedAt` on or after the plan's `created_at`; then `get_issue` for any planned issue still missing. For each issue about to be dispatched, also read its relations with `get_issue` and `includeRelations: true`. Write `$RUN_DIR/state.json`:
+Before each dispatch round and after each landing, read the plan's issues fresh: `list_issues` for the scope — the plan's team, filtered by the scope's project when it has one, which in an epic run is the epic's project — once per open state type, plus `completed`, `canceled`, and `duplicate` filtered to `updatedAt` on or after the plan's `created_at`; then `get_issue` for any planned issue still missing. For each issue about to be dispatched, also read its relations with `get_issue` and `includeRelations: true`. Write `$RUN_DIR/state.json`:
 
 ```json
 {
