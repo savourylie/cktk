@@ -56,6 +56,7 @@ Linear MCP `list_issues` returns `labels`, `statusType`, `project`, `assigneeId`
 14. **A halt is an exit of the goal**, and the halt report reprints the `/goal` line for resuming.
 15. **An `[Epic]` issue with no sub-issues at all is not work yet.** Decided after the nomi-plus planning run, where NOM-44's description said its sub-issues would be defined once its architecture was agreed.
 16. **One epic can be the whole scope.** `EPIC: <issue>` runs the epic's open sub-issues at every depth that are in the run's team and the epic's project, then the epic itself under decision 7. Sub-issues in another team or project, and blockers outside the epic's family, are reported and never pulled in. Decided on 2026-09-27 as a mode of this skill rather than a separate `implement-epic-linear`: the pipeline is the same, and only the scope differs.
+17. **A run can be limited to named issues.** `ISSUES: <id> …` runs exactly the listed issues in dependency order. An unlisted blocker or sub-issue is reported and never pulled in, the exclusion rules of §3 still apply, and a listed issue that is already closed is reported as `closed`. Decided on 2026-09-27; pulling in AI-eligible blockers automatically was rejected because the run would grow beyond the list the user wrote.
 
 ## Design
 
@@ -64,13 +65,14 @@ Linear MCP `list_issues` returns `labels`, `statusType`, `project`, `assigneeId`
 Keyed arguments, as in `create-tickets-linear`, case-insensitive:
 
 ```text
-implement-backlog-linear [TEAM: <key|name|id>] [PROJECT: <name|id|url>] [EPIC: <id|url>] [PARALLEL: <n>] [BASE: <branch>]
+implement-backlog-linear [TEAM: <key|name|id>] [PROJECT: <name|id|url>] [EPIC: <id|url> | ISSUES: <id|url> …] [PARALLEL: <n>] [BASE: <branch>]
 implement-backlog-linear RUN: <run-id>
 ```
 
 - Without `RUN:` the skill plans. `PARALLEL` defaults to 3 and `BASE` to `main`.
 - `EPIC` makes one epic the scope (§2). The run's team is the epic's; `TEAM` and `PROJECT`, when given, must match the epic.
-- `TEAM` is required unless `EPIC` or a validated `.ai/cktk/project.json` supplies it. With neither `TEAM` nor `PROJECT`, the binding supplies both. An explicit `TEAM` without `PROJECT` follows the no-project rule in §2 even when a binding exists.
+- `ISSUES` limits the run to the listed issues (§2). They supply the team; `TEAM` and `PROJECT`, when given, must match them, and `ISSUES` does not combine with `EPIC`.
+- `TEAM` is required unless `EPIC`, `ISSUES`, or a validated `.ai/cktk/project.json` supplies it. With neither `TEAM` nor `PROJECT`, the binding supplies both. An explicit `TEAM` without `PROJECT` follows the no-project rule in §2 even when a binding exists.
 - `RUN:` executes a stored plan and takes every other setting from it; passing other arguments with `RUN:` is an error.
 - Codex metadata (`agents/openai.yaml`) sets `allow_implicit_invocation: false`: the workflow changes the repository and writes to Linear, so it runs only when named.
 
@@ -79,6 +81,7 @@ implement-backlog-linear RUN: <run-id>
 Resolve the team, then:
 
 - **Epic given:** the scope is the epic and its open descendants at every depth — reached through sub-issues in any state, team, or project — that are in the run's team and the epic's project, or have no project when the epic has none. Stop when the epic is missing or closed, when `TEAM` or `PROJECT` names another team or project than the epic's, or when a binding names another project. Descendants elsewhere and blockers outside the family stay out and hold their dependents as outside blockers.
+- **Issues given:** the scope is exactly the listed issues. They must all be in the run's team, and the open ones in at most one project, which must match `PROJECT` and the binding when given; issues without a project may be listed alongside. A listed issue Linear does not have stops the run, and one already closed is reported as `closed`. Unlisted blockers and sub-issues stay out and hold their dependents as outside blockers.
 - **Project given:** candidates are that project's issues in that team. If `.ai/cktk/project.json` binds a different project, stop: this is the wrong repository.
 - **No project:** collect the projects of the team's non-terminal issues. Projects with no open issues do not count.
   - Two or more: stop, list them, mark the bound one when a binding exists, and ask for `PROJECT:`.
@@ -119,7 +122,7 @@ The remaining issues form a DAG, displayed in topological layers. Layers are for
 
 ### 4. The plan and its run directory
 
-The plan states the run id (`<TEAM>-<project slug>-<YYYYMMDD-HHMM>`, or `<EPIC>-<YYYYMMDD-HHMM>` for an epic, in local time), the scope and binding check, `PARALLEL`, the layered issues with their in-plan blockers, the excluded issues grouped by reason, and the two preparatory writes execution may make: committing a `.worktrees/` ignore line on the base, and creating the `human-blocked` team label. It ends with the `/goal` line in the user's language, keeping the quoted tokens verbatim and using the host's explicit skill syntax (`/…` in Claude Code, `$…` in Codex):
+The plan states the run id (`<TEAM>-<project slug>-<YYYYMMDD-HHMM>`, `<EPIC>-<YYYYMMDD-HHMM>` for an epic, or `<TEAM>-issues-<YYYYMMDD-HHMM>` for listed issues, in local time), the scope and binding check, `PARALLEL`, the layered issues with their in-plan blockers, the excluded issues grouped by reason, and the two preparatory writes execution may make: committing a `.worktrees/` ignore line on the base, and creating the `human-blocked` team label. It ends with the `/goal` line in the user's language, keeping the quoted tokens verbatim and using the host's explicit skill syntax (`/…` in Claude Code, `$…` in Codex):
 
 ```text
 /goal Run /implement-backlog-linear RUN: ENG-website-20260926-1430 until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"

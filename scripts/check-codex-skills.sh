@@ -703,6 +703,16 @@ validate_backlog_contract() {
   require_literal "$execution" "the epic's project"
   require_literal "$root/README.md" "EPIC: ENG-40"
 
+  # ISSUES limits a run to the issues named. Pin the mode, its snapshot
+  # field, and every stop and exclusion the planner reports for it.
+  require_literal "$skill_md" '`ISSUES: <IDs/URLs>`'
+  require_literal "$planning" '"requested_issues"'
+  for reason in issues-not-found issues-team-mismatch issues-multiple-projects \
+    issues-project-mismatch epic-with-issues closed; do
+    require_literal "$planning" "\`$reason\`"
+  done
+  require_literal "$root/README.md" "ISSUES: ENG-42 ENG-43"
+
   # The README walks through the two-step run and names the planner's tests.
   require_literal "$root/README.md" "**A whole Linear backlog**"
   require_literal "$root/README.md" 'until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"'

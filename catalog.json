@@ -68,7 +68,7 @@
     {
       "name": "implement-backlog-linear",
       "path": ".agent/skills/implement-backlog-linear",
-      "description": "Plan every Linear issue in a team, project, or epic that an agent can finish without a person, then implement them in parallel worktrees through implement-ticket-linear, land each on the base through a serial merge queue, mark it Done, and park work that needs a person — a read-only plan first, execution driven by /goal (requires Linear MCP)",
+      "description": "Plan every Linear issue in a team, project, epic, or explicit list that an agent can finish without a person, then implement them in parallel worktrees through implement-ticket-linear, land each on the base through a serial merge queue, mark it Done, and park work that needs a person — a read-only plan first, execution driven by /goal (requires Linear MCP)",
       "portable": true
     },
     {

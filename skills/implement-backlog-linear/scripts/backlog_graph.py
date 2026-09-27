@@ -74,6 +74,15 @@ def project_of(value):
     return {"id": str(value), "name": ""}
 
 
+def listed_ids(value):
+    """The issues a run is limited to, or None when the snapshot names none."""
+    if value is None:
+        return None
+    if not isinstance(value, list) or not value:
+        raise InputError("snapshot requested_issues must be a non-empty list of issue identifiers")
+    return sort_ids({norm_id(v["id"] if isinstance(v, dict) else v) for v in value})
+
+
 def load_snapshot(data):
     """Normalize a planning snapshot: uppercase ids, merged duplicates, both relation directions."""
     issues = {}
@@ -118,6 +127,7 @@ def load_snapshot(data):
         "me": me.strip(),
         "requested_project": project_of(data.get("requested_project")),
         "requested_epic": norm_id(data["requested_epic"]["id"]) if data.get("requested_epic") else None,
+        "requested_issues": listed_ids(data.get("requested_issues")),
         "binding_project": project_of(data.get("binding_project")),
         "issues": issues,
         "external": external,
@@ -168,10 +178,45 @@ def resolve_epic_scope(snapshot, epic_id):
     return {"status": "ok", "project": project, "epic": epic_id, "issue_ids": sort_ids(ids)}
 
 
+def resolve_issue_scope(snapshot, listed):
+    """Exactly the listed issues, which share the run's team and at most one project."""
+    issues, team = snapshot["issues"], snapshot["team"]["key"]
+    others = [i for i in listed if team_of(i) != team]
+    if others:
+        return {"status": "stop", "reason": "issues-team-mismatch", "issues": others}
+    missing = [i for i in listed if i not in issues]
+    if missing:
+        return {"status": "stop", "reason": "issues-not-found", "issues": missing}
+    open_ids = [i for i in listed if issues[i]["state_type"] in OPEN_STATES]
+    projects = {}
+    for issue_id in open_ids:
+        project = issues[issue_id]["project"]
+        if project:
+            projects.setdefault(project["id"], project)
+    requested, bound = snapshot["requested_project"], snapshot["binding_project"]
+    bound_id = bound["id"] if bound else None
+    if len(projects) > 1:
+        spanned = sorted(projects.values(), key=lambda p: (p["name"], p["id"]))
+        return {"status": "stop", "reason": "issues-multiple-projects", "bound": bound,
+                "projects": [dict(p, bound=p["id"] == bound_id) for p in spanned]}
+    found = next(iter(projects.values()), None)
+    if requested and found and found["id"] != requested["id"]:
+        return {"status": "stop", "reason": "issues-project-mismatch", "project": found, "requested": requested}
+    project = requested or found
+    if bound and project and project["id"] != bound_id:
+        return {"status": "stop", "reason": "binding-mismatch", "project": project, "bound": bound}
+    return {"status": "ok", "project": project, "listed": listed,
+            "closed": [i for i in listed if i not in open_ids], "issue_ids": open_ids}
+
+
 def resolve_scope(snapshot):
     """Apply the one-project-one-repository rule to the snapshot's open issues."""
+    if snapshot.get("requested_epic") and snapshot.get("requested_issues"):
+        return {"status": "stop", "reason": "epic-with-issues"}
     if snapshot.get("requested_epic"):
         return resolve_epic_scope(snapshot, snapshot["requested_epic"])
+    if snapshot.get("requested_issues"):
+        return resolve_issue_scope(snapshot, snapshot["requested_issues"])
     issues = snapshot["issues"]
     open_ids = [i for i, v in issues.items() if v["state_type"] in OPEN_STATES]
     requested = snapshot["requested_project"]
@@ -334,13 +379,16 @@ def select(snapshot):
             info["via"] = sort_ids(b for b in edges[issue_id]
                                    if b not in planned and state_of(b, snapshot) != "completed")
     attach_roots(excluded, snapshot)
+    closed = scope.get("closed", [])
+    for issue_id in closed:
+        excluded[issue_id] = {"reason": "closed", "state": issues[issue_id]["state_type"]}
     plan.update({
         "status": "planned" if order else "nothing-eligible",
         "order": order,
         "layers": layers,
         "edges": {i: in_plan[i] for i in order},
         "excluded": {i: excluded[i] for i in sort_ids(excluded)},
-        "titles": {i: issues[i]["title"] for i in scope_ids},
+        "titles": {i: issues[i]["title"] for i in [*scope_ids, *closed]},
     })
     return plan
 
@@ -353,9 +401,10 @@ def slugify(text, limit=24):
     return slug
 
 
-def make_run_id(team_key, project, now, runs_dir, epic=None):
-    """<TEAM>-<project slug>-<YYYYMMDD-HHMM> (<EPIC>-<YYYYMMDD-HHMM> for an epic), with -2, -3, … when taken."""
-    label = "team" if project is None else (slugify(project["name"]) or "project")
+def make_run_id(team_key, project, now, runs_dir, epic=None, listed=False):
+    """<TEAM>-<project slug>-<YYYYMMDD-HHMM>, <EPIC>-<…> for an epic, <TEAM>-issues-<…> for listed issues;
+    -2, -3, … when taken."""
+    label = "issues" if listed else "team" if project is None else (slugify(project["name"]) or "project")
     stamp = now.strftime("%Y%m%d-%H%M")
     base = f"{epic}-{stamp}" if epic else f"{team_key}-{label}-{stamp}"
     candidate, suffix = base, 2
@@ -472,7 +521,7 @@ def cmd_plan(args):
     })
     if plan["status"] == "planned" and not args.dry_run:
         run_id = make_run_id(snapshot["team"]["key"], plan["scope"]["project"], now.astimezone(), args.runs_dir,
-                             epic=plan["scope"].get("epic"))
+                             epic=plan["scope"].get("epic"), listed=bool(plan["scope"].get("listed")))
         run_dir = Path(args.runs_dir) / run_id
         plan["run_id"], plan["run_dir"] = run_id, str(run_dir)
         write_json(run_dir / "plan.json", plan)
@@ -562,7 +611,8 @@ def count_status(plan, active, done, parked, removed):
     gated_all = {i for i, v in excluded.items()
                  if v["reason"] == "human-gate" and v["label"] != PARK_LABEL}
     gated_all |= {i for i, v in removed.items() if v["reason"] == "human-gate"}
-    others = (set(excluded) | set(removed)) - parked_all - gated_all
+    closed = {i for i, v in excluded.items() if v["reason"] == "closed"}
+    others = (set(excluded) | set(removed)) - parked_all - gated_all - closed
     return {"AI-ELIGIBLE": len(active), "DONE": len(done), "PARKED": len(parked_all),
             "HUMAN-GATED": len(gated_all), "BLOCKED": len(others)}
 

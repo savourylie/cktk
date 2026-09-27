@@ -47,6 +47,12 @@ def epic_plan(epic_id, *issues, **options):
     return graph.select(graph.load_snapshot(data))
 
 
+def issues_plan(listed, *issues, **options):
+    data = snapshot(*issues, **options)
+    data["requested_issues"] = list(listed)
+    return graph.select(graph.load_snapshot(data))
+
+
 def run_cli(*args, env=None):
     return subprocess.run([sys.executable, str(SCRIPT), *map(str, args)],
                           capture_output=True, text=True, timeout=60,
@@ -271,6 +277,67 @@ class EpicScopeTests(unittest.TestCase):
         self.assertEqual(epic_plan("OPS-1", issue("OPS-1", title="[Epic] X"))["scope"]["reason"], "epic-team-mismatch")
 
 
+class ListedIssueTests(unittest.TestCase):
+    def test_only_the_listed_issues_run_in_dependency_order(self):
+        plan = issues_plan(["eng-2", "ENG-1"], issue("ENG-1"), issue("ENG-2", blocked_by=["ENG-1"]), issue("ENG-3"))
+        self.assertEqual(plan["layers"], [["ENG-1"], ["ENG-2"]])
+        self.assertNotIn("ENG-3", plan["excluded"])
+        self.assertEqual(plan["scope"]["listed"], ["ENG-1", "ENG-2"])
+
+    def test_unlisted_blockers_and_sub_issues_are_reported_not_pulled_in(self):
+        plan = issues_plan(["ENG-2", "ENG-5", "ENG-7"],
+                           issue("ENG-1"), issue("ENG-2", blocked_by=["ENG-1"]),
+                           issue("ENG-5"), issue("ENG-6", parent="ENG-5"), issue("ENG-7"))
+        self.assertEqual(plan["order"], ["ENG-7"])
+        self.assertEqual(plan["excluded"]["ENG-2"]["roots"], ["outside-scope:ENG-1"])
+        self.assertEqual(plan["excluded"]["ENG-5"]["roots"], ["outside-scope:ENG-6"])
+        self.assertNotIn("ENG-1", plan["excluded"])
+        self.assertNotIn("ENG-6", plan["excluded"])
+
+    def test_listing_an_issue_does_not_bypass_the_exclusion_rules(self):
+        plan = issues_plan(["ENG-1", "ENG-2", "ENG-3"], issue("ENG-1", labels=["human-blocked"]),
+                           issue("ENG-2", assignee="someone-else"), issue("ENG-3"), issue("ENG-4"))
+        self.assertEqual(plan["order"], ["ENG-3"])
+        self.assertEqual(plan["excluded"]["ENG-1"], {"reason": "human-gate", "label": "human-blocked"})
+        self.assertEqual(plan["excluded"]["ENG-2"], {"reason": "someone-else"})
+
+    def test_closed_listed_issues_are_reported_and_not_counted(self):
+        plan = issues_plan(["ENG-1", "ENG-2", "ENG-3", "ENG-4"],
+                           issue("ENG-1", state="completed"), issue("ENG-2", state="canceled"),
+                           issue("ENG-3"), issue("ENG-4", blocked_by=["ENG-2"]))
+        self.assertEqual(plan["order"], ["ENG-3"])
+        self.assertEqual(plan["excluded"]["ENG-1"], {"reason": "closed", "state": "completed"})
+        self.assertEqual(plan["excluded"]["ENG-2"], {"reason": "closed", "state": "canceled"})
+        self.assertEqual(plan["excluded"]["ENG-4"]["roots"], ["canceled:ENG-2"])
+        self.assertEqual(plan["titles"]["ENG-1"], "Title ENG-1")
+        plan.update({"run_id": "ENG-issues-20260926-1430", "me": ME, "base": "main"})
+        step = graph.next_step(plan, state({"ENG-3": "backlog"}))
+        self.assertTrue(step["status_line"].endswith(
+            "AI-ELIGIBLE 1 · DONE 0 · PARKED 0 · HUMAN-GATED 0 · BLOCKED 1"), step["status_line"])
+
+    def test_listed_issues_share_one_team_and_at_most_one_project(self):
+        cases = [
+            (["OPS-1"], [issue("OPS-1")], {}, "issues-team-mismatch"),
+            (["ENG-9"], [issue("ENG-1")], {}, "issues-not-found"),
+            (["ENG-1", "ENG-2"], [issue("ENG-1"), issue("ENG-2", project=API)], {}, "issues-multiple-projects"),
+            (["ENG-1"], [issue("ENG-1")], {"requested": API}, "issues-project-mismatch"),
+            (["ENG-1"], [issue("ENG-1")], {"bound": API}, "binding-mismatch"),
+        ]
+        for listed, issues, options, reason in cases:
+            plan = issues_plan(listed, *issues, **options)
+            self.assertEqual((plan["status"], plan["scope"]["reason"]), ("stop", reason))
+        self.assertEqual(issues_plan(["ENG-9"], issue("ENG-1"))["scope"]["issues"], ["ENG-9"])
+        plan = issues_plan(["ENG-1", "ENG-2"], issue("ENG-1", project=None), issue("ENG-2"), bound=WEB)
+        self.assertEqual((plan["status"], plan["scope"]["project"]), ("planned", WEB))
+        plan = issues_plan(["ENG-1", "ENG-2"], issue("ENG-1"), issue("ENG-2", project=API, state="completed"))
+        self.assertEqual(plan["status"], "planned")
+
+    def test_an_epic_and_listed_issues_together_stop(self):
+        data = snapshot(issue("ENG-1", title="[Epic] X"), issue("ENG-2", parent="ENG-1"))
+        data.update(requested_epic={"id": "ENG-1"}, requested_issues=["ENG-2"])
+        self.assertEqual(graph.select(graph.load_snapshot(data))["scope"]["reason"], "epic-with-issues")
+
+
 class IdentifierTests(unittest.TestCase):
     def test_identifiers_are_normalized_and_ordered_numerically(self):
         plan = plan_for(issue("eng-10", blocked_by=["eng-9"]), issue("ENG-9"), issue("Eng-2"))
@@ -349,6 +416,14 @@ class PlanCommandTests(unittest.TestCase):
                          "--now", "2026-09-26T14:30:00Z", env={"TZ": "UTC"})
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["run_id"], "ENG-1-20260926-1430")
+
+    def test_listed_issue_run_ids_name_the_team(self):
+        data = snapshot(issue("ENG-1"), issue("ENG-2"))
+        data["requested_issues"] = ["ENG-2"]
+        result = run_cli("plan", "--snapshot", self.write_snapshot(data), "--runs-dir", self.runs,
+                         "--now", "2026-09-26T14:30:00Z", env={"TZ": "UTC"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["run_id"], "ENG-issues-20260926-1430")
 
     def test_run_ids_use_local_time(self):
         path = self.write_snapshot(snapshot(issue("ENG-1"), requested=WEB))
@@ -603,6 +678,13 @@ class InputValidationTests(unittest.TestCase):
     def test_unreadable_labels_are_an_input_error(self):
         with self.assertRaises(graph.InputError):
             graph.load_snapshot(snapshot(issue("ENG-1", labels=[42])))
+
+    def test_listed_issues_must_be_a_non_empty_list(self):
+        for listed in ("ENG-1", [], [{"id": "not an id"}]):
+            data = snapshot(issue("ENG-1"))
+            data["requested_issues"] = listed
+            with self.assertRaises(graph.InputError, msg=repr(listed)):
+                graph.load_snapshot(data)
 
     def test_me_must_be_a_real_user_id(self):
         for me in (None, "", "me", "ME"):

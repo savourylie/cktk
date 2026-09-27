@@ -1,6 +1,6 @@
 ---
 name: implement-backlog-linear
-description: "Plan and run every Linear issue an agent can finish without a person, for one team, project, or epic. Selects issues without human-setup or human-acceptance labels whose blockers are done or also selected, implements them in parallel worktrees through implement-ticket-linear, lands each on the base through a serial merge queue, marks it Done, and parks work that needs a person. A read-only plan comes first; execution runs from the /goal line it prints. Requires Linear MCP. Use for implement-backlog-linear or requests to work through a Linear backlog or epic automatically."
+description: "Plan and run every Linear issue an agent can finish without a person, for one team, project, epic, or list of issues. Selects issues without human-setup or human-acceptance labels whose blockers are done or also selected, implements them in parallel worktrees through implement-ticket-linear, lands each on the base through a serial merge queue, marks it Done, and parks work that needs a person. A read-only plan comes first; execution runs from the /goal line it prints. Requires Linear MCP. Use for implement-backlog-linear or requests to work through a Linear backlog, epic, or set of issues automatically."
 ---
 
 # Run a Linear Backlog to Its Human Boundary
@@ -15,9 +15,10 @@ Accept keyed arguments, case-insensitive, with or without a space after the colo
 
 | Input | Meaning |
 | --- | --- |
-| `TEAM: <key/name/id>` | Linear team; optional when `EPIC` or a validated `.ai/cktk/project.json` supplies it |
+| `TEAM: <key/name/id>` | Linear team; optional when `EPIC`, `ISSUES`, or a validated `.ai/cktk/project.json` supplies it |
 | `PROJECT: <name/id/URL>` | Linear project. One project is one repository |
 | `EPIC: <ID/URL>` | One epic: its open sub-issues at every depth in the epic's team and project, then the epic itself. It supplies the team; `TEAM` and `PROJECT`, when given, must match it |
+| `ISSUES: <IDs/URLs>` | Exactly these issues, separated by spaces or commas; an unlisted blocker or sub-issue is reported, never added. They supply the team; `TEAM` and `PROJECT`, when given, must match them. Not combined with `EPIC` |
 | `PARALLEL: <n>` | Implementation subagents at once; default 3 |
 | `BASE: <branch>` | Branch that issues land on; default `main` |
 | `RUN: <run-id>` | Execute a confirmed plan; takes no other input |
@@ -31,6 +32,7 @@ implement-backlog-linear TEAM: ENG PROJECT: "Website"
 implement-backlog-linear                          # the bound team and project
 implement-backlog-linear TEAM: ENG PARALLEL: 1
 implement-backlog-linear EPIC: ENG-40             # one epic's sub-issues, then the epic
+implement-backlog-linear ISSUES: ENG-42 ENG-43    # exactly these issues
 implement-backlog-linear RUN: ENG-website-20260926-1430
 ```
 
