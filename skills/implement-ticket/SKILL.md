@@ -1,6 +1,6 @@
 ---
 name: implement-ticket
-description: "Implement a docs/tickets ticket in its project business context, with validation and review. Supports worktree isolation and optional implementation delegation via codex, claude, or grok. Use for implement-ticket or requests to implement a local development ticket."
+description: "Implement a docs/tickets ticket in its project business context, with validation and review. Supports worktree isolation and optional implementation delegation via codex, claude, grok, or pi. Use for implement-ticket or requests to implement a local development ticket."
 ---
 
 # Implement a Ticket
@@ -16,7 +16,7 @@ Accept `<ticket> [worktree] [base] [via <executor>]` from the invocation argumen
 - Normalize `7`, `007`, `#7`, and `TICKET-007` to `007`. With no explicit ID, use an unambiguous ticket already identified in the conversation or the current ticket branch; otherwise ask. An empty invocation never starts the whole backlog.
 - Preserve `<ticket>`, `<ticket> <base>`, `<ticket> worktree`, and `<ticket> worktree <base>`. The `worktree` keyword is case-insensitive and remains an explicit request for an isolated checkout.
 - Without `worktree`, a new ticket branch starts at the current HEAD unless a base is supplied. With `worktree`, the default base remains `main`. An explicit base must resolve.
-- The optional final `via <executor>` supports `codex`, `claude`, or `grok`. Before setup, read [delegation](references/delegation.md) to validate this mode.
+- The optional final `via <executor>` supports `codex`, `claude`, `grok`, or `pi`. Before setup, read [delegation](references/delegation.md) to validate this mode.
 - Process multiple tickets only when the user explicitly requests a bounded batch. Establish its scope, order, and dependency integration before starting; apply this workflow to each ticket. Do not silently stack branches or expand to the remaining backlog.
 
 ## Understand the business context

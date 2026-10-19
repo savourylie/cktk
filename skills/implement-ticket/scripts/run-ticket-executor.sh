@@ -7,11 +7,19 @@ usage() {
 Usage:
   run-ticket-executor.sh \
     --host <invoking-agent-id> \
-    --executor <codex|claude|grok> \
+    --executor <codex|claude|grok|pi> \
     --work-dir <absolute-dir> \
     --task-file <absolute-file> \
     --record-file <absolute-file> \
     [--timeout-seconds <positive-int>]
+
+Environment (pi only; each defaults to Pi's own settings):
+  CKTK_PI_MODEL     model pattern or ID passed to pi --model
+  CKTK_PI_PROVIDER  provider passed to pi --provider; requires CKTK_PI_MODEL
+  CKTK_PI_THINKING  off|minimal|low|medium|high|xhigh|max, passed to pi --thinking
+
+A pi run also requires python3, which reads Pi's JSON event stream into the
+record's provider, model, thinking_level, stop_reason, and final_message_file.
 
 Exit codes:
   0  executor completed and left reviewable changes
@@ -35,6 +43,14 @@ require_value() {
   local flag="$1"
   local count="$2"
   [[ "$count" -ge 2 ]] || die 2 "$flag requires a value"
+}
+
+json_string_or_null() {
+  if [[ -n "$1" ]]; then
+    printf '"%s"' "$(json_escape "$1")"
+  else
+    printf 'null'
+  fi
 }
 
 json_escape() {
@@ -132,7 +148,7 @@ done
 [[ "$host" =~ ^[a-z][a-z0-9-]*$ ]] || die 2 "invalid host identifier: $host"
 
 case "$executor" in
-  codex|claude|grok) ;;
+  codex|claude|grok|pi) ;;
   *) die 3 "unsupported executor: $executor" ;;
 esac
 
@@ -152,6 +168,28 @@ case "$record_file" in
   /*) ;;
   *) die 2 "record file must be an absolute path: $record_file" ;;
 esac
+
+pi_model="${CKTK_PI_MODEL:-}"
+pi_provider="${CKTK_PI_PROVIDER:-}"
+pi_thinking="${CKTK_PI_THINKING:-}"
+if [[ "$executor" = "pi" ]]; then
+  # These values become single argv entries, never shell text. The character
+  # allowlists still keep them from being read as additional pi options.
+  if [[ -n "$pi_model" ]]; then
+    [[ "$pi_model" =~ ^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$ ]] ||
+      die 2 "invalid CKTK_PI_MODEL: $pi_model"
+  fi
+  if [[ -n "$pi_provider" ]]; then
+    [[ "$pi_provider" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
+      die 2 "invalid CKTK_PI_PROVIDER: $pi_provider"
+    [[ -n "$pi_model" ]] ||
+      die 2 "CKTK_PI_PROVIDER requires CKTK_PI_MODEL"
+  fi
+  case "$pi_thinking" in
+    ''|off|minimal|low|medium|high|xhigh|max) ;;
+    *) die 2 "invalid CKTK_PI_THINKING: $pi_thinking" ;;
+  esac
+fi
 
 [[ -d "$work_dir" ]] ||
   die 2 "work directory does not exist: $work_dir"
@@ -173,6 +211,7 @@ case "$executor" in
   codex) cli_label="Codex CLI" ;;
   claude) cli_label="Claude Code CLI" ;;
   grok) cli_label="Grok Build CLI" ;;
+  pi) cli_label="Pi coding agent CLI" ;;
 esac
 
 executor_path="$(command -v "$executor" 2>/dev/null || true)"
@@ -180,6 +219,10 @@ executor_path="$(command -v "$executor" 2>/dev/null || true)"
   die 4 "$cli_label is not installed (expected command: $executor)"
 if ! "$executor_path" --version >/dev/null 2>&1; then
   die 4 "$cli_label failed its version check"
+fi
+if [[ "$executor" = "pi" ]]; then
+  command -v python3 >/dev/null 2>&1 ||
+    die 4 "python3 is required to read $cli_label output"
 fi
 
 # No task package, output capture, or process is created before CLI discovery.
@@ -196,6 +239,7 @@ esac
 task_package_file="$artifact_prefix.task.md"
 output_file="$artifact_prefix.output.log"
 timeout_marker="$artifact_prefix.timeout"
+final_message_file="$artifact_prefix.final.md"
 
 umask 077
 : >"$output_file"
@@ -244,6 +288,28 @@ case "$executor" in
     )
     command_stdin="/dev/null"
     ;;
+  pi)
+    # Pi has no sandbox. --no-approve skips project-local .pi settings,
+    # extensions, skills, and prompts, so the ticket checkout cannot load code
+    # into the executor; the work directory is the subshell's cwd. JSON mode
+    # exposes the model and thinking level that Pi actually used.
+    command=(
+      "$executor_path"
+      --print
+      --mode json
+      --no-session
+      --no-approve
+    )
+    if [[ -n "$pi_provider" ]]; then
+      command+=(--provider "$pi_provider")
+    fi
+    if [[ -n "$pi_model" ]]; then
+      command+=(--model "$pi_model")
+    fi
+    if [[ -n "$pi_thinking" ]]; then
+      command+=(--thinking "$pi_thinking")
+    fi
+    ;;
 esac
 
 before_head="$(git -C "$work_dir" rev-parse HEAD)"
@@ -254,7 +320,8 @@ for artifact_path in \
   "$task_file" \
   "$record_file" \
   "$task_package_file" \
-  "$output_file"; do
+  "$output_file" \
+  "$final_message_file"; do
   case "$artifact_path" in
     "$work_dir"/*)
       relative_artifact="${artifact_path#"$work_dir"/}"
@@ -327,7 +394,7 @@ terminate_child() {
 trap 'terminate_child' EXIT
 trap 'terminate_child; exit 130' HUP INT TERM
 
-rm -f "$timeout_marker"
+rm -f "$timeout_marker" "$final_message_file"
 
 # Job control gives the executor its own process group in non-interactive Bash.
 # The watchdog can then terminate the CLI and any child it spawned without
@@ -381,6 +448,60 @@ if [[ -e "$timeout_marker" ]]; then
   rm -f "$timeout_marker"
 fi
 
+pi_used_provider=""
+pi_used_model=""
+pi_used_thinking=""
+pi_stop_reason=""
+if [[ "$executor" = "pi" ]]; then
+  # The last assistant message names the provider, model, and thinking level
+  # that answered. These diagnostics are best effort: unparseable output leaves
+  # them null and does not change the Git classification below.
+  pi_metadata=()
+  while IFS= read -r line; do
+    pi_metadata+=("$line")
+  done < <(
+    python3 -I - "$output_file" "$final_message_file" 2>/dev/null <<'PY' || true
+import json
+import sys
+
+output_path, final_path = sys.argv[1:]
+last = None
+with open(output_path, encoding="utf-8", errors="replace") as handle:
+    for line in handle:
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict) or event.get("type") != "message_end":
+            continue
+        message = event.get("message")
+        if isinstance(message, dict) and message.get("role") == "assistant":
+            last = message
+if last is None:
+    sys.exit(0)
+text = "\n".join(
+    part.get("text", "")
+    for part in last.get("content") or []
+    if isinstance(part, dict) and part.get("type") == "text"
+)
+if last.get("errorMessage"):
+    text = (text + "\n\n" if text else "") + str(last["errorMessage"])
+with open(final_path, "w", encoding="utf-8") as handle:
+    handle.write(text.rstrip("\n") + "\n")
+for key in ("provider", "model", "thinkingLevel", "stopReason"):
+    value = last.get(key)
+    print("" if value is None else " ".join(str(value).split()))
+PY
+  )
+  pi_used_provider="${pi_metadata[0]:-}"
+  pi_used_model="${pi_metadata[1]:-}"
+  pi_used_thinking="${pi_metadata[2]:-}"
+  pi_stop_reason="${pi_metadata[3]:-}"
+  if [[ -f "$final_message_file" ]]; then
+    chmod 600 "$final_message_file"
+  fi
+fi
+
 after_head="$(git -C "$work_dir" rev-parse HEAD 2>/dev/null || true)"
 after_ref="$(git -C "$work_dir" symbolic-ref -q HEAD 2>/dev/null || true)"
 
@@ -393,6 +514,10 @@ elif [[ "$timed_out" = true ]]; then
 elif [[ "$target_exit" -ne 0 ]]; then
   status="failed"
   adapter_exit="$target_exit"
+elif [[ "$pi_stop_reason" =~ ^(error|aborted|length)$ ]]; then
+  # Pi's JSON mode exits 0 for these stops; its text mode would exit 1.
+  status="failed"
+  adapter_exit=1
 else
   if ! after_fingerprint="$(reviewable_fingerprint)"; then
     status="git_inspection_failed"
@@ -418,7 +543,20 @@ chmod 600 "$record_tmp"
   printf '  "started_at":"%s",\n' "$(json_escape "$started_at")"
   printf '  "finished_at":"%s",\n' "$(json_escape "$finished_at")"
   printf '  "output_file":"%s",\n' "$(json_escape "$output_file")"
-  printf '  "task_package_file":"%s"\n' "$(json_escape "$task_package_file")"
+  if [[ "$executor" = "pi" ]]; then
+    printf '  "task_package_file":"%s",\n' "$(json_escape "$task_package_file")"
+    printf '  "provider":%s,\n' "$(json_string_or_null "$pi_used_provider")"
+    printf '  "model":%s,\n' "$(json_string_or_null "$pi_used_model")"
+    printf '  "thinking_level":%s,\n' "$(json_string_or_null "$pi_used_thinking")"
+    printf '  "stop_reason":%s,\n' "$(json_string_or_null "$pi_stop_reason")"
+    if [[ -f "$final_message_file" ]]; then
+      printf '  "final_message_file":"%s"\n' "$(json_escape "$final_message_file")"
+    else
+      printf '  "final_message_file":null\n'
+    fi
+  else
+    printf '  "task_package_file":"%s"\n' "$(json_escape "$task_package_file")"
+  fi
   printf '}\n'
 } >"$record_tmp"
 mv -f "$record_tmp" "$record_file"
@@ -444,8 +582,13 @@ case "$status" in
       "$record_file" >&2
     ;;
   failed)
-    printf 'ERROR: executor exited %s; record: %s\n' \
-      "$target_exit" "$record_file" >&2
+    if [[ "$target_exit" -eq 0 ]]; then
+      printf 'ERROR: executor stopped with reason %s; record: %s\n' \
+        "$pi_stop_reason" "$record_file" >&2
+    else
+      printf 'ERROR: executor exited %s; record: %s\n' \
+        "$target_exit" "$record_file" >&2
+    fi
     ;;
 esac
 

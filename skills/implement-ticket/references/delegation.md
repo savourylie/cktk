@@ -4,11 +4,19 @@ Read only for `via <executor>`. Delegation is single-ticket implementation; the 
 
 ## Validate before setup
 
-Parse the final `via <executor>` clause before interpreting the base branch. Accept `codex`, `claude`, or `grok` case-insensitively. Reject a duplicate `via`, a missing or unknown executor, tokens after the executor, or ambiguous multi-ticket delegation. Do not reinterpret an invalid executor as a base branch.
+Parse the final `via <executor>` clause before interpreting the base branch. Accept `codex`, `claude`, `grok`, or `pi` case-insensitively. Reject a duplicate `via`, a missing or unknown executor, tokens after the executor, or ambiguous multi-ticket delegation. Do not reinterpret an invalid executor as a base branch.
 
-Determine `current_host` from the invoking runtime, not installed CLIs. Use `codex`, `claude`, or `grok` for those hosts; another identified host may use its lowercase identifier, such as `opencode` or `antigravity`. The host is a label, not another executor choice: `via` still supports only the three validated CLIs. If executor equals current host, ask the user to omit `via` for native implementation. Do not silently choose a different executor.
+Determine `current_host` from the invoking runtime, not installed CLIs. Use `codex`, `claude`, `grok`, or `pi` for those hosts; another identified host may use its lowercase identifier, such as `opencode` or `antigravity`. The host is a label, not another executor choice: `via` still supports only the four validated CLIs. If executor equals current host, ask the user to omit `via` for native implementation. Do not silently choose a different executor.
 
 Resolve `scripts/run-ticket-executor.sh` from the loaded skill's real directory, following installation symlinks, never from the target project's code. Check adapter and target CLI availability before starting workspace or Linear-state mutations. The adapter owns supported command templates and version validation; inspect it when the installed version needs checking.
+
+### Pi has no sandbox
+
+`via pi` runs the Pi coding agent with no sandbox and no per-action approval: its tools act with the user's full permissions. The adapter passes `--no-approve`, so the checkout's `.pi/` settings, extensions, skills, and prompts never load into the executor, and `--no-session`, so no Pi session is saved. Repository context files such as `AGENTS.md` still load, as they do for the other executors.
+
+Strongly recommend `worktree` with `via pi`. Without it, say before launch that Pi will edit the current checkout directly, alongside any pre-existing changes, and suggest `worktree`; continue unless the user changes the request. A worktree confines the diff and protects the main checkout's uncommitted work; it is not a security boundary, because Pi can still reach any path the user can.
+
+Pi uses its own default provider, model, and thinking level. Set `CKTK_PI_MODEL` (and optionally `CKTK_PI_PROVIDER`, which requires a model) or `CKTK_PI_THINKING` in the adapter's environment only when the user names one; otherwise leave them unset. The adapter needs `python3` to read Pi's JSON output. A Pi record adds the `provider`, `model`, `thinking_level`, and `stop_reason` of Pi's last response and a `final_message_file` holding its final text; report the model and thinking level with the outcome. A model error or truncated response is recorded as `failed` even though Pi itself exits 0.
 
 ## Package the agreed task
 

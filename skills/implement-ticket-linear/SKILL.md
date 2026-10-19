@@ -1,6 +1,6 @@
 ---
 name: implement-ticket-linear
-description: "Implement a Linear issue in its project business context, including issues in Backlog, with validation and review. Supports worktree isolation and optional delegation via codex, claude, or grok. Requires Linear MCP. Use for implement-ticket-linear or requests to implement a Linear issue."
+description: "Implement a Linear issue in its project business context, including issues in Backlog, with validation and review. Supports worktree isolation and optional delegation via codex, claude, grok, or pi. Requires Linear MCP. Use for implement-ticket-linear or requests to implement a Linear issue."
 ---
 
 # Implement a Linear Issue
@@ -15,7 +15,7 @@ Accept `<issue> [worktree] [base] [via <executor>]` from the invocation argument
 
 Preserve `<issue>`, `<issue> <base>`, `<issue> worktree`, and `<issue> worktree <base>`. The case-insensitive `worktree` keyword requests isolation; its default base remains `main`. Current-checkout mode defaults to current HEAD. An explicit base must resolve.
 
-A final `via <executor>` supports `codex`, `claude`, or `grok`; read [delegation](references/delegation.md) and validate it before setup. Process a bounded multi-issue set only when explicitly requested, resolving its order and prerequisite integration per issue rather than silently stacking branches.
+A final `via <executor>` supports `codex`, `claude`, `grok`, or `pi`; read [delegation](references/delegation.md) and validate it before setup. Process a bounded multi-issue set only when explicitly requested, resolving its order and prerequisite integration per issue rather than silently stacking branches.
 
 Use available authenticated Linear MCP tools and their actual schemas. If issue reads are unavailable, report that blocker; do not invent an API-key, CLI, browser, or local-ticket fallback. This skill does not use `docs/tickets/` as its issue source.
 

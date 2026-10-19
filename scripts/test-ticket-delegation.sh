@@ -11,6 +11,9 @@ repo="$tmp/repo"
 task_file="$tmp/ticket-task.md"
 tests=0
 
+# Pi overrides come only from the cases that set them.
+unset CKTK_PI_MODEL CKTK_PI_PROVIDER CKTK_PI_THINKING
+
 cleanup() {
   if [[ "${KEEP_TEST_TMP:-0}" = "1" ]]; then
     printf 'Kept test directory: %s\n' "$tmp" >&2
@@ -87,6 +90,7 @@ run_case() {
     FAKE_AGENT_EXIT_CODE="${FAKE_AGENT_EXIT_CODE:-0}" \
     FAKE_AGENT_VERSION_EXIT_CODE="${FAKE_AGENT_VERSION_EXIT_CODE:-0}" \
     FAKE_AGENT_CHANGE_FILE="${FAKE_AGENT_CHANGE_FILE:-}" \
+    FAKE_AGENT_STDOUT_FILE="${FAKE_AGENT_STDOUT_FILE:-}" \
     /bin/bash "$adapter" "$@" >"$stdout" 2>"$stderr"
   actual_exit=$?
   set -e
@@ -126,6 +130,9 @@ fi
   printf '\n'
 } >"${FAKE_AGENT_LOG:?}"
 cat >"${FAKE_AGENT_STDIN:?}"
+if [[ -n "${FAKE_AGENT_STDOUT_FILE:-}" ]]; then
+  cat "$FAKE_AGENT_STDOUT_FILE"
+fi
 
 case "${FAKE_AGENT_MODE:-success}" in
   success)
@@ -160,13 +167,27 @@ esac
 exit "${FAKE_AGENT_EXIT_CODE:-0}"
 FAKE
 chmod +x "$fake_bin/fake-agent"
-for executor_name in codex claude grok; do
+for executor_name in codex claude grok pi; do
   ln -s fake-agent "$fake_bin/$executor_name"
 done
 
 cat >"$task_file" <<EOF
 Implement the ticket acceptance criteria.
 Keep this literal: \$(touch "$tmp/INJECTED")
+EOF
+
+# Pi's JSON event stream, abridged to the events the adapter reads. Stderr
+# shares the output capture, so a non-JSON line is mixed in.
+cat >"$tmp/pi-events.jsonl" <<'EOF'
+{"type":"session","version":3,"id":"fake-session"}
+pi: warming up provider
+{"type":"message_end","message":{"role":"user","content":[{"type":"text","text":"task"}]}}
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"Calling a tool."}],"provider":"fake-provider","model":"fake-model-1","thinkingLevel":"low","stopReason":"toolUse"}}
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"thinking","thinking":"hidden"},{"type":"text","text":"Implemented the ticket."}],"provider":"fake-provider","model":"fake-model-2","thinkingLevel":"xhigh","stopReason":"stop"}}
+{"type":"agent_end"}
+EOF
+cat >"$tmp/pi-error-events.jsonl" <<'EOF'
+{"type":"message_end","message":{"role":"assistant","content":[],"provider":"fake-provider","model":"fake-model-2","thinkingLevel":"xhigh","stopReason":"error","errorMessage":"429 rate limited"}}
 EOF
 
 system_path="/usr/bin:/bin"
@@ -315,9 +336,226 @@ assert_contains "$tmp/grok-success.fake.log" \
 assert_json_field "$tmp/grok-success.json" status completed
 pass "Claude and Grok use fixed invocation templates"
 
-# A target failure is recorded and returned without retrying.
+# Pi runs headless from stdin, without a saved session or project-local
+# resources, and keeps Pi's own model selection unless the host overrides it.
 git -C "$repo" add grok-change.txt
 git -C "$repo" commit -qm "reset after grok fixture"
+FAKE_AGENT_MODE=success \
+FAKE_AGENT_EXIT_CODE=0 \
+FAKE_AGENT_CHANGE_FILE="$repo/pi-change.txt" \
+FAKE_AGENT_STDOUT_FILE="$tmp/pi-events.jsonl" \
+  run_case pi-success 0 "$test_path" \
+    --host claude \
+    --executor pi \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-success.json" \
+    --timeout-seconds 5
+grep -Fxq -- "argv: <--print> <--mode> <json> <--no-session> <--no-approve>" \
+  "$tmp/pi-success.fake.log" ||
+  fail "Pi did not receive exactly its default template"
+assert_contains "$tmp/pi-success.fake.stdin" \
+  "must not commit, push, merge, delete a worktree, or change ticket status"
+assert_contains "$tmp/pi-success.fake.stdin" \
+  "\$(touch \"$tmp/INJECTED\")"
+assert_not_exists "$tmp/INJECTED"
+assert_json_field "$tmp/pi-success.json" executor pi
+assert_json_field "$tmp/pi-success.json" host claude
+assert_json_field "$tmp/pi-success.json" status completed
+assert_json_field "$tmp/pi-success.json" exit_code 0
+assert_json_field "$tmp/pi-success.json" provider fake-provider
+assert_json_field "$tmp/pi-success.json" model fake-model-2
+assert_json_field "$tmp/pi-success.json" thinking_level xhigh
+assert_json_field "$tmp/pi-success.json" stop_reason stop
+pi_final="$(json_field "$tmp/pi-success.json" final_message_file)"
+[[ "$(cat "$pi_final")" = "Implemented the ticket." ]] ||
+  fail "Pi final message was not extracted from the last assistant message"
+pass "Pi uses a fixed stdin template and records the model it used"
+
+git -C "$repo" add pi-change.txt
+git -C "$repo" commit -qm "reset after pi fixture"
+CKTK_PI_PROVIDER=openrouter \
+CKTK_PI_MODEL=anthropic/claude-sonnet-4 \
+CKTK_PI_THINKING=high \
+FAKE_AGENT_MODE=success \
+FAKE_AGENT_EXIT_CODE=0 \
+FAKE_AGENT_CHANGE_FILE="$repo/pi-model-change.txt" \
+  run_case pi-model-override 0 "$test_path" \
+    --host codex \
+    --executor pi \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-model-override.json" \
+    --timeout-seconds 5
+assert_contains "$tmp/pi-model-override.fake.log" \
+  "argv: <--print> <--mode> <json> <--no-session> <--no-approve> <--provider> <openrouter> <--model> <anthropic/claude-sonnet-4> <--thinking> <high>"
+assert_json_field "$tmp/pi-model-override.json" status completed
+pass "Pi model, provider, and thinking overrides are passed as fixed arguments"
+
+# Override values are validated before CLI discovery or launch.
+CKTK_PI_PROVIDER=openrouter \
+  run_case pi-provider-without-model 2 "$test_path" \
+    --host claude \
+    --executor pi \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-provider-without-model.json"
+assert_contains "$tmp/pi-provider-without-model.stderr" \
+  "CKTK_PI_PROVIDER requires CKTK_PI_MODEL"
+assert_not_exists "$tmp/pi-provider-without-model.fake.log"
+assert_not_exists "$tmp/pi-provider-without-model.task.md"
+CKTK_PI_MODEL=--approve \
+  run_case pi-invalid-model 2 "$test_path" \
+    --host claude \
+    --executor pi \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-invalid-model.json"
+assert_contains "$tmp/pi-invalid-model.stderr" "invalid CKTK_PI_MODEL: --approve"
+assert_not_exists "$tmp/pi-invalid-model.fake.log"
+CKTK_PI_THINKING=extreme \
+  run_case pi-invalid-thinking 2 "$test_path" \
+    --host claude \
+    --executor pi \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-invalid-thinking.json"
+assert_contains "$tmp/pi-invalid-thinking.stderr" \
+  "invalid CKTK_PI_THINKING: extreme"
+assert_not_exists "$tmp/pi-invalid-thinking.fake.log"
+pass "invalid Pi overrides fail before launch"
+
+# A Pi host cannot delegate to Pi, near-miss names are not Pi, and a Pi host
+# can still delegate to another executor.
+run_case pi-same-host 3 "$test_path" \
+  --host pi \
+  --executor pi \
+  --work-dir "$repo" \
+  --task-file "$task_file" \
+  --record-file "$tmp/pi-same-host.json"
+assert_contains "$tmp/pi-same-host.stderr" \
+  "executor 'pi' is the current host; omit via to use native implementation"
+assert_not_exists "$tmp/pi-same-host.fake.log"
+run_case pi-unknown-executor 3 "$test_path" \
+  --host claude \
+  --executor pi-mono \
+  --work-dir "$repo" \
+  --task-file "$task_file" \
+  --record-file "$tmp/pi-unknown-executor.json"
+assert_contains "$tmp/pi-unknown-executor.stderr" \
+  "unsupported executor: pi-mono"
+assert_not_exists "$tmp/pi-unknown-executor.fake.log"
+git -C "$repo" add pi-model-change.txt
+git -C "$repo" commit -qm "reset after pi override fixture"
+FAKE_AGENT_MODE=success \
+FAKE_AGENT_EXIT_CODE=0 \
+FAKE_AGENT_CHANGE_FILE="$repo/pi-host-change.txt" \
+  run_case pi-host 0 "$test_path" \
+    --host pi \
+    --executor claude \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-host.json" \
+    --timeout-seconds 5
+assert_json_field "$tmp/pi-host.json" host pi
+assert_json_field "$tmp/pi-host.json" executor claude
+assert_json_field "$tmp/pi-host.json" status completed
+pass "Pi host and executor names are validated"
+
+run_case pi-missing-cli 4 "$system_path" \
+  --host claude \
+  --executor pi \
+  --work-dir "$repo" \
+  --task-file "$task_file" \
+  --record-file "$tmp/pi-missing-cli.json"
+assert_contains "$tmp/pi-missing-cli.stderr" \
+  "Pi coding agent CLI is not installed (expected command: pi)"
+assert_not_exists "$tmp/pi-missing-cli.task.md"
+pass "a missing Pi CLI fails before launch"
+
+# Pi outcomes share the adapter's Git and timeout classification.
+git -C "$repo" add pi-host-change.txt
+git -C "$repo" commit -qm "reset after pi host fixture"
+FAKE_AGENT_MODE=success \
+FAKE_AGENT_EXIT_CODE=0 \
+FAKE_AGENT_CHANGE_FILE="" \
+  run_case pi-no-change 6 "$test_path" \
+    --host claude \
+    --executor pi \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-no-change.json"
+assert_json_field "$tmp/pi-no-change.json" status no_changes
+assert_json_field "$tmp/pi-no-change.json" executor pi
+assert_json_field "$tmp/pi-no-change.json" model None
+assert_json_field "$tmp/pi-no-change.json" final_message_file None
+
+before_pi_commit_head="$(git -C "$repo" rev-parse HEAD)"
+FAKE_AGENT_MODE=commit \
+FAKE_AGENT_EXIT_CODE=0 \
+FAKE_AGENT_CHANGE_FILE="$repo/pi-forbidden.txt" \
+  run_case pi-forbidden 7 "$test_path" \
+    --host claude \
+    --executor pi \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-forbidden.json"
+assert_json_field "$tmp/pi-forbidden.json" status forbidden_git_state
+assert_json_field "$tmp/pi-forbidden.json" exit_code 0
+[[ "$(git -C "$repo" rev-parse HEAD)" != "$before_pi_commit_head" ]] ||
+  fail "adapter discarded Pi's forbidden commit"
+
+FAKE_AGENT_MODE=sleep \
+FAKE_AGENT_EXIT_CODE=0 \
+FAKE_AGENT_CHANGE_FILE="" \
+  run_case pi-timeout 5 "$test_path" \
+    --host claude \
+    --executor pi \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-timeout.json" \
+    --timeout-seconds 1
+assert_json_field "$tmp/pi-timeout.json" status timed_out
+assert_json_field "$tmp/pi-timeout.json" exit_code 5
+[[ "$(wc -l <"$tmp/pi-timeout.fake.log" | tr -d ' ')" = "1" ]] ||
+  fail "timed-out Pi run was retried"
+pass "Pi no-change, forbidden commit, and timeout outcomes are classified"
+
+# Pi's JSON mode exits 0 when the model call ends in an error; the adapter
+# reads the stop reason so the run is not mistaken for a no-change success.
+FAKE_AGENT_MODE=success \
+FAKE_AGENT_EXIT_CODE=0 \
+FAKE_AGENT_CHANGE_FILE="" \
+FAKE_AGENT_STDOUT_FILE="$tmp/pi-error-events.jsonl" \
+  run_case pi-error-stop 1 "$test_path" \
+    --host claude \
+    --executor pi \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-error-stop.json"
+assert_json_field "$tmp/pi-error-stop.json" status failed
+assert_json_field "$tmp/pi-error-stop.json" exit_code 0
+assert_json_field "$tmp/pi-error-stop.json" stop_reason error
+assert_contains "$tmp/pi-error-stop.stderr" \
+  "executor stopped with reason error"
+assert_contains "$(json_field "$tmp/pi-error-stop.json" final_message_file)" \
+  "429 rate limited"
+pass "a Pi model error is recorded as a failure"
+
+# Records for other executors keep their existing fields.
+python3 - "$tmp/codex-success.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    record = json.load(handle)
+extra = {"provider", "model", "thinking_level", "stop_reason", "final_message_file"} & set(record)
+if extra:
+    raise SystemExit(f"non-Pi record gained Pi fields: {sorted(extra)}")
+PY
+pass "non-Pi records keep their existing fields"
+
+# A target failure is recorded and returned without retrying.
 FAKE_AGENT_MODE=success \
 FAKE_AGENT_EXIT_CODE=23 \
 FAKE_AGENT_CHANGE_FILE="" \
