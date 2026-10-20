@@ -642,4 +642,52 @@ timeout_output="$(json_field "$tmp/timeout.json" output_file)"
   fail "timed-out target was retried"
 pass "timeouts are bounded, recorded, and not retried"
 
+# --check validates and discovers without packaging, launching, or a work
+# directory, so callers can confirm an executor before any mutation.
+check_files_before="$(ls "$tmp" | wc -l | tr -d ' ')"
+run_case check-pi 0 "$test_path" \
+  --check \
+  --host claude \
+  --executor PI
+assert_contains "$tmp/check-pi.stdout" \
+  "Pi coding agent CLI is available for host claude: $fake_bin/pi"
+assert_not_exists "$tmp/check-pi.fake.log"
+[[ "$(ls "$tmp" | grep -vc '^check-pi\.')" = "$check_files_before" ]] ||
+  fail "--check created files besides its own captured output"
+run_case check-same-host 3 "$test_path" \
+  --check \
+  --host pi \
+  --executor pi
+assert_contains "$tmp/check-same-host.stderr" \
+  "executor 'pi' is the current host"
+run_case check-unsupported 3 "$test_path" \
+  --check \
+  --host claude \
+  --executor pi-mono
+run_case check-missing-cli 4 "$system_path" \
+  --check \
+  --host claude \
+  --executor codex
+assert_contains "$tmp/check-missing-cli.stderr" "Codex CLI is not installed"
+FAKE_AGENT_VERSION_EXIT_CODE=41 \
+  run_case check-failed-version 4 "$test_path" \
+    --check \
+    --host codex \
+    --executor grok
+CKTK_PI_THINKING=extreme \
+  run_case check-invalid-override 2 "$test_path" \
+    --check \
+    --host claude \
+    --executor pi
+assert_contains "$tmp/check-invalid-override.stderr" \
+  "invalid CKTK_PI_THINKING: extreme"
+run_case check-with-run-arguments 2 "$test_path" \
+  --check \
+  --host claude \
+  --executor pi \
+  --work-dir "$repo"
+assert_contains "$tmp/check-with-run-arguments.stderr" \
+  "--check takes only --host and --executor"
+pass "--check validates and discovers an executor without launching it"
+
 printf '1..%d\n' "$tests"

@@ -7,19 +7,26 @@
 At every start and resume, from `MAIN_ROOT`:
 
 1. Load `$RUN_DIR/plan.json`. If it is missing, or its `repo` is not this `MAIN_ROOT`, or `.ai/cktk/project.json` binds this scope `read-only`, [halt](stopping.md#halt-the-run).
-2. Take the lock:
+2. Check the executor against the `RUN:` line, passing its `VIA` value or an empty string:
+
+   ```sh
+   python3 "$SKILL_DIR/scripts/backlog_graph.py" check-run --plan "$RUN_DIR/plan.json" --host <host> --via "<VIA from the RUN line>"
+   ```
+
+   Exit 3 halts. `via-mismatch` means the line and the plan disagree, a missing `VIA` included: the plan's `executor` is what the user confirmed, so the halt report ends with the `/goal` line that carries it. `executor-is-host` means this resume runs in the executor's own host: resume from another host, or plan again without `VIA`. When the output names an executor, also run the adapter check from [planning](planning.md#resolve-the-scope) with this host; a non-zero exit halts. Every `RUN:` invocation does both before any write, because a resume can run in a different host or environment from the plan.
+3. Take the lock:
 
    ```sh
    python3 "$SKILL_DIR/scripts/backlog_graph.py" lock --runs-dir "$RUNS" --run-id <run-id> --host <host>
    ```
 
    Exit 3 means another run holds `$RUNS/ACTIVE`: halt and name that file, which the user removes if that session is gone. A lock that names this run is a resume, and the command takes it over. Then clear `$RUN_DIR/dispatched/`: a new `RUN:` invocation cannot own subagents started by an earlier one. To continue a paused goal, use the host's resume instead of invoking `RUN:` again.
-3. [Refresh the state](#refresh-the-state). Issues it reports as removed leave the plan; nothing is ever added.
-4. The main checkout must be on the base and clean. Switch a clean checkout on another branch to the base, and say so. Any other change halts the run, except one state that step 6 repairs: `.gitignore` lacks the `.worktrees/` line or carries it as its only uncommitted change, and the only other entry is an untracked `.worktrees/`.
-5. When `origin` exists, fetch `origin/<base>`. Fast-forward a local base that is behind; halt if the two have diverged.
-6. If the committed `.gitignore` on the base lacks `.worktrees/`, add that line, then commit only that file with the message `chore: ignore .worktrees/`. Do this before any worktree exists; otherwise every subagent's worktree setup edits the same file.
-7. Make sure the team has the label `human-blocked`. If it is missing, create it as a team label with the current label tool, such as `save_issue_label`.
-8. Find the host's subagent facility. Without one, run with `PARALLEL` 1 and implement each issue in this session, in plan order, under the implementation brief's limits.
+4. [Refresh the state](#refresh-the-state). Issues it reports as removed leave the plan; nothing is ever added.
+5. The main checkout must be on the base and clean. Switch a clean checkout on another branch to the base, and say so. Any other change halts the run, except one state that step 7 repairs: `.gitignore` lacks the `.worktrees/` line or carries it as its only uncommitted change, and the only other entry is an untracked `.worktrees/`.
+6. When `origin` exists, fetch `origin/<base>`. Fast-forward a local base that is behind; halt if the two have diverged.
+7. If the committed `.gitignore` on the base lacks `.worktrees/`, add that line, then commit only that file with the message `chore: ignore .worktrees/`. Do this before any worktree exists; otherwise every subagent's worktree setup edits the same file.
+8. Make sure the team has the label `human-blocked`. If it is missing, create it as a team label with the current label tool, such as `save_issue_label`.
+9. Find the host's subagent facility. Without one, run with `PARALLEL` 1 and implement each issue in this session, in plan order, under the implementation brief's limits, including its executor.
 
 ## Refresh the state
 
@@ -50,7 +57,7 @@ Act on its output:
 
 ## Dispatch
 
-Keep up to `PARALLEL` subagents busy, one issue each, and fill a free slot as soon as an issue is ready. Use the implementation brief in [subagent briefs](subagent-briefs.md). Before dispatching an issue, create the marker `$RUN_DIR/dispatched/<ISSUE>`, and remove it once the issue's result is routed: landed, parked, or renamed for a retry. The markers keep an issue from being dispatched twice after this session's context is compacted.
+Keep up to `PARALLEL` subagents busy, one issue each, and fill a free slot as soon as an issue is ready. Use the implementation brief in [subagent briefs](subagent-briefs.md), with the plan's `executor` when it has one; that subagent then delegates only the implementation step and keeps its other work. The repair brief in the [merge queue](merge-queue.md) never takes an executor. Before dispatching an issue, create the marker `$RUN_DIR/dispatched/<ISSUE>`, and remove it once the issue's result is routed: landed, parked, or renamed for a retry. The markers keep an issue from being dispatched twice after this session's context is compacted.
 
 Before dispatching a ready issue, look for `$RUN_DIR/results/<ISSUE>.json` from an earlier session: a `complete` result whose commits are on the issue's branch goes straight to the [merge queue](merge-queue.md), and counts as in flight. A started issue with a worktree or branch but no usable result is dispatched again; `implement-ticket-linear` continues its existing work.
 

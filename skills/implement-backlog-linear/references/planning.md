@@ -14,6 +14,14 @@ Read applicable repository instructions. If `.ai/cktk/project.json` exists, read
 
 Resolve the invoking Linear user (the `me` user) for the assignment check.
 
+With `VIA`, check the executor before gathering anything, against the invoking runtime as `current_host` in `implement-ticket`'s [delegation](../../implement-ticket/references/delegation.md) terms:
+
+```sh
+bash "$SKILL_DIR/../implement-ticket/scripts/run-ticket-executor.sh" --check --host "<host>" --executor "<executor>"
+```
+
+Exit 3 means the executor is unsupported or is this host, exit 4 that its CLI (or, for `pi`, `python3`) is unusable, and exit 2 an invalid `CKTK_PI_*` override. Report the message and stop; do not plan a native run in its place.
+
 ## Gather the snapshot
 
 1. List the scope's open issues with one `list_issues` call per state type — `triage`, `backlog`, `unstarted`, and `started` — filtered by the team and, when given, the project. Follow every page. Request `id`, `title`, `statusType`, `labels`, `assigneeId`, `project`, and `parentId`.
@@ -64,10 +72,10 @@ Each relation read returns the issue's whole body. When more than about 20 issue
 python3 "$SKILL_DIR/scripts/backlog_graph.py" plan \
   --snapshot "$MAIN_ROOT/.worktrees/.cktk/runs/snapshot-input.json" \
   --runs-dir "$MAIN_ROOT/.worktrees/.cktk/runs" \
-  --repo "$MAIN_ROOT" --base "<base>" --parallel <n> --host "<host>"
+  --repo "$MAIN_ROOT" --base "<base>" --parallel <n> --host "<host>" [--executor "<executor>"]
 ```
 
-`<host>` is the invoking runtime, such as `claude` or `codex`. With `--repo`, the planner finds local work — registered `.worktrees/<ID>-*` worktrees and `linear-<ID>-*` branches — so that an issue an earlier run left started can resume. It also records the base tip as `base_sha`, so that execution counts only landings made after the plan.
+`<host>` is the invoking runtime, such as `claude` or `codex`. Pass `--executor` only with `VIA`; the plan stores it as `executor`, which execution follows. With `--repo`, the planner finds local work — registered `.worktrees/<ID>-*` worktrees and `linear-<ID>-*` branches — so that an issue an earlier run left started can resume. It also records the base tip as `base_sha`, so that execution counts only landings made after the plan.
 
 The output's `status` decides what follows:
 
@@ -95,6 +103,7 @@ In the user's language, show:
 
 - the run id, the scope — for an epic, its identifier, title, and project; for listed issues, the list — and the result of the binding check;
 - `PARALLEL`, recommending 1 when repository instructions show tests that share a port, database, or other fixed resource. The plan stores the value, so taking the recommendation means planning again with `PARALLEL: 1`;
+- with `VIA`, the executor, and that up to `PARALLEL` of its CLIs run at once against one provider account, so a lower value avoids rate limits. The executor's own configuration chooses its model, except for any `CKTK_PI_*` override. Every issue still runs in its own worktree, which matters for `pi`, which has no sandbox;
 - `layers`: each issue with its title and its in-plan blockers from `edges`. Layers are for reading; execution starts an issue as soon as its blockers land;
 - `excluded`, grouped by reason, with the blocking path for dependency exclusions, such as `ENG-24 ← ENG-23 ← ENG-20`;
 - the preparatory writes execution may make: committing `.worktrees/` to `.gitignore` on the base when the line is missing, and creating the team label `human-blocked` when it is missing;
@@ -117,6 +126,12 @@ Otherwise, end with the `/goal` line. Localize its words but keep the quoted tok
 
 ```text
 /goal Run /implement-backlog-linear RUN: <run-id> until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"
+```
+
+With `VIA`, the line carries the executor right after the run id, so a resumed or compacted run cannot fall back to native implementation:
+
+```text
+/goal Run /implement-backlog-linear RUN: <run-id> VIA: <executor> until its latest STATUS line shows "AI-ELIGIBLE 0" or "HALTED"
 ```
 
 Pasting that line is the user's confirmation. Do not start execution from a planning run.

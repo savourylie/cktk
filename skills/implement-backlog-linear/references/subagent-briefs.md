@@ -15,7 +15,8 @@ Finish by writing `<RUN_DIR>/results/<NAME>.json` — first as `<NAME>.json.tmp`
   "commits": ["<sha>"],
   "checks": [{"command": "npm test", "result": "pass"}],
   "business_summary": "One or two sentences on what this now lets users do.",
-  "blocker": null
+  "blocker": null,
+  "delegation": null
 }
 ```
 
@@ -28,6 +29,8 @@ Finish by writing `<RUN_DIR>/results/<NAME>.json` — first as `<NAME>.json.tmp`
 
 A `blocker` has `kind` (`decision`, `environment`, `defect`, or `prerequisite`), `question`, `evidence`, `options`, and `suggestion`.
 
+`delegation` is `null` for native implementation. With an executor it is `{"executor": "<executor>", "record": "<absolute path to the adapter's <stem>.json>"}`; for `pi`, the record also names the model and thinking level that ran.
+
 ## Implementation brief
 
 ```text
@@ -39,15 +42,31 @@ Main repository: <MAIN_ROOT>
 Base: <BASE>
 Skill: read <CKTK_ROOT>/skills/implement-ticket-linear/SKILL.md and follow it.
 
-1. Run implement-ticket-linear with the arguments "<ISSUE> worktree <BASE>". It creates or reuses <MAIN_ROOT>/.worktrees/<ISSUE>-<slug> on the branch linear-<ISSUE>-<slug>. Work only in that worktree.
+1. Run implement-ticket-linear with the arguments "<ISSUE> worktree <BASE><VIA_CLAUSE>". It creates or reuses <MAIN_ROOT>/.worktrees/<ISSUE>-<slug> on the branch linear-<ISSUE>-<slug>. Work only in that worktree.
 2. You are authorized to commit this issue's changes in that worktree through commit-ticket, and to make the start transition implement-ticket-linear performs. You are not authorized to merge, push, open a pull request, change any other Linear state, post comments, or change labels.
 3. Where implement-ticket-linear says to stop and ask the user — a business contradiction, a missing decision, missing required acceptance — stop without waiting, and put the question, the evidence, and the options in the result.
 4. <NAME> is <ISSUE>.
+<delegation section>
 
 <result-file section>
 ```
 
+`<VIA_CLAUSE>` is ` via <EXECUTOR>` when the plan has an `executor`, and empty otherwise. Paste the delegation section below where the brief says so only with an executor; otherwise drop that line. `<HOST>` is the runtime running this `RUN:`, which can differ from the one that planned it.
+
+### Delegation section
+
+```text
+5. Delegate only the implementation step, to <EXECUTOR>, through implement-ticket-linear's delegation reference; your current_host is <HOST>. Use <RUN_DIR>/delegation/<ISSUE> as its diagnostics directory, never a directory inside the worktree: the merge queue lands only a clean worktree. You still prepare the worktree, verify, review with review-ticket, fix what you find, and commit; never commit the diagnostics.
+6. Run the adapter once. Do not retry it, and do not implement natively in its place. Map an outcome other than completed:
+   - failed, timed_out, or git_inspection_failed: verdict failed, with the record's status and the executor's error in blocker.evidence and blocker.kind environment.
+   - no_changes: complete with empty commits only when acceptance is already met; otherwise incomplete, blocker.kind defect.
+   - forbidden_git_state: incomplete, blocker.kind defect, naming the commit or branch change the executor made. Do not reset or remove it.
+7. Set delegation in the result to the executor and the record path, whatever the outcome.
+```
+
 ## Repair brief
+
+The repair brief always runs natively, even when the plan has an executor.
 
 ```text
 You are repairing one issue branch so that it merges cleanly into <BASE> in an unattended backlog run. Nobody is watching this run, so never wait for an answer.

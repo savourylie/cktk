@@ -13,6 +13,13 @@ Usage:
     --record-file <absolute-file> \
     [--timeout-seconds <positive-int>]
 
+  run-ticket-executor.sh --check \
+    --host <invoking-agent-id> \
+    --executor <codex|claude|grok|pi>
+
+--check validates the executor, the host, any pi overrides, and the CLI
+discovery below, then exits 0 without packaging or launching anything.
+
 Environment (pi only; each defaults to Pi's own settings):
   CKTK_PI_MODEL     model pattern or ID passed to pi --model
   CKTK_PI_PROVIDER  provider passed to pi --provider; requires CKTK_PI_MODEL
@@ -22,7 +29,7 @@ A pi run also requires python3, which reads Pi's JSON event stream into the
 record's provider, model, thinking_level, stop_reason, and final_message_file.
 
 Exit codes:
-  0  executor completed and left reviewable changes
+  0  executor completed and left reviewable changes (with --check: executor is usable)
   2  invalid arguments
   3  unsupported executor or executor matches the invoking host
   4  executor CLI is not installed
@@ -93,6 +100,8 @@ work_dir=""
 task_file=""
 record_file=""
 timeout_seconds=1800
+timeout_given=false
+check_only=false
 
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
@@ -124,7 +133,12 @@ while [[ "$#" -gt 0 ]]; do
     --timeout-seconds)
       require_value "$1" "$#"
       timeout_seconds="$2"
+      timeout_given=true
       shift 2
+      ;;
+    --check)
+      check_only=true
+      shift
       ;;
     -h|--help)
       usage
@@ -139,9 +153,14 @@ done
 
 [[ -n "$host" ]] || die 2 "--host is required"
 [[ -n "$executor" ]] || die 2 "--executor is required"
-[[ -n "$work_dir" ]] || die 2 "--work-dir is required"
-[[ -n "$task_file" ]] || die 2 "--task-file is required"
-[[ -n "$record_file" ]] || die 2 "--record-file is required"
+if [[ "$check_only" = true ]]; then
+  [[ -z "$work_dir$task_file$record_file" && "$timeout_given" = false ]] ||
+    die 2 "--check takes only --host and --executor"
+else
+  [[ -n "$work_dir" ]] || die 2 "--work-dir is required"
+  [[ -n "$task_file" ]] || die 2 "--task-file is required"
+  [[ -n "$record_file" ]] || die 2 "--record-file is required"
+fi
 [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] ||
   die 2 "timeout seconds must be a positive integer"
 
@@ -155,19 +174,6 @@ esac
 if [[ "$executor" = "$host" ]]; then
   die 3 "executor '$executor' is the current host; omit via to use native implementation"
 fi
-
-case "$work_dir" in
-  /*) ;;
-  *) die 2 "work directory must be an absolute path: $work_dir" ;;
-esac
-case "$task_file" in
-  /*) ;;
-  *) die 2 "task file must be an absolute path: $task_file" ;;
-esac
-case "$record_file" in
-  /*) ;;
-  *) die 2 "record file must be an absolute path: $record_file" ;;
-esac
 
 pi_model="${CKTK_PI_MODEL:-}"
 pi_provider="${CKTK_PI_PROVIDER:-}"
@@ -191,6 +197,47 @@ if [[ "$executor" = "pi" ]]; then
   esac
 fi
 
+cli_label=""
+case "$executor" in
+  codex) cli_label="Codex CLI" ;;
+  claude) cli_label="Claude Code CLI" ;;
+  grok) cli_label="Grok Build CLI" ;;
+  pi) cli_label="Pi coding agent CLI" ;;
+esac
+
+executor_path=""
+discover_executor() {
+  executor_path="$(command -v "$executor" 2>/dev/null || true)"
+  [[ -n "$executor_path" ]] ||
+    die 4 "$cli_label is not installed (expected command: $executor)"
+  if ! "$executor_path" --version >/dev/null 2>&1; then
+    die 4 "$cli_label failed its version check"
+  fi
+  if [[ "$executor" = "pi" ]]; then
+    command -v python3 >/dev/null 2>&1 ||
+      die 4 "python3 is required to read $cli_label output"
+  fi
+}
+
+if [[ "$check_only" = true ]]; then
+  discover_executor
+  printf '%s is available for host %s: %s\n' "$cli_label" "$host" "$executor_path"
+  exit 0
+fi
+
+case "$work_dir" in
+  /*) ;;
+  *) die 2 "work directory must be an absolute path: $work_dir" ;;
+esac
+case "$task_file" in
+  /*) ;;
+  *) die 2 "task file must be an absolute path: $task_file" ;;
+esac
+case "$record_file" in
+  /*) ;;
+  *) die 2 "record file must be an absolute path: $record_file" ;;
+esac
+
 [[ -d "$work_dir" ]] ||
   die 2 "work directory does not exist: $work_dir"
 work_dir="$(cd "$work_dir" && pwd -P)"
@@ -206,24 +253,7 @@ repo_root="$(cd "$repo_root" && pwd -P)"
 [[ "$repo_root" = "$work_dir" ]] ||
   die 2 "work directory must be the root of the pinned git worktree: $work_dir"
 
-cli_label=""
-case "$executor" in
-  codex) cli_label="Codex CLI" ;;
-  claude) cli_label="Claude Code CLI" ;;
-  grok) cli_label="Grok Build CLI" ;;
-  pi) cli_label="Pi coding agent CLI" ;;
-esac
-
-executor_path="$(command -v "$executor" 2>/dev/null || true)"
-[[ -n "$executor_path" ]] ||
-  die 4 "$cli_label is not installed (expected command: $executor)"
-if ! "$executor_path" --version >/dev/null 2>&1; then
-  die 4 "$cli_label failed its version check"
-fi
-if [[ "$executor" = "pi" ]]; then
-  command -v python3 >/dev/null 2>&1 ||
-    die 4 "python3 is required to read $cli_label output"
-fi
+discover_executor
 
 # No task package, output capture, or process is created before CLI discovery.
 record_dir="$(dirname "$record_file")"

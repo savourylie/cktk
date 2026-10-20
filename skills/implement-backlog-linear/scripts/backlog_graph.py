@@ -28,6 +28,9 @@ ID_PREFIX = re.compile(r"^([A-Za-z][A-Za-z0-9]*-\d+)-")
 LANDED_SUBJECT = re.compile(r"^Merge linear-([A-Za-z][A-Za-z0-9]*-\d+)-\S* into (\S+)$")
 EPIC_TITLE = re.compile(r"^\s*\[epic\]", re.IGNORECASE)
 COUNT_KEYS = ("AI-ELIGIBLE", "DONE", "PARKED", "HUMAN-GATED", "BLOCKED")
+# The executors implement-ticket's run-ticket-executor.sh accepts for VIA;
+# test-backlog-graph.py keeps the two lists equal.
+EXECUTORS = ("codex", "claude", "grok", "pi")
 
 
 class InputError(Exception):
@@ -495,9 +498,26 @@ def write_json(path, data):
     os.replace(temporary, path)
 
 
+def norm_executor(value):
+    """Return the executor a VIA value names, or None when there is no VIA."""
+    if value is None or not str(value).strip():
+        return None
+    executor = str(value).strip().lower()
+    if executor not in EXECUTORS:
+        raise InputError(f"unsupported executor: {value!r}; expected one of {', '.join(EXECUTORS)}")
+    return executor
+
+
+def executor_is_host(executor, host):
+    return executor is not None and executor == str(host or "").strip().lower()
+
+
 def cmd_plan(args):
     if args.parallel < 1:
         raise InputError("--parallel must be at least 1")
+    executor = norm_executor(args.executor)
+    if executor_is_host(executor, args.host):
+        raise InputError(f"executor {executor!r} is the current host; omit VIA to implement natively")
     raw = read_json(args.snapshot)
     snapshot = load_snapshot(raw)
     if args.repo:
@@ -514,6 +534,7 @@ def cmd_plan(args):
         "base": args.base,
         "parallel": args.parallel,
         "host": args.host,
+        "executor": executor,
         "repo": os.path.realpath(args.repo) if args.repo else None,
         "base_sha": base_tip(args.repo, args.base) if args.repo else None,
         "run_id": None,
@@ -643,6 +664,23 @@ def cmd_halted(args):
     return 0
 
 
+def cmd_check_run(args):
+    """Refuse a RUN whose VIA differs from the plan's, or names the current host."""
+    plan_executor = read_json(args.plan).get("executor")
+    try:
+        via = norm_executor(args.via)
+    except InputError:
+        via = str(args.via).strip()
+    if via != plan_executor:
+        print(json.dumps({"ok": False, "reason": "via-mismatch", "plan": plan_executor, "via": via or None}))
+        return 3
+    if executor_is_host(plan_executor, args.host):
+        print(json.dumps({"ok": False, "reason": "executor-is-host", "executor": plan_executor, "host": args.host}))
+        return 3
+    print(json.dumps({"ok": True, "executor": plan_executor}))
+    return 0
+
+
 def scan_results(results_dir, known):
     new, malformed = [], []
     for path in sorted(Path(results_dir).glob("*.json")):
@@ -719,6 +757,7 @@ def build_parser():
     plan.add_argument("--base", default="main")
     plan.add_argument("--parallel", type=int, default=3)
     plan.add_argument("--host", default="unknown")
+    plan.add_argument("--executor", help="VIA executor that implements each issue; omit for native implementation")
     plan.add_argument("--now", help="ISO-8601 time; defaults to the current time")
     plan.add_argument("--dry-run", action="store_true", help="print the plan without creating a run directory")
     plan.set_defaults(handler=cmd_plan)
@@ -732,6 +771,12 @@ def build_parser():
     halted.add_argument("--plan", required=True)
     halted.add_argument("--reason", required=True)
     halted.set_defaults(handler=cmd_halted)
+
+    check = sub.add_parser("check-run", help="check a RUN's VIA against its plan and the current host")
+    check.add_argument("--plan", required=True)
+    check.add_argument("--host", required=True)
+    check.add_argument("--via", default="")
+    check.set_defaults(handler=cmd_check_run)
 
     wait = sub.add_parser("wait", help="block until a new result file appears")
     wait.add_argument("--results-dir", required=True)

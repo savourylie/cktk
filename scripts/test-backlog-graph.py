@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -667,6 +668,66 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(result.stdout.strip(),
                          "STATUS implement-backlog-linear RUN ENG-website-20260926-1430 · "
                          "HALTED · Linear access failed")
+
+
+class ExecutorTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="cktk-backlog-test-")
+        self.addCleanup(self.temp.cleanup)
+        self.dir = Path(self.temp.name).resolve()
+        self.runs = self.dir / "runs"
+        self.snapshot = self.dir / "snapshot.json"
+        self.snapshot.write_text(json.dumps(snapshot(issue("ENG-1"), requested=WEB)), encoding="utf-8")
+
+    def plan(self, *extra):
+        return run_cli("plan", "--snapshot", self.snapshot, "--runs-dir", self.runs, "--host", "claude", *extra)
+
+    def plan_file(self, executor):
+        path = self.dir / f"plan-{executor}.json"
+        path.write_text(json.dumps(dict(planned(issue("ENG-1")), executor=executor)), encoding="utf-8")
+        return path
+
+    def test_the_plan_stores_the_normalized_executor(self):
+        result = self.plan("--executor", "PI")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        stored = json.loads((Path(json.loads(result.stdout)["run_dir"]) / "plan.json").read_text(encoding="utf-8"))
+        self.assertEqual(stored["executor"], "pi")
+        self.assertIsNone(json.loads(self.plan("--dry-run").stdout)["executor"])
+
+    def test_an_unsupported_executor_or_the_host_itself_is_refused(self):
+        for executor in ("pi-mono", "claude", "Claude"):
+            result = self.plan("--executor", executor)
+            self.assertEqual(result.returncode, 2, executor)
+            self.assertFalse(self.runs.exists())
+
+    def test_check_run_accepts_a_matching_via(self):
+        for executor, via in ((None, ""), ("pi", "Pi"), ("codex", "codex")):
+            result = run_cli("check-run", "--plan", self.plan_file(executor), "--host", "claude", "--via", via)
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertEqual(json.loads(result.stdout), {"ok": True, "executor": executor})
+
+    def test_check_run_refuses_a_via_that_differs_from_the_plan(self):
+        for executor, via in (("pi", ""), (None, "pi"), ("pi", "codex"), ("pi", "pi-mono")):
+            result = run_cli("check-run", "--plan", self.plan_file(executor), "--host", "claude", "--via", via)
+            self.assertEqual(result.returncode, 3, (executor, via))
+            self.assertEqual(json.loads(result.stdout)["reason"], "via-mismatch")
+
+    def test_check_run_refuses_a_resume_whose_host_is_the_executor(self):
+        result = run_cli("check-run", "--plan", self.plan_file("claude"), "--host", "claude", "--via", "claude")
+        self.assertEqual(result.returncode, 3)
+        self.assertEqual(json.loads(result.stdout)["reason"], "executor-is-host")
+
+    def test_a_plan_from_before_via_runs_natively(self):
+        path = self.dir / "old-plan.json"
+        path.write_text(json.dumps(planned(issue("ENG-1"))), encoding="utf-8")
+        result = run_cli("check-run", "--plan", path, "--host", "codex")
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_executors_match_the_delegation_adapter(self):
+        adapter = (ROOT / "skills/implement-ticket/scripts/run-ticket-executor.sh").read_text(encoding="utf-8")
+        match = re.search(r'case "\$executor" in\n\s*([a-z|]+)\) ;;', adapter)
+        self.assertIsNotNone(match)
+        self.assertEqual(tuple(match.group(1).split("|")), graph.EXECUTORS)
 
 
 class InputValidationTests(unittest.TestCase):

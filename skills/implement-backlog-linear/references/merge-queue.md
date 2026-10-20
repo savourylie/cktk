@@ -24,7 +24,7 @@ List the issues this run landed that touch each conflicting or failing file:
 git -C "$MAIN_ROOT" log --first-parent --merges --since="<plan created_at>" --format=%s "<base>" -- "<file>"
 ```
 
-Each `Merge linear-<ID>-… into <base>` subject names one. Dispatch the repair brief from [subagent briefs](subagent-briefs.md) with those issues' intents, and wait for `<ISSUE>.repair.json` as in [execution](execution.md#wait-for-results).
+Each `Merge linear-<ID>-… into <base>` subject names one. Dispatch the repair brief from [subagent briefs](subagent-briefs.md) with those issues' intents, natively even in a run with an executor, and wait for `<ISSUE>.repair.json` as in [execution](execution.md#wait-for-results).
 
 - `complete`: rerun the checks yourself; if they pass, go to [land](#3-land).
 - Anything else, or failing checks: [park](stopping.md#park-an-issue) the issue. Run `git -C "<worktree>" merge --abort` if a merge is still unfinished; a committed repair attempt stays, and the parking comment names it. Never reset.

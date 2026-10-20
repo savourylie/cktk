@@ -23,6 +23,7 @@ Halt when a condition affects every issue:
 - the base diverges from `origin/<base>`, including a fast-forward refusal inside `merge-worktree-linear`;
 - Linear reads or writes fail for access reasons;
 - the plan is missing, belongs to another repository, or another run holds the lock;
+- the executor check fails: the `RUN:` line's `VIA` disagrees with the plan, the executor is the resuming host, or its CLI is unusable;
 - two consecutive results fail with the same environment error.
 
 Dispatch and land nothing more. Wait for running subagents to finish, as in [execution](execution.md#wait-for-results), and keep their results for the next run instead of routing them. Then release the lock, unless another run holds it:
@@ -31,7 +32,7 @@ Dispatch and land nothing more. Wait for running subagents to finish, as in [exe
 python3 "$SKILL_DIR/scripts/backlog_graph.py" unlock --runs-dir "$RUNS" --run-id <run-id>
 ```
 
-Start the report with the halted status line, then give the cause and what the user should fix, and end with the same `/goal` line so the run can resume:
+Start the report with the halted status line, then give the cause and what the user should fix, and end with the plan's `/goal` line, including `VIA: <executor>` when the plan has one, so the run can resume:
 
 ```sh
 python3 "$SKILL_DIR/scripts/backlog_graph.py" halted --plan "$RUN_DIR/plan.json" --reason "<short reason>"
@@ -39,14 +40,14 @@ python3 "$SKILL_DIR/scripts/backlog_graph.py" halted --plan "$RUN_DIR/plan.json"
 
 | Stop | Decided by | Goal state | Resume |
 | --- | --- | --- | --- |
-| Halt | This skill: continuing is unsafe | Ended, through its `HALTED` branch | Fix the cause, then paste the same `/goal` line, in either host |
+| Halt | This skill: continuing is unsafe | Ended, through its `HALTED` branch | Fix the cause, then paste the same `/goal` line, in either host other than the plan's executor |
 | Goal pause | The host: usage limit, goal-check cap, API error, check timeout | Still set, paused | Claude Code: send a message. Codex: `/goal resume` |
 
 ## Finish
 
 When the status line shows `AI-ELIGIBLE 0`, release the lock and write the final report. Start it with the status line; then, in the user's language, cover:
 
-- the issues completed in this run, each with one line of business meaning from its result;
+- the issues completed in this run, each with one line of business meaning from its result. With an executor, name it, and give each delegated issue's model and thinking level when its record names them;
 - parked issues, with the obstacle, where the work is, and the recommended resolution;
 - human-gated issues, and the issues blocked by them or by parked issues;
 - optional document follow-ups skipped because their preference is `ask`, with the prepared content saved under `$RUN_DIR/followups/`;
