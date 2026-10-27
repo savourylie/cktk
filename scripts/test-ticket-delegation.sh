@@ -12,7 +12,7 @@ task_file="$tmp/ticket-task.md"
 tests=0
 
 # Pi overrides come only from the cases that set them.
-unset CKTK_PI_MODEL CKTK_PI_PROVIDER CKTK_PI_THINKING
+unset CKTK_PI_MODEL CKTK_PI_PROVIDER CKTK_PI_THINKING CKTK_PI_USAGE_DIR
 
 cleanup() {
   if [[ "${KEEP_TEST_TMP:-0}" = "1" ]]; then
@@ -69,6 +69,52 @@ import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     print(json.load(handle)[sys.argv[2]])
+PY
+}
+
+assert_pi_usage() {
+  local file="$1"
+  local expected_cwd="$2"
+  python3 - "$file" "$expected_cwd" <<'PY' || fail "Pi usage export was invalid: $file"
+import json
+import sys
+
+path, expected_cwd = sys.argv[1:]
+with open(path, encoding="utf-8") as handle:
+    lines = [json.loads(line) for line in handle if line.strip()]
+
+assert lines[0]["type"] == "session"
+assert lines[0]["version"] == 3
+assert lines[0]["id"] == "cktk-pi-success"
+assert lines[0]["cwd"] == expected_cwd
+
+messages = [line for line in lines[1:] if line["type"] == "message"]
+expected = [
+    (100, 10, 5, 0, 115, "resp-1", "fake-model-1"),
+    (200, 20, 0, 7, 227, "resp-2", "fake-model-2"),
+]
+assert len(messages) == len(expected)
+for record, (i, o, cache_read, cache_write, total, response_id, model) in zip(
+    messages, expected
+):
+    message = record["message"]
+    assert message["role"] == "assistant"
+    assert message["usage"] == {
+        "input": i,
+        "output": o,
+        "cacheRead": cache_read,
+        "cacheWrite": cache_write,
+        "totalTokens": total,
+    }
+    assert message["provider"] == "fake-provider"
+    assert message["model"] == model
+    assert message["responseId"] == response_id
+    assert "content" not in message
+    assert record["timestamp"].endswith("Z")
+
+raw = open(path, encoding="utf-8").read()
+assert "Calling a tool." not in raw
+assert "Implemented the ticket." not in raw
 PY
 }
 
@@ -182,8 +228,8 @@ cat >"$tmp/pi-events.jsonl" <<'EOF'
 {"type":"session","version":3,"id":"fake-session"}
 pi: warming up provider
 {"type":"message_end","message":{"role":"user","content":[{"type":"text","text":"task"}]}}
-{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"Calling a tool."}],"provider":"fake-provider","model":"fake-model-1","thinkingLevel":"low","stopReason":"toolUse"}}
-{"type":"message_end","message":{"role":"assistant","content":[{"type":"thinking","thinking":"hidden"},{"type":"text","text":"Implemented the ticket."}],"provider":"fake-provider","model":"fake-model-2","thinkingLevel":"xhigh","stopReason":"stop"}}
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"Calling a tool."}],"timestamp":1760000000000,"responseId":"resp-1","provider":"fake-provider","model":"fake-model-1","thinkingLevel":"low","stopReason":"toolUse","usage":{"input":100,"output":10,"cacheRead":5,"cacheWrite":0,"totalTokens":115}}}
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"thinking","thinking":"hidden"},{"type":"text","text":"Implemented the ticket."}],"timestamp":1760000001000,"responseId":"resp-2","provider":"fake-provider","model":"fake-model-2","thinkingLevel":"xhigh","stopReason":"stop","usage":{"input":200,"output":20,"cacheRead":0,"cacheWrite":7,"totalTokens":227}}}
 {"type":"agent_end"}
 EOF
 cat >"$tmp/pi-error-events.jsonl" <<'EOF'
@@ -338,8 +384,11 @@ pass "Claude and Grok use fixed invocation templates"
 
 # Pi runs headless from stdin, without a saved session or project-local
 # resources, and keeps Pi's own model selection unless the host overrides it.
+# An opt-in usage export gives local trackers the Pi usage without persisting a
+# resumable session.
 git -C "$repo" add grok-change.txt
 git -C "$repo" commit -qm "reset after grok fixture"
+CKTK_PI_USAGE_DIR="$tmp/pi-usage" \
 FAKE_AGENT_MODE=success \
 FAKE_AGENT_EXIT_CODE=0 \
 FAKE_AGENT_CHANGE_FILE="$repo/pi-change.txt" \
@@ -370,7 +419,13 @@ assert_json_field "$tmp/pi-success.json" stop_reason stop
 pi_final="$(json_field "$tmp/pi-success.json" final_message_file)"
 [[ "$(cat "$pi_final")" = "Implemented the ticket." ]] ||
   fail "Pi final message was not extracted from the last assistant message"
+pi_usage="$(json_field "$tmp/pi-success.json" pi_usage_file)"
+[[ -f "$pi_usage" ]] || fail "Pi usage export was not written: $pi_usage"
+assert_pi_usage "$pi_usage" "$repo"
+[[ "$(json_field "$tmp/pi-success.json" pi_usage_error)" = "None" ]] ||
+  fail "Pi usage export reported an error"
 pass "Pi uses a fixed stdin template and records the model it used"
+pass "Pi writes an opt-in usage-only export without saving a session"
 
 git -C "$repo" add pi-change.txt
 git -C "$repo" commit -qm "reset after pi fixture"
@@ -390,7 +445,42 @@ FAKE_AGENT_CHANGE_FILE="$repo/pi-model-change.txt" \
 assert_contains "$tmp/pi-model-override.fake.log" \
   "argv: <--print> <--mode> <json> <--no-session> <--no-approve> <--provider> <openrouter> <--model> <anthropic/claude-sonnet-4> <--thinking> <high>"
 assert_json_field "$tmp/pi-model-override.json" status completed
+[[ "$(json_field "$tmp/pi-model-override.json" pi_usage_file)" = "None" ]] ||
+  fail "Pi wrote a usage export without CKTK_PI_USAGE_DIR"
 pass "Pi model, provider, and thinking overrides are passed as fixed arguments"
+
+# An export failure degrades to pi_usage_error without changing the outcome:
+# classification metadata is printed before the export is attempted, and a
+# read-only usage directory makes the export write fail.
+mkdir -p "$tmp/pi-usage-fail"
+chmod 500 "$tmp/pi-usage-fail"
+CKTK_PI_USAGE_DIR="$tmp/pi-usage-fail" \
+FAKE_AGENT_MODE=success \
+FAKE_AGENT_EXIT_CODE=0 \
+FAKE_AGENT_CHANGE_FILE="$repo/pi-usage-fail-change.txt" \
+FAKE_AGENT_STDOUT_FILE="$tmp/pi-events.jsonl" \
+  run_case pi-usage-failure 0 "$test_path" \
+    --host claude \
+    --executor pi \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-usage-failure.json" \
+    --timeout-seconds 5
+chmod 700 "$tmp/pi-usage-fail"
+assert_json_field "$tmp/pi-usage-failure.json" status completed
+assert_json_field "$tmp/pi-usage-failure.json" model fake-model-2
+assert_json_field "$tmp/pi-usage-failure.json" stop_reason stop
+[[ "$(json_field "$tmp/pi-usage-failure.json" pi_usage_file)" = "None" ]] ||
+  fail "Pi recorded a usage export path despite the failed write"
+pi_usage_error="$(json_field "$tmp/pi-usage-failure.json" pi_usage_error)"
+[[ -n "$pi_usage_error" && "$pi_usage_error" != "None" ]] ||
+  fail "Pi usage export failure was not recorded in pi_usage_error"
+assert_contains "$tmp/pi-usage-failure.stderr" \
+  "WARNING: Pi usage export failed:"
+assert_not_exists "$tmp/pi-usage-fail/pi-usage-failure.pi-usage.jsonl.tmp"
+git -C "$repo" add pi-usage-fail-change.txt
+git -C "$repo" commit -qm "reset after pi usage failure fixture"
+pass "a Pi usage export failure is recorded without changing the outcome"
 
 # Override values are validated before CLI discovery or launch.
 CKTK_PI_PROVIDER=openrouter \
@@ -423,6 +513,27 @@ CKTK_PI_THINKING=extreme \
 assert_contains "$tmp/pi-invalid-thinking.stderr" \
   "invalid CKTK_PI_THINKING: extreme"
 assert_not_exists "$tmp/pi-invalid-thinking.fake.log"
+CKTK_PI_USAGE_DIR=relative/pi-usage \
+  run_case pi-usage-relative 2 "$test_path" \
+    --host claude \
+    --executor pi \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-usage-relative.json"
+assert_contains "$tmp/pi-usage-relative.stderr" \
+  "CKTK_PI_USAGE_DIR must be an absolute path"
+assert_not_exists "$tmp/pi-usage-relative.fake.log"
+CKTK_PI_USAGE_DIR="$repo/pi-usage" \
+  run_case pi-usage-in-worktree 2 "$test_path" \
+    --host claude \
+    --executor pi \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/pi-usage-in-worktree.json"
+assert_contains "$tmp/pi-usage-in-worktree.stderr" \
+  "CKTK_PI_USAGE_DIR must be outside the work directory"
+assert_not_exists "$tmp/pi-usage-in-worktree.fake.log"
+assert_not_exists "$repo/pi-usage"
 pass "invalid Pi overrides fail before launch"
 
 # A Pi host cannot delegate to Pi, near-miss names are not Pi, and a Pi host

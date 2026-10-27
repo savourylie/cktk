@@ -24,9 +24,12 @@ Environment (pi only; each defaults to Pi's own settings):
   CKTK_PI_MODEL     model pattern or ID passed to pi --model
   CKTK_PI_PROVIDER  provider passed to pi --provider; requires CKTK_PI_MODEL
   CKTK_PI_THINKING  off|minimal|low|medium|high|xhigh|max, passed to pi --thinking
+  CKTK_PI_USAGE_DIR absolute directory outside the work directory for an
+                    optional usage-only Pi-format JSONL export
 
 A pi run also requires python3, which reads Pi's JSON event stream into the
-record's provider, model, thinking_level, stop_reason, and final_message_file.
+record's provider, model, thinking_level, stop_reason, pi_usage_file,
+pi_usage_error, and final_message_file.
 
 Exit codes:
   0  executor completed and left reviewable changes (with --check: executor is usable)
@@ -178,6 +181,7 @@ fi
 pi_model="${CKTK_PI_MODEL:-}"
 pi_provider="${CKTK_PI_PROVIDER:-}"
 pi_thinking="${CKTK_PI_THINKING:-}"
+pi_usage_dir="${CKTK_PI_USAGE_DIR:-}"
 if [[ "$executor" = "pi" ]]; then
   # These values become single argv entries, never shell text. The character
   # allowlists still keep them from being read as additional pi options.
@@ -195,6 +199,12 @@ if [[ "$executor" = "pi" ]]; then
     ''|off|minimal|low|medium|high|xhigh|max) ;;
     *) die 2 "invalid CKTK_PI_THINKING: $pi_thinking" ;;
   esac
+  if [[ -n "$pi_usage_dir" ]]; then
+    case "$pi_usage_dir" in
+      /*) ;;
+      *) die 2 "CKTK_PI_USAGE_DIR must be an absolute path: $pi_usage_dir" ;;
+    esac
+  fi
 fi
 
 cli_label=""
@@ -270,8 +280,30 @@ task_package_file="$artifact_prefix.task.md"
 output_file="$artifact_prefix.output.log"
 timeout_marker="$artifact_prefix.timeout"
 final_message_file="$artifact_prefix.final.md"
+run_id="cktk-$(basename "$artifact_prefix")"
+pi_usage_file=""
 
 umask 077
+if [[ "$executor" = "pi" && -n "$pi_usage_dir" ]]; then
+  # Reject the obvious in-worktree case before creating anything. The
+  # canonical check below catches a path that resolves there through `..` or
+  # a symlink.
+  case "$pi_usage_dir" in
+    "$work_dir"|"$work_dir"/*)
+      die 2 "CKTK_PI_USAGE_DIR must be outside the work directory: $pi_usage_dir"
+      ;;
+  esac
+  mkdir -p "$pi_usage_dir" ||
+    die 2 "cannot create CKTK_PI_USAGE_DIR: $pi_usage_dir"
+  pi_usage_dir="$(cd "$pi_usage_dir" && pwd -P)"
+  case "$pi_usage_dir" in
+    "$work_dir"|"$work_dir"/*)
+      die 2 "CKTK_PI_USAGE_DIR must be outside the work directory: $pi_usage_dir"
+      ;;
+  esac
+  pi_usage_file="$pi_usage_dir/$(basename "$artifact_prefix").pi-usage.jsonl"
+fi
+
 : >"$output_file"
 chmod 600 "$output_file"
 
@@ -322,7 +354,9 @@ case "$executor" in
     # Pi has no sandbox. --no-approve skips project-local .pi settings,
     # extensions, skills, and prompts, so the ticket checkout cannot load code
     # into the executor; the work directory is the subshell's cwd. JSON mode
-    # exposes the model and thinking level that Pi actually used.
+    # exposes the model and thinking level that Pi actually used. Sessions
+    # stay ephemeral; CKTK_PI_USAGE_DIR optionally writes a usage-only export
+    # for local trackers without saving a resumable session.
     command=(
       "$executor_path"
       --print
@@ -425,6 +459,9 @@ trap 'terminate_child' EXIT
 trap 'terminate_child; exit 130' HUP INT TERM
 
 rm -f "$timeout_marker" "$final_message_file"
+if [[ -n "$pi_usage_file" ]]; then
+  rm -f "$pi_usage_file" "$pi_usage_file.tmp"
+fi
 
 # Job control gives the executor its own process group in non-interactive Bash.
 # The watchdog can then terminate the CLI and any child it spawned without
@@ -482,20 +519,36 @@ pi_used_provider=""
 pi_used_model=""
 pi_used_thinking=""
 pi_stop_reason=""
+pi_usage_file_written=""
+pi_usage_error=""
 if [[ "$executor" = "pi" ]]; then
   # The last assistant message names the provider, model, and thinking level
-  # that answered. These diagnostics are best effort: unparseable output leaves
-  # them null and does not change the Git classification below.
-  pi_metadata=()
-  while IFS= read -r line; do
-    pi_metadata+=("$line")
-  done < <(
-    python3 -I - "$output_file" "$final_message_file" 2>/dev/null <<'PY' || true
+  # that answered. When CKTK_PI_USAGE_DIR is set, the same pass writes a
+  # usage-only Pi-format JSONL there. These diagnostics are best effort:
+  # unparseable output leaves them null and does not change the Git
+  # classification below.
+  pi_parser_file=""
+  if ! pi_parser_file="$(mktemp "$record_dir/.pi-usage-parser.XXXXXX")"; then
+    pi_parser_file=""
+  fi
+  if [[ -n "$pi_parser_file" ]]; then
+    cat >"$pi_parser_file" <<'PY'
 import json
+import os
 import sys
+from datetime import datetime, timezone
 
-output_path, final_path = sys.argv[1:]
+(
+    output_path,
+    final_path,
+    usage_path,
+    run_id,
+    started_at,
+    work_dir,
+) = sys.argv[1:7]
+
 last = None
+usages = []
 with open(output_path, encoding="utf-8", errors="replace") as handle:
     for line in handle:
         try:
@@ -505,10 +558,15 @@ with open(output_path, encoding="utf-8", errors="replace") as handle:
         if not isinstance(event, dict) or event.get("type") != "message_end":
             continue
         message = event.get("message")
-        if isinstance(message, dict) and message.get("role") == "assistant":
-            last = message
+        if not isinstance(message, dict) or message.get("role") != "assistant":
+            continue
+        last = message
+        if isinstance(message.get("usage"), dict):
+            usages.append((message, event.get("timestamp")))
+
 if last is None:
     sys.exit(0)
+
 text = "\n".join(
     part.get("text", "")
     for part in last.get("content") or []
@@ -518,17 +576,165 @@ if last.get("errorMessage"):
     text = (text + "\n\n" if text else "") + str(last["errorMessage"])
 with open(final_path, "w", encoding="utf-8") as handle:
     handle.write(text.rstrip("\n") + "\n")
+
+# Printed before the optional export runs: a failure while building or
+# writing the usage file must not cost the record the classification
+# metadata that drives stop_reason handling.
 for key in ("provider", "model", "thinkingLevel", "stopReason"):
     value = last.get(key)
     print("" if value is None else " ".join(str(value).split()))
+
+
+def iso_timestamp(value):
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return (
+            datetime.fromtimestamp(value / 1000, tz=timezone.utc)
+            .isoformat(timespec="milliseconds")
+            .replace("+00:00", "Z")
+        )
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+usage_written = ""
+usage_error = ""
+if usage_path:
+    # Broad catch: the export is best effort, and a failure while building
+    # records (for example a corrupt numeric timestamp overflowing
+    # datetime) must degrade to pi_usage_error like a write failure, not
+    # kill the parser.
+    try:
+        header_timestamp = started_at or (
+            datetime.now(timezone.utc)
+            .isoformat(timespec="milliseconds")
+            .replace("+00:00", "Z")
+        )
+        header_id = run_id or "cktk"
+        records = []
+        for index, (message, event_timestamp) in enumerate(usages):
+            model = message.get("model")
+            if not isinstance(model, str) or not model.strip():
+                continue
+            usage = message.get("usage")
+            if not isinstance(usage, dict):
+                continue
+            tokens = {}
+            for key in ("input", "output", "cacheRead", "cacheWrite"):
+                value = usage.get(key)
+                if isinstance(value, bool) or not isinstance(value, (int, float)):
+                    value = 0
+                tokens[key] = max(0, int(value))
+            # TokenBar's Pi parser ignores non-assistant usage and counts a
+            # message only when it carries a model; keep the export to the
+            # same shape as a real Pi session.
+            if sum(tokens.values()) == 0:
+                continue
+            total = usage.get("totalTokens")
+            if isinstance(total, bool) or not isinstance(total, (int, float)):
+                total = sum(tokens.values())
+            provider = message.get("provider")
+            response_id = message.get("responseId")
+            record = {
+                "type": "message",
+                "id": (
+                    response_id
+                    if isinstance(response_id, str) and response_id.strip()
+                    else f"{header_id}-{index}"
+                ),
+                "timestamp": iso_timestamp(message.get("timestamp"))
+                or iso_timestamp(event_timestamp)
+                or header_timestamp,
+                "message": {
+                    "role": "assistant",
+                    "model": model,
+                    "usage": {**tokens, "totalTokens": max(0, int(total))},
+                },
+            }
+            if isinstance(provider, str) and provider.strip():
+                record["message"]["provider"] = provider
+            if isinstance(response_id, str) and response_id.strip():
+                record["message"]["responseId"] = response_id
+            records.append(record)
+
+        if records:
+            os.makedirs(os.path.dirname(usage_path), mode=0o700, exist_ok=True)
+            temp_path = usage_path + ".tmp"
+            with open(temp_path, "w", encoding="utf-8") as handle:
+                handle.write(
+                    json.dumps(
+                        {
+                            "type": "session",
+                            "version": 3,
+                            "id": header_id,
+                            "timestamp": header_timestamp,
+                            "cwd": work_dir,
+                        },
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    )
+                    + "\n"
+                )
+                for record in records:
+                    handle.write(
+                        json.dumps(
+                            record,
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        )
+                        + "\n"
+                    )
+            os.chmod(temp_path, 0o600)
+            os.replace(temp_path, usage_path)
+            usage_written = usage_path
+    except Exception as error:
+        usage_written = ""
+        usage_error = " ".join(str(error).split()) or type(error).__name__
+        try:
+            os.unlink(usage_path + ".tmp")
+        except OSError:
+            pass
+
+print(usage_written)
+print(usage_error)
 PY
-  )
+  fi
+  pi_metadata=()
+  if [[ -n "$pi_parser_file" ]]; then
+    while IFS= read -r line; do
+      pi_metadata+=("$line")
+    done < <(
+      python3 -I "$pi_parser_file" \
+        "$output_file" \
+        "$final_message_file" \
+        "$pi_usage_file" \
+        "$run_id" \
+        "$started_at" \
+        "$work_dir" 2>/dev/null || true
+    )
+    rm -f "$pi_parser_file"
+  fi
   pi_used_provider="${pi_metadata[0]:-}"
   pi_used_model="${pi_metadata[1]:-}"
   pi_used_thinking="${pi_metadata[2]:-}"
   pi_stop_reason="${pi_metadata[3]:-}"
+  pi_usage_file_written="${pi_metadata[4]:-}"
+  pi_usage_error="${pi_metadata[5]:-}"
+  if [[ -n "$pi_usage_file_written" ]]; then
+    if [[ -s "$pi_usage_file_written" ]]; then
+      chmod 600 "$pi_usage_file_written" 2>/dev/null || true
+    else
+      pi_usage_file_written=""
+      pi_usage_error="usage export was not written"
+    fi
+  fi
   if [[ -f "$final_message_file" ]]; then
     chmod 600 "$final_message_file"
+  fi
+  if [[ -n "$pi_usage_error" ]]; then
+    printf 'WARNING: Pi usage export failed: %s\n' "$pi_usage_error" >&2
   fi
 fi
 
@@ -579,6 +785,8 @@ chmod 600 "$record_tmp"
     printf '  "model":%s,\n' "$(json_string_or_null "$pi_used_model")"
     printf '  "thinking_level":%s,\n' "$(json_string_or_null "$pi_used_thinking")"
     printf '  "stop_reason":%s,\n' "$(json_string_or_null "$pi_stop_reason")"
+    printf '  "pi_usage_file":%s,\n' "$(json_string_or_null "$pi_usage_file_written")"
+    printf '  "pi_usage_error":%s,\n' "$(json_string_or_null "$pi_usage_error")"
     if [[ -f "$final_message_file" ]]; then
       printf '  "final_message_file":"%s"\n' "$(json_escape "$final_message_file")"
     else
