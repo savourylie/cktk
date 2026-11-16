@@ -11,8 +11,9 @@ repo="$tmp/repo"
 task_file="$tmp/ticket-task.md"
 tests=0
 
-# Pi overrides come only from the cases that set them.
+# Pi and agy overrides come only from the cases that set them.
 unset CKTK_PI_MODEL CKTK_PI_PROVIDER CKTK_PI_THINKING CKTK_PI_USAGE_DIR
+unset CKTK_AGY_MODEL CKTK_AGY_EFFORT
 
 cleanup() {
   if [[ "${KEEP_TEST_TMP:-0}" = "1" ]]; then
@@ -227,9 +228,19 @@ EOF
 cat >"$tmp/pi-events.jsonl" <<'EOF'
 {"type":"session","version":3,"id":"fake-session"}
 pi: warming up provider
+{"type":"agent_start"}
+{"type":"turn_start"}
+{"type":"message_update","usage":{"input":1,"output":1},"assistantMessageEvent":{"type":"text_delta"}}
 {"type":"message_end","message":{"role":"user","content":[{"type":"text","text":"task"}]}}
-{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"Calling a tool."}],"timestamp":1760000000000,"responseId":"resp-1","provider":"fake-provider","model":"fake-model-1","thinkingLevel":"low","stopReason":"toolUse","usage":{"input":100,"output":10,"cacheRead":5,"cacheWrite":0,"totalTokens":115}}}
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"Calling a tool."},{"type":"toolCall","id":"call-1","name":"bash","arguments":{"command":"npm test"}}],"timestamp":1760000000000,"responseId":"resp-1","provider":"fake-provider","model":"fake-model-1","thinkingLevel":"low","stopReason":"toolUse","usage":{"input":100,"output":10,"cacheRead":5,"cacheWrite":0,"totalTokens":115}}}
+{"type":"tool_execution_start","toolCallId":"call-1","toolName":"bash","args":{"command":"npm test"}}
+{"type":"tool_execution_end","toolCallId":"call-1","toolName":"bash","result":{"content":[{"type":"text","text":"exit 1: boom"}],"isError":true},"isError":true,"durationMs":3400}
+{"type":"tool_execution_start","toolCallId":"call-2","toolName":"write","args":{"path":"app.txt","content":"delegated change"}}
+{"type":"tool_execution_end","toolCallId":"call-2","toolName":"write","result":{"content":[{"type":"text","text":"wrote app.txt"}],"isError":false},"isError":false,"durationMs":12}
+{"type":"turn_end"}
+{"type":"turn_start"}
 {"type":"message_end","message":{"role":"assistant","content":[{"type":"thinking","thinking":"hidden"},{"type":"text","text":"Implemented the ticket."}],"timestamp":1760000001000,"responseId":"resp-2","provider":"fake-provider","model":"fake-model-2","thinkingLevel":"xhigh","stopReason":"stop","usage":{"input":200,"output":20,"cacheRead":0,"cacheWrite":7,"totalTokens":227}}}
+{"type":"turn_end"}
 {"type":"agent_end"}
 EOF
 cat >"$tmp/pi-error-events.jsonl" <<'EOF'
@@ -424,8 +435,31 @@ pi_usage="$(json_field "$tmp/pi-success.json" pi_usage_file)"
 assert_pi_usage "$pi_usage" "$repo"
 [[ "$(json_field "$tmp/pi-success.json" pi_usage_error)" = "None" ]] ||
   fail "Pi usage export reported an error"
+pi_transcript="$(json_field "$tmp/pi-success.json" transcript_file)"
+[[ -f "$pi_transcript" ]] || fail "Pi transcript was not written: $pi_transcript"
+[[ "$(json_field "$tmp/pi-success.json" transcript_error)" = "None" ]] ||
+  fail "Pi transcript reported an error"
+assert_contains "$pi_transcript" "Calling a tool."
+assert_contains "$pi_transcript" "Implemented the ticket."
+assert_contains "$pi_transcript" 'tool `bash` {"command":"npm test"}'
+assert_contains "$pi_transcript" "**error** in 3400ms"
+assert_contains "$pi_transcript" "exit 1: boom"
+assert_contains "$pi_transcript" 'tool `write` {"path":"app.txt"'
+assert_contains "$pi_transcript" "ok in 12ms: wrote app.txt"
+assert_contains "$pi_transcript" "thinking (truncated): hidden"
+assert_contains "$pi_transcript" "warming up provider"
+assert_json_field "$tmp/pi-success.json" turn_count 2
+assert_json_field "$tmp/pi-success.json" tool_call_count 2
+assert_json_field "$tmp/pi-success.json" tool_error_count 1
+assert_json_field "$tmp/pi-success.json" total_tokens 342
+pi_transcript_mode="$(python3 -c \
+  'import os,sys; print("%o" % (os.stat(sys.argv[1]).st_mode & 0o777))' \
+  "$pi_transcript")"
+[[ "$pi_transcript_mode" = "600" ]] ||
+  fail "Pi transcript is not owner-only readable"
 pass "Pi uses a fixed stdin template and records the model it used"
 pass "Pi writes an opt-in usage-only export without saving a session"
+pass "Pi writes a readable transcript and run counters for the host"
 
 git -C "$repo" add pi-change.txt
 git -C "$repo" commit -qm "reset after pi fixture"
@@ -600,6 +634,8 @@ assert_json_field "$tmp/pi-no-change.json" status no_changes
 assert_json_field "$tmp/pi-no-change.json" executor pi
 assert_json_field "$tmp/pi-no-change.json" model None
 assert_json_field "$tmp/pi-no-change.json" final_message_file None
+assert_json_field "$tmp/pi-no-change.json" transcript_file None
+assert_json_field "$tmp/pi-no-change.json" tool_call_count None
 
 before_pi_commit_head="$(git -C "$repo" rev-parse HEAD)"
 FAKE_AGENT_MODE=commit \
@@ -651,6 +687,9 @@ assert_contains "$tmp/pi-error-stop.stderr" \
   "executor stopped with reason error"
 assert_contains "$(json_field "$tmp/pi-error-stop.json" final_message_file)" \
   "429 rate limited"
+assert_contains "$(json_field "$tmp/pi-error-stop.json" transcript_file)" \
+  "**error:** 429 rate limited"
+assert_json_field "$tmp/pi-error-stop.json" tool_call_count 0
 pass "a Pi model error is recorded as a failure"
 
 # Records for other executors keep their existing fields.
@@ -660,7 +699,19 @@ import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     record = json.load(handle)
-extra = {"provider", "model", "thinking_level", "stop_reason", "final_message_file"} & set(record)
+extra = {
+    "provider",
+    "model",
+    "thinking_level",
+    "stop_reason",
+    "final_message_file",
+    "transcript_file",
+    "transcript_error",
+    "turn_count",
+    "tool_call_count",
+    "tool_error_count",
+    "total_tokens",
+} & set(record)
 if extra:
     raise SystemExit(f"non-Pi record gained Pi fields: {sorted(extra)}")
 PY
@@ -800,5 +851,156 @@ run_case check-with-run-arguments 2 "$test_path" \
 assert_contains "$tmp/check-with-run-arguments.stderr" \
   "--check takes only --host and --executor"
 pass "--check validates and discovers an executor without launching it"
+
+# agy takes the package as one attached --print= argument with stdin closed,
+# never expands slash commands, and passes model and effort only when set.
+cat >"$tmp/agy-events.jsonl" <<'EOF'
+{"event":"init","conversation_id":"conv-1","init":{"model":"gemini-3.8-flash","cwd":"/repo","permission_mode":"always-proceed"}}
+{"event":"step_update","step_update":{"conversation_id":"conv-1","step_index":0,"state":"DONE","step_type":"user_input"}}
+{"event":"step_update","step_update":{"conversation_id":"conv-1","step_index":1,"state":"DONE","step_type":"agent_response","text_delta":"Running the tests first."}}
+{"event":"step_update","step_update":{"conversation_id":"conv-1","step_index":2,"state":"ACTIVE","step_type":"tool","tool_name":"run_command","tool_info":{"name":"run_command","parameters":{"CommandLine":"npm test"}}}}
+{"event":"step_update","step_update":{"conversation_id":"conv-1","step_index":2,"state":"ERROR","step_type":"tool","tool_name":"run_command","error":"exit 1: boom","duration_seconds":3.4}}
+{"event":"step_update","step_update":{"conversation_id":"conv-1","step_index":3,"state":"DONE","step_type":"tool","tool_name":"write_file","tool_info":{"name":"write_file","parameters":{"Path":"/repo/app.txt"}},"duration_seconds":0.2}}
+agy: warming up
+{"event":"step_update","step_update":{"conversation_id":"conv-1","step_index":4,"state":"DONE","step_type":"agent_response","text_delta":"Implemented the ticket.\n"}}
+{"event":"result","result":{"conversation_id":"conv-1","status":"SUCCESS","response":"Implemented the ticket.\n","duration_seconds":7.7,"num_turns":1,"usage":{"input_tokens":200,"output_tokens":35,"thinking_tokens":0,"cache_read_tokens":10,"total_tokens":235}}}
+EOF
+cat >"$tmp/agy-error-events.jsonl" <<'EOF'
+{"event":"result","result":{"conversation_id":"","status":"ERROR","response":"","error":"quota exhausted","num_turns":0,"usage":{"total_tokens":0},"finished_reason":"error"}}
+EOF
+ln -s fake-agent "$fake_bin/agy"
+
+CKTK_AGY_MODEL=gemini-3.8-flash \
+CKTK_AGY_EFFORT=high \
+FAKE_AGENT_MODE=success \
+FAKE_AGENT_EXIT_CODE=0 \
+FAKE_AGENT_CHANGE_FILE="$repo/agy-change.txt" \
+FAKE_AGENT_STDOUT_FILE="$tmp/agy-events.jsonl" \
+  run_case agy-success 0 "$test_path" \
+    --host claude \
+    --executor AGY \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/agy-success.json" \
+    --timeout-seconds 5
+assert_contains "$tmp/agy-success.fake.log" \
+  "argv: <--dangerously-skip-permissions> <--disable-slash-commands> <--output-format> <stream-json> <--model> <gemini-3.8-flash> <--effort> <high> <--print=# CKTK delegated ticket implementation"
+assert_contains "$tmp/agy-success.fake.log" \
+  "must not commit, push, merge, delete a worktree, or change ticket status"
+assert_contains "$tmp/agy-success.fake.log" "\$(touch \"$tmp/INJECTED\")"
+assert_not_exists "$tmp/INJECTED"
+[[ ! -s "$tmp/agy-success.fake.stdin" ]] ||
+  fail "agy received a stdin prompt in addition to --print"
+assert_json_field "$tmp/agy-success.json" executor agy
+assert_json_field "$tmp/agy-success.json" status completed
+assert_json_field "$tmp/agy-success.json" model gemini-3.8-flash
+assert_json_field "$tmp/agy-success.json" requested_model gemini-3.8-flash
+assert_json_field "$tmp/agy-success.json" requested_effort high
+assert_json_field "$tmp/agy-success.json" agy_status SUCCESS
+assert_json_field "$tmp/agy-success.json" agy_error None
+assert_json_field "$tmp/agy-success.json" conversation_id conv-1
+assert_json_field "$tmp/agy-success.json" turn_count 1
+assert_json_field "$tmp/agy-success.json" tool_call_count 2
+assert_json_field "$tmp/agy-success.json" tool_error_count 1
+assert_json_field "$tmp/agy-success.json" total_tokens 235
+assert_json_field "$tmp/agy-success.json" transcript_error None
+agy_final="$(json_field "$tmp/agy-success.json" final_message_file)"
+assert_contains "$agy_final" "Implemented the ticket."
+agy_transcript="$(json_field "$tmp/agy-success.json" transcript_file)"
+assert_contains "$agy_transcript" "- model: gemini-3.8-flash (requested: gemini-3.8-flash, effort: high)"
+assert_contains "$agy_transcript" "tool \`run_command\` {\"CommandLine\":\"npm test\"} → **error** in 3.4s"
+assert_contains "$agy_transcript" "  error: exit 1: boom"
+assert_contains "$agy_transcript" "tool \`write_file\` {\"Path\":\"/repo/app.txt\"} → ok in 0.2s"
+assert_contains "$agy_transcript" "\`[non-JSON output]\` agy: warming up"
+assert_contains "$agy_transcript" "Running the tests first."
+git -C "$repo" add agy-change.txt
+git -C "$repo" commit -qm "reset after agy fixture"
+
+FAKE_AGENT_MODE=success \
+FAKE_AGENT_EXIT_CODE=0 \
+FAKE_AGENT_CHANGE_FILE="$repo/agy-default-change.txt" \
+  run_case agy-default 0 "$test_path" \
+    --host codex \
+    --executor agy \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/agy-default.json" \
+    --timeout-seconds 5
+assert_contains "$tmp/agy-default.fake.log" \
+  "argv: <--dangerously-skip-permissions> <--disable-slash-commands> <--output-format> <stream-json> <--print=# CKTK delegated ticket implementation"
+assert_json_field "$tmp/agy-default.json" status completed
+assert_json_field "$tmp/agy-default.json" requested_model None
+assert_json_field "$tmp/agy-default.json" requested_effort None
+assert_json_field "$tmp/agy-default.json" model None
+git -C "$repo" add agy-default-change.txt
+git -C "$repo" commit -qm "reset after agy default fixture"
+pass "agy uses a fixed template with optional model and effort"
+
+# A non-SUCCESS result is a failure even though agy exited 0.
+FAKE_AGENT_MODE=success \
+FAKE_AGENT_EXIT_CODE=0 \
+FAKE_AGENT_CHANGE_FILE="$repo/agy-error-change.txt" \
+FAKE_AGENT_STDOUT_FILE="$tmp/agy-error-events.jsonl" \
+  run_case agy-error 1 "$test_path" \
+    --host claude \
+    --executor agy \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/agy-error.json" \
+    --timeout-seconds 5
+assert_json_field "$tmp/agy-error.json" status failed
+assert_json_field "$tmp/agy-error.json" agy_status ERROR
+assert_json_field "$tmp/agy-error.json" agy_error "quota exhausted"
+assert_contains "$tmp/agy-error.stderr" "agy finished with status ERROR"
+assert_contains "$(json_field "$tmp/agy-error.json" final_message_file)" "quota exhausted"
+git -C "$repo" add agy-error-change.txt
+git -C "$repo" commit -qm "reset after agy error fixture"
+pass "an agy error result is recorded as a failure"
+
+# Antigravity cannot delegate to its own CLI, and overrides and oversized
+# tasks fail before any package or process exists.
+for invoking_agent in antigravity agy Antigravity; do
+  run_case "agy-same-host-$invoking_agent" 3 "$test_path" \
+    --host "$invoking_agent" \
+    --executor agy \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/agy-same-host-$invoking_agent.json"
+  assert_contains "$tmp/agy-same-host-$invoking_agent.stderr" \
+    "executor 'agy' is the current host"
+  assert_not_exists "$tmp/agy-same-host-$invoking_agent.fake.log"
+done
+CKTK_AGY_EFFORT=turbo \
+  run_case agy-invalid-effort 2 "$test_path" \
+    --host claude \
+    --executor agy \
+    --work-dir "$repo" \
+    --task-file "$task_file" \
+    --record-file "$tmp/agy-invalid-effort.json"
+assert_contains "$tmp/agy-invalid-effort.stderr" "invalid CKTK_AGY_EFFORT: turbo"
+assert_not_exists "$tmp/agy-invalid-effort.fake.log"
+CKTK_AGY_MODEL=--sandbox \
+  run_case agy-invalid-model 2 "$test_path" \
+    --check \
+    --host claude \
+    --executor agy
+assert_contains "$tmp/agy-invalid-model.stderr" "invalid CKTK_AGY_MODEL: --sandbox"
+python3 -c 'import sys; sys.stdout.write("x" * 120001)' >"$tmp/agy-large-task.md"
+run_case agy-large-task 2 "$test_path" \
+  --host claude \
+  --executor agy \
+  --work-dir "$repo" \
+  --task-file "$tmp/agy-large-task.md" \
+  --record-file "$tmp/agy-large-task.json"
+assert_contains "$tmp/agy-large-task.stderr" \
+  "task file is 120001 bytes; agy accepts at most 120000"
+assert_not_exists "$tmp/agy-large-task.task.md"
+assert_not_exists "$tmp/agy-large-task.fake.log"
+run_case check-agy 0 "$test_path" \
+  --check \
+  --host antigravity-ide \
+  --executor agy
+assert_contains "$tmp/check-agy.stdout" "Antigravity CLI is available for host antigravity-ide"
+pass "agy host, override, and size limits are validated before launch"
 
 printf '1..%d\n' "$tests"

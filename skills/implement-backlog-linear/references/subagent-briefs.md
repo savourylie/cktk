@@ -29,7 +29,7 @@ Finish by writing `<RUN_DIR>/results/<NAME>.json` — first as `<NAME>.json.tmp`
 
 A `blocker` has `kind` (`decision`, `environment`, `defect`, or `prerequisite`), `question`, `evidence`, `options`, and `suggestion`.
 
-`delegation` is `null` for native implementation. With an executor it is `{"executor": "<executor>", "record": "<absolute path to the adapter's <stem>.json>"}`; for `pi`, the record also names the model and thinking level that ran.
+`delegation` is `null` for native implementation. With an executor it is `{"executor": "<executor>", "record": "<absolute path to the adapter's <stem>.json>"}`; for `pi` and `agy`, the record also names the model (and thinking level or requested effort) that ran and a `transcript_file` digest of every step it took.
 
 ## Implementation brief
 
@@ -58,7 +58,7 @@ Skill: read <CKTK_ROOT>/skills/implement-ticket-linear/SKILL.md and follow it.
 ```text
 5. Delegate only the implementation step, to <EXECUTOR>, through implement-ticket-linear's delegation reference; your current_host is <HOST>. Use <RUN_DIR>/delegation/<ISSUE> as its diagnostics directory, never a directory inside the worktree: the merge queue lands only a clean worktree. You still prepare the worktree, verify, review with review-ticket, fix what you find, and commit; never commit the diagnostics.
 6. Run the adapter once. Do not retry it, and do not implement natively in its place. Map an outcome other than completed:
-   - failed, timed_out, or git_inspection_failed: verdict failed, with the record's status and the executor's error in blocker.evidence and blocker.kind environment.
+   - failed, timed_out, or git_inspection_failed: verdict failed, with the record's status and the executor's error in blocker.evidence and blocker.kind environment. For `pi` and `agy`, take the failing step from the record's transcript_file when present.
    - no_changes: complete with empty commits only when acceptance is already met; otherwise incomplete, blocker.kind defect.
    - forbidden_git_state: incomplete, blocker.kind defect, naming the commit or branch change the executor made. Do not reset or remove it.
 7. Set delegation in the result to the executor and the record path, whatever the outcome.

@@ -30,7 +30,9 @@ EPIC_TITLE = re.compile(r"^\s*\[epic\]", re.IGNORECASE)
 COUNT_KEYS = ("AI-ELIGIBLE", "DONE", "PARKED", "HUMAN-GATED", "BLOCKED")
 # The executors implement-ticket's run-ticket-executor.sh accepts for VIA;
 # test-backlog-graph.py keeps the two lists equal.
-EXECUTORS = ("codex", "claude", "grok", "pi")
+EXECUTORS = ("codex", "claude", "grok", "pi", "agy")
+# Host labels that name the same agent as an executor, as the adapter maps them.
+HOST_EXECUTOR_ALIASES = {"antigravity": "agy"}
 
 
 class InputError(Exception):
@@ -509,7 +511,8 @@ def norm_executor(value):
 
 
 def executor_is_host(executor, host):
-    return executor is not None and executor == str(host or "").strip().lower()
+    host = str(host or "").strip().lower()
+    return executor is not None and executor == HOST_EXECUTOR_ALIASES.get(host, host)
 
 
 def cmd_plan(args):

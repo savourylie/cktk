@@ -717,6 +717,18 @@ class ExecutorTests(unittest.TestCase):
         self.assertEqual(result.returncode, 3)
         self.assertEqual(json.loads(result.stdout)["reason"], "executor-is-host")
 
+    def test_antigravity_host_cannot_delegate_to_agy(self):
+        for host in ("antigravity", "agy", "Antigravity"):
+            result = run_cli("plan", "--snapshot", self.snapshot, "--runs-dir", self.runs,
+                             "--host", host, "--executor", "agy")
+            self.assertEqual(result.returncode, 2, host)
+            self.assertFalse(self.runs.exists())
+            result = run_cli("check-run", "--plan", self.plan_file("agy"), "--host", host, "--via", "agy")
+            self.assertEqual(result.returncode, 3, host)
+            self.assertEqual(json.loads(result.stdout)["reason"], "executor-is-host")
+        result = run_cli("check-run", "--plan", self.plan_file("agy"), "--host", "claude", "--via", "AGY")
+        self.assertEqual(result.returncode, 0, result.stdout)
+
     def test_a_plan_from_before_via_runs_natively(self):
         path = self.dir / "old-plan.json"
         path.write_text(json.dumps(planned(issue("ENG-1"))), encoding="utf-8")

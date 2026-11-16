@@ -20,7 +20,7 @@ With `VIA`, check the executor before gathering anything, against the invoking r
 bash "$SKILL_DIR/../implement-ticket/scripts/run-ticket-executor.sh" --check --host "<host>" --executor "<executor>"
 ```
 
-Exit 3 means the executor is unsupported or is this host, exit 4 that its CLI (or, for `pi`, `python3`) is unusable, and exit 2 an invalid `CKTK_PI_*` override. Report the message and stop; do not plan a native run in its place.
+Exit 3 means the executor is unsupported or is this host, exit 4 that its CLI (or, for `pi` and `agy`, `python3`) is unusable, and exit 2 an invalid `CKTK_PI_*` or `CKTK_AGY_*` override. Report the message and stop; do not plan a native run in its place.
 
 ## Gather the snapshot
 
@@ -103,7 +103,7 @@ In the user's language, show:
 
 - the run id, the scope — for an epic, its identifier, title, and project; for listed issues, the list — and the result of the binding check;
 - `PARALLEL`, recommending 1 when repository instructions show tests that share a port, database, or other fixed resource. The plan stores the value, so taking the recommendation means planning again with `PARALLEL: 1`;
-- with `VIA`, the executor, and that up to `PARALLEL` of its CLIs run at once against one provider account, so a lower value avoids rate limits. The executor's own configuration chooses its model, except for any `CKTK_PI_*` override. Every issue still runs in its own worktree, which matters for `pi`, which has no sandbox;
+- with `VIA`, the executor, and that up to `PARALLEL` of its CLIs run at once against one provider account, so a lower value avoids rate limits. The executor's own configuration chooses its model, except for any `CKTK_PI_*` or `CKTK_AGY_*` override. Every issue still runs in its own worktree, which matters for `pi`, which has no sandbox, and `agy`, which auto-approves every tool request;
 - `layers`: each issue with its title and its in-plan blockers from `edges`. Layers are for reading; execution starts an issue as soon as its blockers land;
 - `excluded`, grouped by reason, with the blocking path for dependency exclusions, such as `ENG-24 ← ENG-23 ← ENG-20`;
 - the preparatory writes execution may make: committing `.worktrees/` to `.gitignore` on the base when the line is missing, and creating the team label `human-blocked` when it is missing;

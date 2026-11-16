@@ -1,6 +1,6 @@
 ---
 name: implement-backlog-linear
-description: "Plan and run every Linear issue an agent can finish without a person, for one team, project, epic, or list of issues. Selects issues without human-setup or human-acceptance labels whose blockers are done or also selected, implements them in parallel worktrees through implement-ticket-linear, lands each on the base through a serial merge queue, marks it Done, and parks work that needs a person. VIA can delegate each issue's implementation to the codex, claude, grok, or pi CLI. A read-only plan comes first; execution runs from the /goal line it prints. Requires Linear MCP. Use for implement-backlog-linear or requests to work through a Linear backlog, epic, or set of issues automatically."
+description: "Plan and run every Linear issue an agent can finish without a person, for one team, project, epic, or list of issues. Selects issues without human-setup or human-acceptance labels whose blockers are done or also selected, implements them in parallel worktrees through implement-ticket-linear, lands each on the base through a serial merge queue, marks it Done, and parks work that needs a person. VIA can delegate each issue's implementation to the codex, claude, grok, pi, or agy CLI. A read-only plan comes first; execution runs from the /goal line it prints. Requires Linear MCP. Use for implement-backlog-linear or requests to work through a Linear backlog, epic, or set of issues automatically."
 ---
 
 # Run a Linear Backlog to Its Human Boundary
@@ -21,7 +21,7 @@ Accept keyed arguments, case-insensitive, with or without a space after the colo
 | `ISSUES: <IDs/URLs>` | Exactly these issues, separated by spaces or commas; an unlisted blocker or sub-issue is reported, never added. They supply the team; `TEAM` and `PROJECT`, when given, must match them. Not combined with `EPIC` |
 | `PARALLEL: <n>` | Implementation subagents at once; default 3. With `VIA`, also the number of executor CLIs running at once, so keep it within the provider's rate limits |
 | `BASE: <branch>` | Branch that issues land on; default `main` |
-| `VIA: <executor>` | Delegate each issue's implementation to `codex`, `claude`, `grok`, or `pi` through `implement-ticket-linear`'s [delegation](../implement-ticket/references/delegation.md); never the invoking host. Each subagent still prepares the worktree, verifies, reviews, and commits. Without it, subagents implement natively |
+| `VIA: <executor>` | Delegate each issue's implementation to `codex`, `claude`, `grok`, `pi`, or `agy` through `implement-ticket-linear`'s [delegation](../implement-ticket/references/delegation.md); never the invoking host. Each subagent still prepares the worktree, verifies, reviews, and commits. Without it, subagents implement natively |
 | `RUN: <run-id> [VIA: <executor>]` | Execute a confirmed plan. Its only other input is the plan's `VIA`, repeated so the executor survives context compaction and resumes; it must match the plan |
 
 Without `RUN:`, plan: read [planning](references/planning.md). Planning is read-only and ends with a `/goal` line; pasting that line is the user's confirmation and starts execution.
